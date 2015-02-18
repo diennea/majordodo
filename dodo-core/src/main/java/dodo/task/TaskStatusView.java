@@ -20,27 +20,23 @@
 package dodo.task;
 
 /**
- * A task
+ * Visible status of a task for clients
  *
  * @author enrico.olivelli
  */
-public class Task {
+public class TaskStatusView {
 
-    public static final int STATUS_WAITING = 0;
-
-    private String type;
-    private String parameter;
-    private long createdTimestamp;
-    private int status;
     private long taskId;
+    private int status;
     private String queueName;
+    private long createdTimestamp;
 
-    public String getQueueName() {
-        return queueName;
+    public long getCreatedTimestamp() {
+        return createdTimestamp;
     }
 
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public void setCreatedTimestamp(long createdTimestamp) {
+        this.createdTimestamp = createdTimestamp;
     }
 
     public long getTaskId() {
@@ -51,36 +47,20 @@ public class Task {
         this.taskId = taskId;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getParameter() {
-        return parameter;
-    }
-
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
-    }
-
-    public long getCreatedTimestamp() {
-        return createdTimestamp;
-    }
-
-    public void setCreatedTimestamp(long createdTimestamp) {
-        this.createdTimestamp = createdTimestamp;
-    }
-
     public int getStatus() {
         return status;
     }
 
     public void setStatus(int status) {
         this.status = status;
+    }
+
+    public String getQueueName() {
+        return queueName;
+    }
+
+    public void setQueueName(String queueName) {
+        this.queueName = queueName;
     }
 
 }

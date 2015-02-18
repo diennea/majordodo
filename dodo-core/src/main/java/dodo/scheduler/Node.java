@@ -17,62 +17,58 @@
  under the License.
 
  */
-package dodo.task;
+package dodo.scheduler;
+
+import java.util.Set;
 
 /**
- * A task
+ * An executor Node
  *
  * @author enrico.olivelli
  */
-public class Task {
+public final class Node {
 
-    public static final int STATUS_WAITING = 0;
+    public static final int STATUS_ALIVE = 0;
 
-    private String type;
-    private String parameter;
-    private long createdTimestamp;
+    private String nodeId;
     private int status;
-    private long taskId;
-    private String queueName;
+    private String nodeLocation;
+    private Set<String> tags;
+    private int maximumNumberOfTasks;
 
-    public String getQueueName() {
-        return queueName;
+    public int getMaximumNumberOfTasks() {
+        return maximumNumberOfTasks;
     }
 
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public void setMaximumNumberOfTasks(int maximumNumberOfTasks) {
+        this.maximumNumberOfTasks = maximumNumberOfTasks;
     }
 
-    public long getTaskId() {
-        return taskId;
+    public Set<String> getTags() {
+        return tags;
     }
 
-    public void setTaskId(long taskId) {
-        this.taskId = taskId;
+    public void setTags(Set<String> tags) {
+        this.tags = tags;
     }
 
-    public String getType() {
-        return type;
+    public Node() {
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public String getNodeLocation() {
+        return nodeLocation;
     }
 
-    public String getParameter() {
-        return parameter;
+    public void setNodeLocation(String nodeLocation) {
+        this.nodeLocation = nodeLocation;
     }
 
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
+    public String getNodeId() {
+        return nodeId;
     }
 
-    public long getCreatedTimestamp() {
-        return createdTimestamp;
-    }
-
-    public void setCreatedTimestamp(long createdTimestamp) {
-        this.createdTimestamp = createdTimestamp;
+    public void setNodeId(String nodeId) {
+        this.nodeId = nodeId;
     }
 
     public int getStatus() {
