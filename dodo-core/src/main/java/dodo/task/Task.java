@@ -27,6 +27,7 @@ package dodo.task;
 public class Task {
 
     public static final int STATUS_WAITING = 0;
+    public static final int STATUS_RUNNING = 1;
 
     private String type;
     private String parameter;

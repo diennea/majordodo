@@ -29,10 +29,33 @@ import java.util.Queue;
  */
 public class TaskQueue {
 
-    private final Queue<Task> tasks = new ArrayDeque<Task>();
+    public static final String DEFAULT_TAG = "default";
+
+    private final Queue<Task> tasks = new ArrayDeque<>();
+    private final String tag;
+
+    public TaskQueue(String tag) {
+        this.tag = tag;
+    }
+
+    public String getTag() {
+        return tag;
+    }
 
     void addNewTask(Task task) {
         tasks.add(task);
+    }
+
+    public Task peekNext() {
+        return tasks.peek();
+    }
+
+    public Task removeNext(long expectedTaskId) {
+        Task t = tasks.poll();
+        if (t == null || t.getTaskId() != expectedTaskId) {
+            throw new RuntimeException();
+        }
+        return t;
     }
 
 }

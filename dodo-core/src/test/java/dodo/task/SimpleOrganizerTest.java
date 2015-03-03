@@ -36,7 +36,7 @@ public class SimpleOrganizerTest {
     public void addTaskTest() throws Exception {
         Organizer organizer = new Organizer(new DummyCommitLog());
         String queueName = "myqueue";
-        Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam");
+        Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "default");
         long taskId = organizer.executeAction(addTask).taskId;
         TaskStatusView task = organizer.getTaskStatus(taskId);
         assertEquals(taskId, task.getTaskId());

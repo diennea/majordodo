@@ -19,7 +19,8 @@
  */
 package dodo.clustering;
 
-import dodo.task.Task;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * An action for the log
@@ -29,31 +30,45 @@ import dodo.task.Task;
 public final class Action {
 
     public static final short ACTION_TYPE_ADD_TASK = 1;
-    public static final short ACTION_TYPE_ADD_NODE = 2;
+    public static final short ACTION_TYPE_NODE_REGISTERED = 2;
+    public static final short ASSIGN_TASK_TO_NODE = 3;
 
     public short actionType;
     public String queueName;
     public String taskType;
+    public long taskId;
+    public String queueTag;
     public String taskParameter;
     public String nodeId;
     public String nodeLocation;
-    public String nodeTags;
+    public Set<String> nodeTags;
+    public Map<String, Integer> maximumNumberOfTasksPerTag;
 
-    public static final Action ADD_TASK(String queueName, String taskType, String taskParameter) {
+    public static final Action ASSIGN_TASK_TO_NODE(long taskId, String nodeId) {
+        Action action = new Action();
+        action.actionType = ASSIGN_TASK_TO_NODE;
+        action.nodeId = nodeId;
+        action.taskId = taskId;
+        return action;
+    }
+
+    public static final Action ADD_TASK(String queueName, String taskType, String taskParameter, String queueTag) {
         Action action = new Action();
         action.actionType = ACTION_TYPE_ADD_TASK;
         action.queueName = queueName;
         action.taskType = taskType;
         action.taskParameter = taskParameter;
+        action.queueTag = queueTag;
         return action;
     }
 
-    public static final Action ADD_NODE(String nodeId, String nodeLocation, String nodeTags) {
+    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Set<String> nodeTags, Map<String, Integer> maximumNumberOfTasksPerTag) {
         Action action = new Action();
-        action.actionType = ACTION_TYPE_ADD_NODE;
+        action.actionType = ACTION_TYPE_NODE_REGISTERED;
         action.nodeId = nodeId;
         action.nodeLocation = nodeLocation;
         action.nodeTags = nodeTags;
+        action.maximumNumberOfTasksPerTag = maximumNumberOfTasksPerTag;
         return action;
     }
 

@@ -21,7 +21,10 @@ package dodo.task;
 
 import dodo.clustering.Action;
 import dodo.clustering.DummyCommitLog;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -37,7 +40,7 @@ public class SimpleSchedulerTest {
     public void addTaskTest() throws Exception {
         Organizer organizer = new Organizer(new DummyCommitLog());
         String queueName = "myqueue";
-        Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam");
+        Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "tag1");
         long taskId = organizer.executeAction(addTask).taskId;
         TaskStatusView task = organizer.getTaskStatus(taskId);
         assertEquals(taskId, task.getTaskId());
@@ -47,11 +50,18 @@ public class SimpleSchedulerTest {
 
         String nodeId = "mynode";
         String nodeLocation = "localhost";
-        Action addNode = Action.ADD_NODE(nodeId, nodeLocation, "tag1,tag2");
+        Map<String, Integer> maxTasksPerTag = new HashMap<>();
+        maxTasksPerTag.put("tag1", 10);
+        maxTasksPerTag.put("tag2", 10);
+        Action addNode = Action.NODE_REGISTERED(nodeId, nodeLocation, maxTasksPerTag.keySet(), maxTasksPerTag);
         organizer.executeAction(addNode);
 
-        
-        
+        task = organizer.getTaskStatus(taskId);
+        assertEquals(taskId, task.getTaskId());
+        assertEquals(Task.STATUS_RUNNING, task.getStatus());
+        assertEquals(queueName, task.getQueueName());
+        assertTrue(task.getCreatedTimestamp() > 0);
+
     }
 
 }

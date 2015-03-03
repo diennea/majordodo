@@ -24,7 +24,9 @@ package dodo.scheduler;
  *
  * @author enrico.olivelli
  */
-public abstract class Scheduler {
+public class Scheduler {
 
-    public abstract void nodeSlotIsAvailable(Node node);
+    public void nodeSlotIsAvailable(Node node, String tag) {
+        
+    }
 }

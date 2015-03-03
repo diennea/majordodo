@@ -19,7 +19,10 @@
  */
 package dodo.scheduler;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * An executor Node
@@ -34,13 +37,18 @@ public final class Node {
     private int status;
     private String nodeLocation;
     private Set<String> tags;
-    private int maximumNumberOfTasks;
+    private Map<String, Integer> maximumNumberOfTasks;
+    private final Map<String, AtomicInteger> actualNumberOfTasks = new HashMap<>();
 
-    public int getMaximumNumberOfTasks() {
+    public Map<String, AtomicInteger> getActualNumberOfTasks() {
+        return actualNumberOfTasks;
+    }
+
+    public Map<String, Integer> getMaximumNumberOfTasks() {
         return maximumNumberOfTasks;
     }
 
-    public void setMaximumNumberOfTasks(int maximumNumberOfTasks) {
+    public void setMaximumNumberOfTasks(Map<String, Integer> maximumNumberOfTasks) {
         this.maximumNumberOfTasks = maximumNumberOfTasks;
     }
 

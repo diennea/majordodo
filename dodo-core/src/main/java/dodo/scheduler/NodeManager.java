@@ -19,6 +19,8 @@
  */
 package dodo.scheduler;
 
+import dodo.task.Task;
+import dodo.task.TaskQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -30,26 +32,36 @@ public class NodeManager {
 
     private final Node node;
     private final Scheduler scheduler;
-    private final AtomicInteger actualNumberOfTasks = new AtomicInteger();
-    private final int maximumNumberOfTasks;
 
     public NodeManager(Node node, Scheduler scheduler) {
         this.node = node;
-        this.maximumNumberOfTasks = node.getMaximumNumberOfTasks();
         this.scheduler = scheduler;
     }
 
-    public void nodeTaskFinished(long taskId) {
-        scheduler.nodeSlotIsAvailable(node);
-
+    public void nodeTaskFinished(Task task, TaskQueue queue) {
+        scheduler.nodeSlotIsAvailable(node, queue.getTag());
     }
 
-    public void nodeConnected(int numberOfTasks) {
-        actualNumberOfTasks.set(numberOfTasks);
-        int remaining = maximumNumberOfTasks - numberOfTasks;
-        for (int i = 0; i < remaining; i++) {
-            scheduler.nodeSlotIsAvailable(node);
-        }
+    public void nodeRegistered() {
+        node.getTags().stream().forEach((tag) -> {
+            Integer max = node.getMaximumNumberOfTasks().get(tag);
+            if (max != null) {
+                int remaining;
+                AtomicInteger actualCount = node.getActualNumberOfTasks().get(tag);
+                if (actualCount != null) {
+                    remaining = max - actualCount.get();
+                } else {
+                    remaining = max;
+                }
+                for (int i = 0; i < remaining; i++) {
+                    scheduler.nodeSlotIsAvailable(node, tag);
+                }
+            }
+        });
+    }
+
+    public void taskAssigned(Task task) {
+        System.out.println("taskAssigned " + task.getTaskId());
     }
 
 }
