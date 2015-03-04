@@ -27,6 +27,7 @@ import dodo.scheduler.DefaultScheduler;
 import dodo.scheduler.WorkerStatus;
 import dodo.scheduler.Workers;
 import dodo.scheduler.Scheduler;
+import dodo.scheduler.WorkerManager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -199,11 +200,10 @@ public class Broker {
                     node.setWorkerLocation(action.workerLocation);
                     node.setMaximumNumberOfTasks(action.maximumNumberOfTasksPerTag);
                     nodes.put(action.workerId, node);
-                    nodeManagers.getNodeManager(node).nodeRegistered();
+                    return new ActionResult(nodeManagers.getNodeManager(node));
                 } else {
                     throw new IllegalStateException();
                 }
-                return new ActionResult(0);
             }
             default:
                 //

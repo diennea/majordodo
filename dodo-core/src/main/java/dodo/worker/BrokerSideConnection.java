@@ -19,10 +19,55 @@
  */
 package dodo.worker;
 
+import dodo.scheduler.WorkerManager;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * Connection to a node from the broker side
+ *
  * @author enrico.olivelli
  */
 public class BrokerSideConnection {
-    
+
+    private final String workerId;
+    private final String workerProcessId;
+    private final long connectionId;
+    private final Map<String, Integer> maximumNumberOfTasks;
+    private final String location;
+
+    private static final AtomicLong sessionId = new AtomicLong();
+
+    public BrokerSideConnection(String workerId, String workerProcessId, Map<String, Integer> maximumNumberOfTasks, String location) {
+        this.workerId = workerId;
+        this.workerProcessId = workerProcessId;
+        this.connectionId = sessionId.incrementAndGet();
+        this.maximumNumberOfTasks = maximumNumberOfTasks;
+        this.location = location;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public Map<String, Integer> getMaximumNumberOfTasks() {
+        return maximumNumberOfTasks;
+    }
+
+    public String getWorkerProcessId() {
+        return workerProcessId;
+    }
+
+    public long getConnectionId() {
+        return connectionId;
+    }
+
+    String getWorkerId() {
+        return workerId;
+    }
+
+    void activate(WorkerManager manager) {
+        
+    }
+
 }

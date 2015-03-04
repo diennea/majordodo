@@ -54,7 +54,7 @@ public class SimpleSchedulerTest {
         maxTasksPerTag.put("tag1", 10);
         maxTasksPerTag.put("tag2", 10);
         Action addNode = Action.NODE_REGISTERED(workerId, nodeLocation, maxTasksPerTag);
-        broker.executeAction(addNode);
+        broker.executeAction(addNode).workerManager.nodeConnected();
 
         task = broker.getTaskStatus(taskId);
         assertEquals(taskId, task.getTaskId());

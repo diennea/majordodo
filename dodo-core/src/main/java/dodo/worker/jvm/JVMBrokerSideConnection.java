@@ -17,28 +17,20 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.worker.jvm;
 
-import dodo.scheduler.WorkerManager;
+import dodo.worker.BrokerSideConnection;
+import java.util.Map;
 
 /**
- * Result of an action
+ * In-memory connection, for embedded worker
  *
  * @author enrico.olivelli
  */
-public class ActionResult {
+public class JVMBrokerSideConnection extends BrokerSideConnection {
 
-    public final long taskId;
-    public final WorkerManager workerManager;
-
-    public ActionResult(long taskId) {
-        this.taskId = taskId;
-        this.workerManager = null;
-    }
-
-    public ActionResult(WorkerManager workerManager) {
-        this.taskId = 0;
-        this.workerManager = workerManager;
+    public JVMBrokerSideConnection(String workerId, String workerProcessId, Map<String, Integer> maximumNumberOfTasks) {
+        super(workerId, workerProcessId, maximumNumberOfTasks, "embedded");
     }
 
 }

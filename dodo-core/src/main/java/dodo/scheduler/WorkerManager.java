@@ -44,7 +44,7 @@ public class WorkerManager {
         scheduler.nodeSlotIsAvailable(node, queue.getTag());
     }
 
-    public void nodeRegistered() {
+    public void nodeConnected() {
         node.getMaximumNumberOfTasks().forEach((tag, max) -> {
             int remaining;
             AtomicInteger actualCount = node.getActualNumberOfTasks().get(tag);

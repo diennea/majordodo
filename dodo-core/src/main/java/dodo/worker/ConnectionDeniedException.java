@@ -17,28 +17,17 @@
  under the License.
 
  */
-package dodo.clustering;
-
-import dodo.scheduler.WorkerManager;
+package dodo.worker;
 
 /**
- * Result of an action
+ * Broker refused the connection
  *
  * @author enrico.olivelli
  */
-public class ActionResult {
+public class ConnectionDeniedException extends Exception {
 
-    public final long taskId;
-    public final WorkerManager workerManager;
-
-    public ActionResult(long taskId) {
-        this.taskId = taskId;
-        this.workerManager = null;
-    }
-
-    public ActionResult(WorkerManager workerManager) {
-        this.taskId = 0;
-        this.workerManager = workerManager;
+    public ConnectionDeniedException(String message) {
+        super(message);
     }
 
 }
