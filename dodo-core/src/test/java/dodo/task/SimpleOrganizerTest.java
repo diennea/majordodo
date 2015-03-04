@@ -34,7 +34,7 @@ public class SimpleOrganizerTest {
 
     @Test
     public void addTaskTest() throws Exception {
-        Organizer organizer = new Organizer(new DummyCommitLog());
+        Broker organizer = new Broker(new DummyCommitLog());
         String queueName = "myqueue";
         Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "default");
         long taskId = organizer.executeAction(addTask).taskId;

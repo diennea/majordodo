@@ -29,7 +29,16 @@ public class TaskStatusView {
     private long taskId;
     private int status;
     private String queueName;
+    private String workerId;
     private long createdTimestamp;
+
+    public String getWorkerId() {
+        return workerId;
+    }
+
+    public void setWorkerId(String workerId) {
+        this.workerId = workerId;
+    }
 
     public long getCreatedTimestamp() {
         return createdTimestamp;

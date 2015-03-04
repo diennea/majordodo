@@ -25,18 +25,17 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * An executor Node
+ * Status of a worker
  *
  * @author enrico.olivelli
  */
-public final class Node {
+public final class WorkerStatus {
 
     public static final int STATUS_ALIVE = 0;
 
-    private String nodeId;
+    private String workerId;
     private int status;
-    private String nodeLocation;
-    private Set<String> tags;
+    private String workerLocation;
     private Map<String, Integer> maximumNumberOfTasks;
     private final Map<String, AtomicInteger> actualNumberOfTasks = new HashMap<>();
 
@@ -52,31 +51,23 @@ public final class Node {
         this.maximumNumberOfTasks = maximumNumberOfTasks;
     }
 
-    public Set<String> getTags() {
-        return tags;
+    public WorkerStatus() {
     }
 
-    public void setTags(Set<String> tags) {
-        this.tags = tags;
+    public String getWorkerId() {
+        return workerId;
     }
 
-    public Node() {
+    public void setWorkerId(String workerId) {
+        this.workerId = workerId;
     }
 
-    public String getNodeLocation() {
-        return nodeLocation;
+    public String getWorkerLocation() {
+        return workerLocation;
     }
 
-    public void setNodeLocation(String nodeLocation) {
-        this.nodeLocation = nodeLocation;
-    }
-
-    public String getNodeId() {
-        return nodeId;
-    }
-
-    public void setNodeId(String nodeId) {
-        this.nodeId = nodeId;
+    public void setWorkerLocation(String workerLocation) {
+        this.workerLocation = workerLocation;
     }
 
     public int getStatus() {

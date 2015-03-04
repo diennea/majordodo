@@ -38,29 +38,39 @@ public class SimpleSchedulerTest {
 
     @Test
     public void addTaskTest() throws Exception {
-        Organizer organizer = new Organizer(new DummyCommitLog());
+        Broker broker = new Broker(new DummyCommitLog());
         String queueName = "myqueue";
         Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "tag1");
-        long taskId = organizer.executeAction(addTask).taskId;
-        TaskStatusView task = organizer.getTaskStatus(taskId);
+        long taskId = broker.executeAction(addTask).taskId;
+        TaskStatusView task = broker.getTaskStatus(taskId);
         assertEquals(taskId, task.getTaskId());
         assertEquals(Task.STATUS_WAITING, task.getStatus());
         assertEquals(queueName, task.getQueueName());
         assertTrue(task.getCreatedTimestamp() > 0);
 
-        String nodeId = "mynode";
+        String workerId = "mynode";
         String nodeLocation = "localhost";
         Map<String, Integer> maxTasksPerTag = new HashMap<>();
         maxTasksPerTag.put("tag1", 10);
         maxTasksPerTag.put("tag2", 10);
-        Action addNode = Action.NODE_REGISTERED(nodeId, nodeLocation, maxTasksPerTag.keySet(), maxTasksPerTag);
-        organizer.executeAction(addNode);
+        Action addNode = Action.NODE_REGISTERED(workerId, nodeLocation, maxTasksPerTag);
+        broker.executeAction(addNode);
 
-        task = organizer.getTaskStatus(taskId);
+        task = broker.getTaskStatus(taskId);
         assertEquals(taskId, task.getTaskId());
         assertEquals(Task.STATUS_RUNNING, task.getStatus());
         assertEquals(queueName, task.getQueueName());
+        assertEquals(workerId, task.getWorkerId());
         assertTrue(task.getCreatedTimestamp() > 0);
+
+        Action taskFinished = Action.TASK_FINISHED(taskId, workerId);
+        broker.executeAction(taskFinished);
+
+        task = broker.getTaskStatus(taskId);
+        assertEquals(taskId, task.getTaskId());
+        assertEquals(Task.STATUS_FINISHED, task.getStatus());
+        assertEquals(queueName, task.getQueueName());
+        assertEquals(workerId, task.getWorkerId());
 
     }
 

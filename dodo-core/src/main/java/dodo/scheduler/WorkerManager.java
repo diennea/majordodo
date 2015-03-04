@@ -19,6 +19,7 @@
  */
 package dodo.scheduler;
 
+import dodo.worker.BrokerSideConnection;
 import dodo.task.Task;
 import dodo.task.TaskQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,12 +29,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author enrico.olivelli
  */
-public class NodeManager {
+public class WorkerManager {
 
-    private final Node node;
+    private final WorkerStatus node;
     private final Scheduler scheduler;
+    private BrokerSideConnection connection;
 
-    public NodeManager(Node node, Scheduler scheduler) {
+    public WorkerManager(WorkerStatus node, Scheduler scheduler) {
         this.node = node;
         this.scheduler = scheduler;
     }
@@ -43,19 +45,16 @@ public class NodeManager {
     }
 
     public void nodeRegistered() {
-        node.getTags().stream().forEach((tag) -> {
-            Integer max = node.getMaximumNumberOfTasks().get(tag);
-            if (max != null) {
-                int remaining;
-                AtomicInteger actualCount = node.getActualNumberOfTasks().get(tag);
-                if (actualCount != null) {
-                    remaining = max - actualCount.get();
-                } else {
-                    remaining = max;
-                }
-                for (int i = 0; i < remaining; i++) {
-                    scheduler.nodeSlotIsAvailable(node, tag);
-                }
+        node.getMaximumNumberOfTasks().forEach((tag, max) -> {
+            int remaining;
+            AtomicInteger actualCount = node.getActualNumberOfTasks().get(tag);
+            if (actualCount != null) {
+                remaining = max - actualCount.get();
+            } else {
+                remaining = max;
+            }
+            for (int i = 0; i < remaining; i++) {
+                scheduler.nodeSlotIsAvailable(node, tag);
             }
         });
     }

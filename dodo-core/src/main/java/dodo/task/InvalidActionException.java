@@ -17,16 +17,17 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.task;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * An invalid action has been request, nothing will be done
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+public class InvalidActionException extends Exception {
 
-    public void nodeSlotIsAvailable(WorkerStatus node, String tag) {
-        
+    public InvalidActionException(String message) {
+        super(message);
     }
+
 }

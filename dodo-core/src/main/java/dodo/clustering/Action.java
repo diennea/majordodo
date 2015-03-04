@@ -30,8 +30,9 @@ import java.util.Set;
 public final class Action {
 
     public static final short ACTION_TYPE_ADD_TASK = 1;
-    public static final short ACTION_TYPE_NODE_REGISTERED = 2;
-    public static final short ASSIGN_TASK_TO_NODE = 3;
+    public static final short ACTION_TYPE_WORKER_REGISTERED = 2;
+    public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
+    public static final short TYPE_TASK_FINISHED = 4;
 
     public short actionType;
     public String queueName;
@@ -39,15 +40,22 @@ public final class Action {
     public long taskId;
     public String queueTag;
     public String taskParameter;
-    public String nodeId;
-    public String nodeLocation;
-    public Set<String> nodeTags;
+    public String workerId;
+    public String workerLocation;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
 
-    public static final Action ASSIGN_TASK_TO_NODE(long taskId, String nodeId) {
+    public static final Action ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
         Action action = new Action();
-        action.actionType = ASSIGN_TASK_TO_NODE;
-        action.nodeId = nodeId;
+        action.actionType = TYPE_ASSIGN_TASK_TO_WORKER;
+        action.workerId = nodeId;
+        action.taskId = taskId;
+        return action;
+    }
+
+    public static final Action TASK_FINISHED(long taskId, String nodeId) {
+        Action action = new Action();
+        action.actionType = TYPE_TASK_FINISHED;
+        action.workerId = nodeId;
         action.taskId = taskId;
         return action;
     }
@@ -62,12 +70,11 @@ public final class Action {
         return action;
     }
 
-    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Set<String> nodeTags, Map<String, Integer> maximumNumberOfTasksPerTag) {
+    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag) {
         Action action = new Action();
-        action.actionType = ACTION_TYPE_NODE_REGISTERED;
-        action.nodeId = nodeId;
-        action.nodeLocation = nodeLocation;
-        action.nodeTags = nodeTags;
+        action.actionType = ACTION_TYPE_WORKER_REGISTERED;
+        action.workerId = nodeId;
+        action.workerLocation = nodeLocation;
         action.maximumNumberOfTasksPerTag = maximumNumberOfTasksPerTag;
         return action;
     }

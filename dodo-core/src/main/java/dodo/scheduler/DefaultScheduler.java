@@ -21,7 +21,8 @@ package dodo.scheduler;
 
 import dodo.clustering.Action;
 import dodo.clustering.LogNotAvailableException;
-import dodo.task.Organizer;
+import dodo.task.Broker;
+import dodo.task.InvalidActionException;
 import dodo.task.Task;
 import dodo.task.TaskQueue;
 import java.util.ArrayList;
@@ -38,49 +39,52 @@ public class DefaultScheduler extends Scheduler {
 
     private static final Logger LOGGER = Logger.getLogger(DefaultScheduler.class.getName());
 
-    Organizer organizer;
+    Broker broker;
 
-    List<PendingNode> pendingNodes = new ArrayList<>();
+    List<PendingWorker> pendingWorkers = new ArrayList<>();
 
-    private static final class PendingNode {
+    private static final class PendingWorker {
 
-        String nodeId;
+        String workerId;
         String tag;
 
-        public PendingNode(String nodeId, String tag) {
-            this.nodeId = nodeId;
+        public PendingWorker(String workerId, String tag) {
+            this.workerId = workerId;
             this.tag = tag;
         }
 
     }
 
-    public DefaultScheduler(Organizer organizer) {
-        this.organizer = organizer;
+    public DefaultScheduler(Broker organizer) {
+        this.broker = organizer;
     }
 
     @Override
-    public void nodeSlotIsAvailable(Node node, String tag) {
+    public void nodeSlotIsAvailable(WorkerStatus worker, String tag) {
         Task task = getNewTask(tag);
         boolean done = false;
         if (task != null) {
             try {
-                Action action = Action.ASSIGN_TASK_TO_NODE(task.getTaskId(), node.getNodeId());
-                organizer.executeAction(action);
+                Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), worker.getWorkerId());
+                broker.executeAction(action);
                 done = true;
             } catch (LogNotAvailableException | InterruptedException notAvailable) {
                 LOGGER.log(Level.SEVERE, "cannot assign new task", notAvailable);
+            } catch (InvalidActionException error) {
+                LOGGER.log(Level.SEVERE, "fatal error dugin task assignment", error);
+                done = true;
             }
         }
         if (!done) {
-            pendingNodes.add(new PendingNode(node.getNodeId(), tag));
+            pendingWorkers.add(new PendingWorker(worker.getWorkerId(), tag));
         }
 
     }
 
     private Task getNewTask(String tag) {
         try {
-            return organizer.readonlyAccess(() -> {
-                for (TaskQueue q : organizer.queues.values()) {
+            return broker.readonlyAccess(() -> {
+                for (TaskQueue q : broker.queues.values()) {
                     if (q.getTag().equals(tag)) {
                         Task peek = q.peekNext();
                         if (peek != null) {

@@ -28,6 +28,7 @@ public class Task {
 
     public static final int STATUS_WAITING = 0;
     public static final int STATUS_RUNNING = 1;
+    public static final int STATUS_FINISHED = 2;
 
     private String type;
     private String parameter;
@@ -35,6 +36,15 @@ public class Task {
     private int status;
     private long taskId;
     private String queueName;
+    private String workerId;
+
+    public String getWorkerId() {
+        return workerId;
+    }
+
+    public void setWorkerId(String workerId) {
+        this.workerId = workerId;
+    }
 
     public String getQueueName() {
         return queueName;

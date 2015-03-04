@@ -28,19 +28,19 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *
  * @author enrico.olivelli
  */
-public class Nodes {
+public class Workers {
 
-    private final Map<String, NodeManager> nodeManagers = new HashMap<>();
+    private final Map<String, WorkerManager> nodeManagers = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private Scheduler scheduler;
 
-    public Nodes(Scheduler scheduler) {
+    public Workers(Scheduler scheduler) {
         this.scheduler = scheduler;
     }
 
-    public NodeManager getNodeManager(Node node) {
-        String id = node.getNodeId();
-        NodeManager man;
+    public WorkerManager getNodeManager(WorkerStatus node) {
+        String id = node.getWorkerId();
+        WorkerManager man;
         lock.readLock().lock();
         try {
             man = nodeManagers.get(id);
@@ -52,7 +52,7 @@ public class Nodes {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
-                    man = new NodeManager(node, scheduler);
+                    man = new WorkerManager(node, scheduler);
                     nodeManagers.put(id, man);
                 }
             } finally {

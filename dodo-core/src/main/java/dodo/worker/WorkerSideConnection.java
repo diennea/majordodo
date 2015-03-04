@@ -17,16 +17,12 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.worker;
 
 /**
- * Main class of the strategy for the execution of tasks
- *
+ * Connection to the broker
  * @author enrico.olivelli
  */
-public class Scheduler {
-
-    public void nodeSlotIsAvailable(WorkerStatus node, String tag) {
-        
-    }
+public class WorkerSideConnection {
+    
 }
