@@ -21,6 +21,8 @@ package dodo.task;
 
 import dodo.clustering.Action;
 import dodo.clustering.DummyCommitLog;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -37,12 +39,21 @@ public class SimpleOrganizerTest {
         Broker organizer = new Broker(new DummyCommitLog());
         String queueName = "myqueue";
         Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "default");
-        long taskId = organizer.executeAction(addTask).taskId;
-        TaskStatusView task = organizer.getTaskStatus(taskId);
-        assertEquals(taskId, task.getTaskId());
-        assertEquals(Task.STATUS_WAITING, task.getStatus());
-        assertEquals(queueName, task.getQueueName());
-        assertTrue(task.getCreatedTimestamp() > 0);
+        CountDownLatch ok = new CountDownLatch(1);
+        organizer.executeAction(addTask, (a, result) -> {
+            try {
+                long taskId = result.taskId;
+                TaskStatusView task = organizer.getTaskStatus(taskId);
+                assertEquals(taskId, task.getTaskId());
+                assertEquals(Task.STATUS_WAITING, task.getStatus());
+                assertEquals(queueName, task.getQueueName());
+                assertTrue(task.getCreatedTimestamp() > 0);
+                ok.countDown();
+            } catch (Exception err) {
+                throw new RuntimeException(err);
+            }
+        });
+        ok.await(10, TimeUnit.SECONDS);
 
     }
 }

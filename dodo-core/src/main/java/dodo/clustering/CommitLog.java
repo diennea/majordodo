@@ -26,6 +26,11 @@ package dodo.clustering;
  */
 public abstract class CommitLog {
 
-    public abstract LogSequenceNumber beforeAction(Action action) throws LogNotAvailableException;
+    public static interface ActionLogCallback {
+
+        public void actionCommitted(LogSequenceNumber number, Throwable error);
+    }
+
+    public abstract void logAction(Action action, ActionLogCallback callback);
 
 }

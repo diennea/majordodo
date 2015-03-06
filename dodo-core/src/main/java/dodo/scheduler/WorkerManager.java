@@ -19,6 +19,10 @@
  */
 package dodo.scheduler;
 
+import dodo.clustering.Action;
+import dodo.clustering.LogNotAvailableException;
+import dodo.task.Broker;
+import dodo.task.InvalidActionException;
 import dodo.worker.BrokerSideConnection;
 import dodo.task.Task;
 import dodo.task.TaskQueue;
@@ -31,36 +35,52 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class WorkerManager {
 
-    private final WorkerStatus node;
+    private final WorkerStatus workerStatus;
     private final Scheduler scheduler;
+    private final Broker broker;
     private BrokerSideConnection connection;
 
-    public WorkerManager(WorkerStatus node, Scheduler scheduler) {
-        this.node = node;
+    public WorkerManager(WorkerStatus node, Scheduler scheduler, Broker broker) {
+        this.workerStatus = node;
         this.scheduler = scheduler;
+        this.broker = broker;
     }
 
-    public void nodeTaskFinished(Task task, TaskQueue queue) {
-        scheduler.nodeSlotIsAvailable(node, queue.getTag());
+    public Broker getBroker() {
+        return broker;
     }
 
-    public void nodeConnected() {
-        node.getMaximumNumberOfTasks().forEach((tag, max) -> {
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    public WorkerStatus getWorker() {
+        return workerStatus;
+    }
+
+    public void activateConnection(BrokerSideConnection connection) {
+        this.connection = connection;
+
+        workerStatus.getMaximumNumberOfTasks().forEach((tag, max) -> {
             int remaining;
-            AtomicInteger actualCount = node.getActualNumberOfTasks().get(tag);
+            AtomicInteger actualCount = workerStatus.getActualNumberOfTasks().get(tag);
             if (actualCount != null) {
                 remaining = max - actualCount.get();
             } else {
                 remaining = max;
             }
             for (int i = 0; i < remaining; i++) {
-                scheduler.nodeSlotIsAvailable(node, tag);
+                scheduler.nodeSlotIsAvailable(workerStatus, tag);
             }
         });
     }
 
     public void taskAssigned(Task task) {
         System.out.println("taskAssigned " + task.getTaskId());
+    }
+
+    public void detectedOldNodeProcess() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
 }

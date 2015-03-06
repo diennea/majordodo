@@ -19,6 +19,7 @@
  */
 package dodo.scheduler;
 
+import dodo.task.Broker;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -32,10 +33,12 @@ public class Workers {
 
     private final Map<String, WorkerManager> nodeManagers = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+    private final Broker broker;
 
-    public Workers(Scheduler scheduler) {
+    public Workers(Scheduler scheduler, Broker broker) {
         this.scheduler = scheduler;
+        this.broker = broker;
     }
 
     public WorkerManager getNodeManager(WorkerStatus node) {
@@ -52,7 +55,7 @@ public class Workers {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
-                    man = new WorkerManager(node, scheduler);
+                    man = new WorkerManager(node, scheduler,broker);
                     nodeManagers.put(id, man);
                 }
             } finally {

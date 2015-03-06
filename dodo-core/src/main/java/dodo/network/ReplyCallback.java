@@ -17,20 +17,14 @@
  under the License.
 
  */
-package dodo.worker.jvm;
-
-import dodo.worker.BrokerSideConnection;
-import java.util.Map;
+package dodo.network;
 
 /**
- * In-memory connection, for embedded worker
+ * Callback for async calls
  *
  * @author enrico.olivelli
  */
-public class JVMBrokerSideConnection extends BrokerSideConnection {
+public interface ReplyCallback {
 
-    public JVMBrokerSideConnection(String workerId, String workerProcessId, Map<String, Integer> maximumNumberOfTasks) {
-        super(workerId, workerProcessId, maximumNumberOfTasks, "embedded");
-    }
-
+    public void replyReceived(Message originalMessage, Message message, Throwable error);
 }

@@ -20,14 +20,12 @@
 package dodo.worker;
 
 import dodo.clustering.Action;
-import dodo.clustering.LogNotAvailableException;
+import dodo.network.Message;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Connections manager broker-side
@@ -44,23 +42,29 @@ public class BrokerServerEndpoint {
         this.broker = broker;
     }
 
-    public void acceptConnection(BrokerSideConnection connection) throws ConnectionDeniedException {
+    public void acceptConnection(BrokerSideConnection connection, final Message connectionRequestMessage) {
         try {
             String workerId = connection.getWorkerId();
             BrokerSideConnection actual = workersConnections.get(workerId);
             if (actual != null) {
-                throw new ConnectionDeniedException("worker " + workerId + " is already connected, processid = " + actual.getWorkerProcessId() + ", location = " + actual.getLocation());
+                connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,new Exception("already connected from "+workerId));
+                return;
             }
-            WorkerManager manager = broker.executeAction(Action.NODE_REGISTERED(workerId, connection.getLocation(), connection.getMaximumNumberOfTasks())).workerManager;
-            connection.activate(manager);
-            manager.nodeConnected();
-            workersConnections.put(workerId, connection);
-        } catch (LogNotAvailableException ex) {
-            throw new ConnectionDeniedException("system not available");
+            Action action = Action.NODE_REGISTERED(workerId, connection.getLocation(), connection.getMaximumNumberOfTasks());
+            broker.executeAction(action, (a, result) -> {
+                if (result.error != null) {
+                    connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,result.error);
+                    return;
+                }
+                workersConnections.put(workerId, connection);
+                WorkerManager manager = broker.getWorkerManager(workerId);
+                connection.activate(manager);
+            });
+
         } catch (InterruptedException ex) {
-            throw new ConnectionDeniedException("system not available");
+            connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,ex);
         } catch (InvalidActionException ex) {
-            throw new ConnectionDeniedException("broker refused connection:" + ex);
+            connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,ex);
         }
     }
 

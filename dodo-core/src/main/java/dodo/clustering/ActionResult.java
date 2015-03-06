@@ -29,16 +29,23 @@ import dodo.scheduler.WorkerManager;
 public class ActionResult {
 
     public final long taskId;
-    public final WorkerManager workerManager;
+    public final Throwable error;
 
-    public ActionResult(long taskId) {
+    private ActionResult(long taskId, Throwable error) {
         this.taskId = taskId;
-        this.workerManager = null;
+        this.error = error;
     }
 
-    public ActionResult(WorkerManager workerManager) {
-        this.taskId = 0;
-        this.workerManager = workerManager;
+    public static ActionResult ERROR(Throwable error) {
+        return new ActionResult(0, error);
+    }
+
+    public static ActionResult TASKID(long taskId) {
+        return new ActionResult(taskId, null);
+    }
+
+    public static ActionResult OK() {
+        return new ActionResult(0, null);
     }
 
 }

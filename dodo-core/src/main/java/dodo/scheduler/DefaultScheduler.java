@@ -64,19 +64,21 @@ public class DefaultScheduler extends Scheduler {
         Task task = getNewTask(tag);
         boolean done = false;
         if (task != null) {
+            Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), worker.getWorkerId());
             try {
-                Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), worker.getWorkerId());
-                broker.executeAction(action);
-                done = true;
-            } catch (LogNotAvailableException | InterruptedException notAvailable) {
-                LOGGER.log(Level.SEVERE, "cannot assign new task", notAvailable);
-            } catch (InvalidActionException error) {
-                LOGGER.log(Level.SEVERE, "fatal error dugin task assignment", error);
-                done = true;
+                broker.executeAction(action, (a, result) -> {
+                    if (result.error != null) {
+                        LOGGER.log(Level.SEVERE, "cannot assign new task", result.error);
+                        return;
+                    }
+                    if (!done) {
+                        pendingWorkers.add(new PendingWorker(worker.getWorkerId(), tag));
+                    }
+                });
+            } catch (InterruptedException | InvalidActionException nothingToDo) {
+                LOGGER.log(Level.SEVERE, "fatal error", nothingToDo);
             }
-        }
-        if (!done) {
-            pendingWorkers.add(new PendingWorker(worker.getWorkerId(), tag));
+
         }
 
     }

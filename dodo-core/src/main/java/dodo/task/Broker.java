@@ -23,6 +23,7 @@ import dodo.clustering.Action;
 import dodo.clustering.ActionResult;
 import dodo.clustering.CommitLog;
 import dodo.clustering.LogNotAvailableException;
+import dodo.clustering.LogSequenceNumber;
 import dodo.scheduler.DefaultScheduler;
 import dodo.scheduler.WorkerStatus;
 import dodo.scheduler.Workers;
@@ -52,11 +53,17 @@ public class Broker {
     private final Workers nodeManagers;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final AtomicLong newTaskId = new AtomicLong();
+    private String leaderToken = "TODO";
+    private Scheduler scheduler;
+
+    public String getLeaderToken() {
+        return leaderToken;
+    }
 
     public Broker(CommitLog log) {
         this.log = log;
-        Scheduler sched = new DefaultScheduler(this);
-        this.nodeManagers = new Workers(sched);
+        this.scheduler = new DefaultScheduler(this);
+        this.nodeManagers = new Workers(scheduler, this);
     }
 
     public <T> T readonlyAccess(Callable<T> action) throws Exception {
@@ -132,19 +139,47 @@ public class Broker {
         }
     }
 
-    public ActionResult executeAction(Action action) throws LogNotAvailableException, InterruptedException, InvalidActionException {
+    public WorkerManager getWorkerManager(String workerId) {
+        lock.readLock().lock();
+        try {
+            return this.nodeManagers.getNodeManager(nodes.get(workerId));
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public static interface ActionCallback {
+
+        public void actionExecuted(Action action, ActionResult result);
+    }
+
+    public void executeAction(final Action action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
         LOGGER.log(Level.FINE, "executeAction {0}", action);
         lock.writeLock().lock();
         try {
             validateAction(action);
-            log.beforeAction(action);
-            return applyAction(action);
+            log.logAction(action, new CommitLog.ActionLogCallback() {
+
+                @Override
+                public void actionCommitted(LogSequenceNumber number, Throwable error) {
+
+                    if (error != null) {
+                        callback.actionExecuted(action, ActionResult.ERROR(error));
+                        return;
+                    }
+                    try {
+                        callback.actionExecuted(action, applyAction(action));
+                    } catch (Throwable t) {
+                        callback.actionExecuted(action, ActionResult.ERROR(t));
+                    }
+                }
+            });
         } finally {
             lock.writeLock().unlock();
         }
     }
 
-    private ActionResult applyAction(Action action) throws IllegalStateException, InterruptedException {
+    private ActionResult applyAction(Action action) {
         switch (action.actionType) {
             case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
                 long taskId = action.taskId;
@@ -156,7 +191,7 @@ public class Broker {
                 queue.removeNext(taskId);
                 WorkerStatus node = nodes.get(workerId);
                 nodeManagers.getNodeManager(node).taskAssigned(task);
-                return new ActionResult(taskId);
+                return ActionResult.TASKID(taskId);
             }
             case Action.TYPE_TASK_FINISHED: {
                 long taskId = action.taskId;
@@ -166,8 +201,8 @@ public class Broker {
                 task.setWorkerId(workerId);
                 WorkerStatus node = nodes.get(workerId);
                 TaskQueue queue = queues.get(task.getQueueName());
-                nodeManagers.getNodeManager(node).nodeTaskFinished(task, queue);
-                return new ActionResult(taskId);
+                scheduler.nodeSlotIsAvailable(node, queue.getTag());
+                return ActionResult.TASKID(taskId);
             }
             case Action.ACTION_TYPE_ADD_TASK: {
                 long newId = newTaskId.incrementAndGet();
@@ -189,7 +224,7 @@ public class Broker {
                 }
                 tasks.put(newId, task);
                 queue.addNewTask(task);
-                return new ActionResult(newId);
+                return ActionResult.TASKID(newId);
             }
             case Action.ACTION_TYPE_WORKER_REGISTERED: {
                 WorkerStatus node = nodes.get(action.workerId);
@@ -200,16 +235,34 @@ public class Broker {
                     node.setWorkerLocation(action.workerLocation);
                     node.setMaximumNumberOfTasks(action.maximumNumberOfTasksPerTag);
                     nodes.put(action.workerId, node);
-                    return new ActionResult(nodeManagers.getNodeManager(node));
+                    return ActionResult.OK();
                 } else {
                     throw new IllegalStateException();
                 }
             }
             default:
-                //
-                return new ActionResult(0);
+                return ActionResult.ERROR(new IllegalStateException("invalid action type " + action.actionType).fillInStackTrace());
 
         }
+    }
+
+    public String getTagForTask(long taskid) {
+        Task task;
+        lock.readLock().lock();
+        try {
+            task = tasks.get(taskid);
+            if (task == null) {
+                return null;
+            }
+            TaskQueue q = queues.get(task.getQueueName());
+            if (q == null) {
+                return null;
+            }
+            return q.getTag();
+        } finally {
+            lock.readLock().unlock();
+        }
+
     }
 
 }

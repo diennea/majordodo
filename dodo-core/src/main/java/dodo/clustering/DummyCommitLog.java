@@ -19,6 +19,8 @@
  */
 package dodo.clustering;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -29,10 +31,14 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DummyCommitLog extends CommitLog {
 
     private final AtomicLong sequenceNumber = new AtomicLong();
+    private final ExecutorService service = Executors.newCachedThreadPool();
 
     @Override
-    public LogSequenceNumber beforeAction(Action action) throws LogNotAvailableException {
-        return new LogSequenceNumber(0, sequenceNumber.incrementAndGet());
+    public void logAction(Action action, ActionLogCallback callback) {
+        long newNumber = sequenceNumber.incrementAndGet();
+        service.submit(() -> {
+            callback.actionCommitted(new LogSequenceNumber(1, newNumber), null);
+        });
     }
 
 }
