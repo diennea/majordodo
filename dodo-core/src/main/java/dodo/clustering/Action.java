@@ -44,6 +44,11 @@ public final class Action {
     public String workerLocation;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
 
+    @Override
+    public String toString() {
+        return "Action{" + "actionType=" + actionType + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + '}';
+    }
+
     public static final Action ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
         Action action = new Action();
         action.actionType = TYPE_ASSIGN_TASK_TO_WORKER;

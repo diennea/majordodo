@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BrokerServerEndpoint {
 
-    private final Map<String, BrokerSideConnection> workersConnections = new ConcurrentHashMap<String, BrokerSideConnection>();
+    private final Map<String, BrokerSideConnection> workersConnections = new ConcurrentHashMap<>();
+    private final Map<Long, BrokerSideConnection> connections = new ConcurrentHashMap<>();
 
     private Broker broker;
 
@@ -42,30 +43,18 @@ public class BrokerServerEndpoint {
         this.broker = broker;
     }
 
-    public void acceptConnection(BrokerSideConnection connection, final Message connectionRequestMessage) {
-        try {
-            String workerId = connection.getWorkerId();
-            BrokerSideConnection actual = workersConnections.get(workerId);
-            if (actual != null) {
-                connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,new Exception("already connected from "+workerId));
-                return;
-            }
-            Action action = Action.NODE_REGISTERED(workerId, connection.getLocation(), connection.getMaximumNumberOfTasks());
-            broker.executeAction(action, (a, result) -> {
-                if (result.error != null) {
-                    connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,result.error);
-                    return;
-                }
-                workersConnections.put(workerId, connection);
-                WorkerManager manager = broker.getWorkerManager(workerId);
-                connection.activate(manager);
-            });
-
-        } catch (InterruptedException ex) {
-            connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,ex);
-        } catch (InvalidActionException ex) {
-            connection.answerConnectionNotAcceptedAndClose(connectionRequestMessage,ex);
-        }
+    public void registerConnection(BrokerSideConnection connection) {
+        connections.put(connection.getConnectionId(), connection);
     }
+
+    public Map<String, BrokerSideConnection> getWorkersConnections() {
+        return workersConnections;
+    }
+
+    public Map<Long, BrokerSideConnection> getConnections() {
+        return connections;
+    }
+    
+    
 
 }

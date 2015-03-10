@@ -30,13 +30,19 @@ import java.util.concurrent.TimeoutException;
  */
 public abstract class Channel {
 
+    protected final InboundMessagesReceiver messagesReceiver;
+
+    public Channel(InboundMessagesReceiver messagesReceiver) {
+        this.messagesReceiver = messagesReceiver;
+    }
+
     public abstract void sendOneWayMessage(Message message);
-    
+
     public abstract void sendReplyMessage(Message inAnswerTo, Message message);
 
     public abstract void sendMessageWithAsyncReply(Message message, ReplyCallback callback);
 
-    public abstract void invalidate();
+    public abstract void close();
 
     public Message sendMessageWithReply(Message message, long timeout) throws InterruptedException, TimeoutException {
         CompletableFuture<Message> resp = new CompletableFuture<>();

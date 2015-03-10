@@ -21,6 +21,7 @@ package dodo.worker;
 
 import dodo.clustering.Action;
 import dodo.network.Channel;
+import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
 import dodo.network.ReplyCallback;
 import dodo.scheduler.WorkerManager;
@@ -34,24 +35,56 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author enrico.olivelli
  */
-public class BrokerSideConnection {
+public class BrokerSideConnection implements InboundMessagesReceiver {
 
-    private final String workerId;
-    private final String workerProcessId;
-    private final long connectionId;
-    private final Map<String, Integer> maximumNumberOfTasks;
-    private final String location;
+    private String workerId;
+    private String workerProcessId;
+    private long connectionId;
+    private Map<String, Integer> maximumNumberOfTasks;
+    private String location;
     private WorkerManager manager;
-    private final Channel channel;
+    private Channel channel;
+    private Broker broker;
 
     private static final AtomicLong sessionId = new AtomicLong();
 
-    public BrokerSideConnection(String workerId, String workerProcessId, Map<String, Integer> maximumNumberOfTasks, String location, Channel channel) {
+    public BrokerSideConnection() {
+        connectionId = sessionId.incrementAndGet();
+    }
+
+    public Broker getBroker() {
+        return broker;
+    }
+
+    public void setBroker(Broker broker) {
+        this.broker = broker;
+    }
+
+    public void setWorkerId(String workerId) {
         this.workerId = workerId;
+    }
+
+    public void setWorkerProcessId(String workerProcessId) {
         this.workerProcessId = workerProcessId;
-        this.connectionId = sessionId.incrementAndGet();
+    }
+
+    public void setConnectionId(long connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    public void setMaximumNumberOfTasks(Map<String, Integer> maximumNumberOfTasks) {
         this.maximumNumberOfTasks = maximumNumberOfTasks;
+    }
+
+    public void setLocation(String location) {
         this.location = location;
+    }
+
+    public Channel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(Channel channel) {
         this.channel = channel;
     }
 
@@ -80,36 +113,66 @@ public class BrokerSideConnection {
         this.manager = manager;
     }
 
-    void receivedMessageFromWorker(Message message) {
-        String brokerToken = manager.getBroker().getLeaderToken();
-        if (!message.workerProcessId.equals(workerProcessId)) {
-            // worker process is not the same as the one we expect, send a "die" message and invalidate the channel
-            Message killWorkerMessage = Message.KILL_WORKER(brokerToken, workerProcessId);
-            channel.sendMessageWithAsyncReply(killWorkerMessage, new ReplyCallback() {
-
-                @Override
-                public void replyReceived(Message originalMessage, Message message, Throwable error) {
-                    // any way we are closing the channel
-                    channel.invalidate();
-                }
+    @Override
+    public void messageReceived(Message message) {
+        System.out.println("[BROKER] receivedMessageFromWorker " + message);
+        if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
+            // worker process is not the same as the one we expect, send a "die" message and close the channel
+            Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
+            channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
+                // any way we are closing the channel
+                channel.close();
             });
             return;
         }
 
         switch (message.type) {
+            case Message.TYPE_WORKER_CONNECTION_REQUEST: {
+                try {
+                    this.workerId = (String) message.parameters.get("workerId");
+                    if (this.workerId == null) {
+                        answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
+                        return;
+                    }
+                    this.workerProcessId = (String) message.parameters.get("processId");
+                    this.location = (String) message.parameters.get("location");
+                    this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumNumberOfTasks");
+                    BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
+                    if (actual != null) {
+                        answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
+                        return;
+                    }
+                    Action action = Action.NODE_REGISTERED(workerId, location, maximumNumberOfTasks);
+                    this.broker.executeAction(action, (a, result) -> {
+                        if (result.error != null) {
+                            answerConnectionNotAcceptedAndClose(message, result.error);
+                            return;
+                        }
+                        broker.getAcceptor().getWorkersConnections().put(workerId, this);
+                        this.manager = broker.getWorkerManager(workerId);
+                        answerConnectionAccepted(message);
+
+                    });
+                } catch (InterruptedException ex) {
+                    answerConnectionNotAcceptedAndClose(message, ex);
+                } catch (InvalidActionException ex) {
+                    answerConnectionNotAcceptedAndClose(message, ex);
+                }
+                break;
+            }
             case Message.TYPE_TASK_FINISHED:
                 long taskid = (Long) message.parameters.get("taskid");
                 Action action = Action.TASK_FINISHED(taskid, this.workerId);
                 try {
                     manager.getBroker().executeAction(action, (a, result) -> {
                         if (result.error != null) {
-                            channel.sendReplyMessage(message, Message.ERROR(brokerToken, workerProcessId, result.error));
+                            channel.sendReplyMessage(message, Message.ERROR(workerProcessId, result.error));
                         } else {
-                            channel.sendReplyMessage(message, Message.ACK(brokerToken, workerProcessId));
+                            channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                         }
                     });
                 } catch (InterruptedException | InvalidActionException err) {
-                    channel.sendReplyMessage(message, Message.ERROR(brokerToken, workerProcessId, err));
+                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, err));
                 }
 
         }
@@ -117,7 +180,11 @@ public class BrokerSideConnection {
     }
 
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex) {
-        channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerId, workerProcessId, ex));
+        channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
+    }
+
+    void answerConnectionAccepted(Message connectionRequestMessage) {
+        channel.sendReplyMessage(connectionRequestMessage, Message.ACK(workerProcessId));
     }
 
 }

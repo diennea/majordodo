@@ -22,13 +22,13 @@ package dodo.task;
 import dodo.clustering.Action;
 import dodo.clustering.ActionResult;
 import dodo.clustering.CommitLog;
-import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.LogSequenceNumber;
 import dodo.scheduler.DefaultScheduler;
 import dodo.scheduler.WorkerStatus;
 import dodo.scheduler.Workers;
 import dodo.scheduler.Scheduler;
 import dodo.scheduler.WorkerManager;
+import dodo.worker.BrokerServerEndpoint;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -55,6 +55,7 @@ public class Broker {
     private final AtomicLong newTaskId = new AtomicLong();
     private String leaderToken = "TODO";
     private Scheduler scheduler;
+    private BrokerServerEndpoint acceptor;
 
     public String getLeaderToken() {
         return leaderToken;
@@ -64,6 +65,11 @@ public class Broker {
         this.log = log;
         this.scheduler = new DefaultScheduler(this);
         this.nodeManagers = new Workers(scheduler, this);
+        this.acceptor = new BrokerServerEndpoint(this);
+    }
+
+    public BrokerServerEndpoint getAcceptor() {
+        return acceptor;
     }
 
     public <T> T readonlyAccess(Callable<T> action) throws Exception {
@@ -97,7 +103,7 @@ public class Broker {
 
     private void validateAction(Action action) throws InvalidActionException {
         switch (action.actionType) {
-            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
+            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {                
                 long taskId = action.taskId;
                 Task task = tasks.get(taskId);
                 if (task == null) {
@@ -108,7 +114,7 @@ public class Broker {
                 }
                 return;
             }
-            case Action.TYPE_TASK_FINISHED: {
+            case Action.TYPE_TASK_FINISHED: {                
                 long taskId = action.taskId;
                 String workerId = action.workerId;
                 Task task = tasks.get(taskId);
@@ -154,6 +160,7 @@ public class Broker {
     }
 
     public void executeAction(final Action action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
+        System.out.println("[BROKER] executeAction "+action);
         LOGGER.log(Level.FINE, "executeAction {0}", action);
         lock.writeLock().lock();
         try {
