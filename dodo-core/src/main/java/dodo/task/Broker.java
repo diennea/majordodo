@@ -19,6 +19,7 @@
  */
 package dodo.task;
 
+import dodo.client.ClientFacade;
 import dodo.clustering.Action;
 import dodo.clustering.ActionResult;
 import dodo.clustering.CommitLog;
@@ -53,12 +54,13 @@ public class Broker {
     private final Workers nodeManagers;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final AtomicLong newTaskId = new AtomicLong();
-    private String leaderToken = "TODO";
-    private Scheduler scheduler;
-    private BrokerServerEndpoint acceptor;
 
-    public String getLeaderToken() {
-        return leaderToken;
+    private final Scheduler scheduler;
+    private final BrokerServerEndpoint acceptor;
+    private final ClientFacade client;
+
+    public ClientFacade getClient() {
+        return client;
     }
 
     public Broker(CommitLog log) {
@@ -66,6 +68,7 @@ public class Broker {
         this.scheduler = new DefaultScheduler(this);
         this.nodeManagers = new Workers(scheduler, this);
         this.acceptor = new BrokerServerEndpoint(this);
+        this.client = new ClientFacade(this);
     }
 
     public BrokerServerEndpoint getAcceptor() {
@@ -103,7 +106,7 @@ public class Broker {
 
     private void validateAction(Action action) throws InvalidActionException {
         switch (action.actionType) {
-            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {                
+            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
                 long taskId = action.taskId;
                 Task task = tasks.get(taskId);
                 if (task == null) {
@@ -114,7 +117,7 @@ public class Broker {
                 }
                 return;
             }
-            case Action.TYPE_TASK_FINISHED: {                
+            case Action.TYPE_TASK_FINISHED: {
                 long taskId = action.taskId;
                 String workerId = action.workerId;
                 Task task = tasks.get(taskId);
@@ -160,7 +163,7 @@ public class Broker {
     }
 
     public void executeAction(final Action action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
-        System.out.println("[BROKER] executeAction "+action);
+        System.out.println("[BROKER] executeAction " + action);
         LOGGER.log(Level.FINE, "executeAction {0}", action);
         lock.writeLock().lock();
         try {
@@ -206,9 +209,8 @@ public class Broker {
                 Task task = tasks.get(taskId);
                 task.setStatus(Task.STATUS_FINISHED);
                 task.setWorkerId(workerId);
-                WorkerStatus node = nodes.get(workerId);
                 TaskQueue queue = queues.get(task.getQueueName());
-                scheduler.nodeSlotIsAvailable(node, queue.getTag());
+                scheduler.nodeSlotIsAvailable(workerId, queue.getTag());
                 return ActionResult.TASKID(taskId);
             }
             case Action.ACTION_TYPE_ADD_TASK: {
@@ -216,7 +218,7 @@ public class Broker {
                 Task task = new Task();
                 task.setTaskId(newId);
                 task.setCreatedTimestamp(System.currentTimeMillis());
-                task.setParameter(action.taskParameter);
+                task.setParameters(action.taskParameter);
                 task.setType(action.taskType);
                 task.setQueueName(action.queueName);
                 task.setStatus(Task.STATUS_WAITING);
@@ -231,6 +233,7 @@ public class Broker {
                 }
                 tasks.put(newId, task);
                 queue.addNewTask(task);
+                scheduler.taskSubmitted(action.queueTag);
                 return ActionResult.TASKID(newId);
             }
             case Action.ACTION_TYPE_WORKER_REGISTERED: {

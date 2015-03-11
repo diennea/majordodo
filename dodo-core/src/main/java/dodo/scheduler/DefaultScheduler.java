@@ -20,13 +20,13 @@
 package dodo.scheduler;
 
 import dodo.clustering.Action;
-import dodo.clustering.LogNotAvailableException;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
 import dodo.task.Task;
 import dodo.task.TaskQueue;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,7 +41,7 @@ public class DefaultScheduler extends Scheduler {
 
     Broker broker;
 
-    List<PendingWorker> pendingWorkers = new ArrayList<>();
+    ConcurrentHashMap<String, List<PendingWorker>> pendingWorkersByTag = new ConcurrentHashMap<>();
 
     private static final class PendingWorker {
 
@@ -60,11 +60,20 @@ public class DefaultScheduler extends Scheduler {
     }
 
     @Override
-    public void nodeSlotIsAvailable(WorkerStatus worker, String tag) {
+    public void taskSubmitted(String tag) {
+        List<PendingWorker> workers = pendingWorkersByTag.get(tag);
+        if (workers != null && !workers.isEmpty()) {
+            PendingWorker w = workers.remove(0);
+            nodeSlotIsAvailable(w.workerId, tag);
+        }
+    }
+
+    @Override
+    public void nodeSlotIsAvailable(String workerId, String tag) {
         Task task = getNewTask(tag);
         boolean done = false;
         if (task != null) {
-            Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), worker.getWorkerId());
+            Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), workerId);
             try {
                 broker.executeAction(action, (a, result) -> {
                     if (result.error != null) {
@@ -72,7 +81,12 @@ public class DefaultScheduler extends Scheduler {
                         return;
                     }
                     if (!done) {
-                        pendingWorkers.add(new PendingWorker(worker.getWorkerId(), tag));
+                        List<PendingWorker> workers = pendingWorkersByTag.get(tag);
+                        if (workers == null) {
+                            workers = new ArrayList<>();
+                            pendingWorkersByTag.put(tag, workers);
+                        }
+                        workers.add(new PendingWorker(workerId, tag));
                     }
                 });
             } catch (InterruptedException | InvalidActionException nothingToDo) {

@@ -17,18 +17,17 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.executors;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * Status of the task (worker-side)
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+public class TaskExecutorStatus {
 
-    public void nodeSlotIsAvailable(String workerId, String tag) {
-    }
-
-    public void taskSubmitted(String tag) {
-    }
+    public static final String RUNNING = "running";
+    public static final String FINISHED = "finished";
+    public static final String NEEDS_RECOVERY = "needs_recovery";
+    public static final String ERROR = "error";
 }

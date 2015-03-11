@@ -21,6 +21,7 @@ package dodo.task;
 
 import dodo.clustering.Action;
 import dodo.clustering.DummyCommitLog;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
@@ -38,7 +39,7 @@ public class SimpleOrganizerTest {
     public void addTaskTest() throws Exception {
         Broker organizer = new Broker(new DummyCommitLog());
         String queueName = "myqueue";
-        Action addTask = Action.ADD_TASK(queueName, "mytask", "myparam", "default");
+        Action addTask = Action.ADD_TASK(queueName, "mytask", Collections.emptyMap(), "default");
         CountDownLatch ok = new CountDownLatch(1);
         organizer.executeAction(addTask, (a, result) -> {
             try {

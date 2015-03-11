@@ -19,9 +19,13 @@
  */
 package dodo.worker;
 
+import dodo.executors.TaskExecutor;
+import dodo.executors.TaskExecutorFactory;
+import dodo.executors.TaskExecutorStatus;
 import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,6 +49,12 @@ public class WorkerCore implements InboundMessagesReceiver {
     private final int maxThreads;
     private Channel channel;
     private WorkerStatusListener listener;
+    private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
+    private Map<String, TaskExecutorFactory> factoryExecutors = new HashMap<>();
+
+    public void registerTaskExecutorFactor(String taskType, TaskExecutorFactory factory) {
+        factoryExecutors.put(taskType, factory);
+    }
 
     public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<String, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener) {
         this.maxThreads = maxThreads;
@@ -75,10 +85,43 @@ public class WorkerCore implements InboundMessagesReceiver {
     @Override
     public void messageReceived(Message message) {
         System.out.println("[BROKER->WORKER] received " + message);
+        if (message.type == Message.TYPE_KILL_WORKER) {
+            killWorkerHandler.killWorker(this);
+            return;
+        }
+        if (message.type == Message.TYPE_TASK_ASSIGNED) {
+            startTask(message);
+        }
+    }
+
+    private void startTask(Message message) {
+        String taskid = (String) message.parameters.get("taskid");
+        ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, new ExecutorRunnable.TaskExecutionCallback() {
+            @Override
+            public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Throwable error) {
+                switch (finalStatus) {
+                    case TaskExecutorStatus.ERROR:
+                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, error));
+                        break;
+                    case TaskExecutorStatus.RUNNING:
+                        break;
+                    case TaskExecutorStatus.NEEDS_RECOVERY:
+                        throw new RuntimeException("not implemented");
+                    case TaskExecutorStatus.FINISHED:
+                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, null));
+                        break;
+                }
+            }
+        });
+        threadpool.submit(runnable);
     }
 
     public void stop() {
         stopped = true;
+    }
+
+    TaskExecutor createTaskExecutor(String taskType) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     private class ConnectionManager implements Runnable {

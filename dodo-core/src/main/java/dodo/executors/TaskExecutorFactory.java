@@ -17,18 +17,16 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.executors;
+
+import java.util.Map;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * Factory for task executors
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+public interface TaskExecutorFactory {
 
-    public void nodeSlotIsAvailable(String workerId, String tag) {
-    }
-
-    public void taskSubmitted(String tag) {
-    }
+    public TaskExecutor createTaskExecutor(Map<String, Object> parameters);
 }

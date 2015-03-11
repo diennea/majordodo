@@ -70,7 +70,7 @@ public class WorkerManager {
                 remaining = max;
             }
             for (int i = 0; i < remaining; i++) {
-                scheduler.nodeSlotIsAvailable(workerStatus, tag);
+                scheduler.nodeSlotIsAvailable(workerStatus.getWorkerId(), tag);
             }
         });
     }

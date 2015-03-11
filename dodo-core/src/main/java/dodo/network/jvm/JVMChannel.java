@@ -83,9 +83,11 @@ public class JVMChannel extends Channel {
         if (callback != null) {
             pendingReplyMessages.remove(anwermessage.getReplyMessageId());
             Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
-            executor.submit(() -> {
-                callback.replyReceived(original, anwermessage, null);
-            });
+            if (original != null) {
+                executor.submit(() -> {
+                    callback.replyReceived(original, anwermessage, null);
+                });
+            }
         }
     }
 
@@ -119,6 +121,16 @@ public class JVMChannel extends Channel {
     @Override
     public void close() {
         active = false;
+        pendingReplyMessages.forEach((key, callback) -> {
+            executor.submit(() -> {
+                Message original = pendingReplyMessagesSource.remove(key);
+                if (original != null) {
+                    callback.replyReceived(original, null, new Exception("comunication channel closed"));
+                }
+            });
+        });
+        pendingReplyMessages.clear();
+
         if (otherSide.active) {
             otherSide.close();
         }

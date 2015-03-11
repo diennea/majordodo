@@ -39,7 +39,7 @@ public final class Action {
     public String taskType;
     public long taskId;
     public String queueTag;
-    public String taskParameter;
+    public Map<String, Object> taskParameter;
     public String workerId;
     public String workerLocation;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
@@ -65,7 +65,7 @@ public final class Action {
         return action;
     }
 
-    public static final Action ADD_TASK(String queueName, String taskType, String taskParameter, String queueTag) {
+    public static final Action ADD_TASK(String queueName, String taskType, Map<String, Object> taskParameter, String queueTag) {
         Action action = new Action();
         action.actionType = ACTION_TYPE_ADD_TASK;
         action.queueName = queueName;

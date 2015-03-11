@@ -17,18 +17,19 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.executors;
+
+import java.util.Map;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * Implementation of the execution of a task
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+public class TaskExecutor {
 
-    public void nodeSlotIsAvailable(String workerId, String tag) {
+    public void executeTask(Map<String, Object> parameters) throws Exception {
+        throw new UnsupportedOperationException("task execution not implemented for this tasktype, parameters:" + parameters);
     }
 
-    public void taskSubmitted(String tag) {
-    }
 }

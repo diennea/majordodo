@@ -17,18 +17,33 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.worker;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * Handler for the kill worker event
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+public class KillWorkerHandler {
 
-    public void nodeSlotIsAvailable(String workerId, String tag) {
-    }
+    public static final KillWorkerHandler SHUTDOWN_JVM = new KillWorkerHandler() {
 
-    public void taskSubmitted(String tag) {
+        @Override
+        public void killWorker(WorkerCore core) {
+            System.exit(0);
+        }
+
+    };
+
+    public static final KillWorkerHandler GRACEFULL_STOP = new KillWorkerHandler() {
+
+        @Override
+        public void killWorker(WorkerCore core) {
+            core.stop();
+        }
+
+    };
+
+    public void killWorker(WorkerCore core) {
     }
 }

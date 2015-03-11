@@ -19,11 +19,15 @@
  */
 package dodo.task;
 
+import dodo.client.ClientFacade;
 import dodo.clustering.DummyCommitLog;
+import dodo.executors.TaskExecutor;
+import dodo.executors.TaskExecutorFactory;
 import dodo.worker.JVMBrokerLocator;
 import dodo.worker.WorkerCore;
 import dodo.worker.WorkerStatusListener;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertTrue;
@@ -38,9 +42,10 @@ public class JVMWorkerTest {
 
     @Test
     public void workerConnectionTest() throws Exception {
-        Broker organizer = new Broker(new DummyCommitLog());
+        Broker broker = new Broker(new DummyCommitLog());
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch taskExecuted = new CountDownLatch(1);
         WorkerStatusListener listener = new WorkerStatusListener() {
 
             @Override
@@ -55,9 +60,36 @@ public class JVMWorkerTest {
             }
 
         };
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", new HashMap<>(), new JVMBrokerLocator(organizer), listener);
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put("tag1", 10);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+
+        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+
+            @Override
+            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
+                return new TaskExecutor() {
+
+                    @Override
+                    public void executeTask(Map<String, Object> parameters) throws Exception {
+                        System.out.println("[WORKER] executeTask:" + parameters);
+                        taskExecuted.countDown();
+                    }
+
+                };
+            }
+        });
+
+        Map<String, Object> taskParams = new HashMap<>();
+        taskParams.put("param1", "value1");
+        taskParams.put("param2", "value2");
+        long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+        System.out.println("taskId: " + taskId);
+
+        assertTrue(taskExecuted.await(10, TimeUnit.SECONDS));
+
         core.stop();
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
     }

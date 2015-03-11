@@ -35,6 +35,10 @@ public final class Message {
         return new Message(workerProcessId, TYPE_WORKER_SHUTDOWN, null);
     }
 
+    public static Message TYPE_TASK_ASSIGNED(String workerProcessId, Map<String, Object> taskParameters) {
+        return new Message(workerProcessId, TYPE_TASK_ASSIGNED, taskParameters);
+    }
+
     public static Message KILL_WORKER(String workerProcessId) {
         return new Message(workerProcessId, TYPE_KILL_WORKER, null);
     }
@@ -61,6 +65,20 @@ public final class Message {
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
+    public static Message TASK_FINISHED(String processId, String taskId, String finalStatus, Throwable error) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("taskId", taskId);
+        params.put("processId", processId);
+        params.put("status", finalStatus);
+        if (error != null) {
+            StringWriter r = new StringWriter();
+            PrintWriter t = new PrintWriter(r);
+            error.printStackTrace(t);
+            params.put("error", r.toString());
+        }
+        return new Message(processId, TYPE_TASK_FINISHED, params);
+    }
+
     public final String workerProcessId;
     public final int type;
     public final Map<String, Object> parameters;
@@ -82,6 +100,7 @@ public final class Message {
     public static final int TYPE_ACK = 4;
     public static final int TYPE_WORKER_SHUTDOWN = 5;
     public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
+    public static final int TYPE_TASK_ASSIGNED = 7;
 
     public static String typeToString(int type) {
         switch (type) {
@@ -97,6 +116,8 @@ public final class Message {
                 return "TYPE_WORKER_SHUTDOWN";
             case TYPE_WORKER_CONNECTION_REQUEST:
                 return "TYPE_WORKER_CONNECTION_REQUEST";
+            case TYPE_TASK_ASSIGNED:
+                return "TYPE_TASK_ASSIGNED";
             default:
                 return "?" + type;
         }

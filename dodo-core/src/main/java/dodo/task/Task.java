@@ -19,6 +19,8 @@
  */
 package dodo.task;
 
+import java.util.Map;
+
 /**
  * A task
  *
@@ -31,7 +33,7 @@ public class Task {
     public static final int STATUS_FINISHED = 2;
 
     private String type;
-    private String parameter;
+    private Map<String, Object> parameters;
     private long createdTimestamp;
     private int status;
     private long taskId;
@@ -70,12 +72,12 @@ public class Task {
         this.type = type;
     }
 
-    public String getParameter() {
-        return parameter;
+    public Map<String, Object> getParameters() {
+        return parameters;
     }
 
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
+    public void setParameters(Map<String, Object> parameters) {
+        this.parameters = parameters;
     }
 
     public long getCreatedTimestamp() {
