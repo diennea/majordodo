@@ -44,9 +44,15 @@ public class WorkerCore implements InboundMessagesReceiver {
     private volatile boolean stopped = false;
     private final int maxThreads;
     private Channel channel;
+    private WorkerStatusListener listener;
 
-    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<String, Integer> maximumThreadPerTag, BrokerLocator brokerLocator) {
+    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<String, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener) {
         this.maxThreads = maxThreads;
+        if (listener == null) {
+            listener = new WorkerStatusListener() {
+            };
+        }
+        this.listener = listener;
         this.threadpool = Executors.newFixedThreadPool(maxThreads, new ThreadFactory() {
 
             @Override
@@ -114,11 +120,13 @@ public class WorkerCore implements InboundMessagesReceiver {
         disconnect();
         channel = brokerLocator.connect(this);
         System.out.println("[WORKER] connected, channel:" + channel);
+        listener.connectionEvent("connected", this);
     }
 
     private void disconnect() {
         if (channel != null) {
             channel.close();
+            listener.connectionEvent("disconnected", this);
         }
 
     }

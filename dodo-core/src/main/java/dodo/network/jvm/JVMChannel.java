@@ -49,6 +49,7 @@ public class JVMChannel extends Channel {
     }
 
     void receiveMessageFromPeer(Message message) {
+        System.out.println("receiveMessageFromPeer:" + message);
         if (message.getReplyMessageId() != null) {
             handleReply(message);
         } else {
@@ -77,11 +78,11 @@ public class JVMChannel extends Channel {
 
     private void handleReply(Message anwermessage) {
 
-        final ReplyCallback callback = pendingReplyMessages.get(anwermessage.getMessageId());
+        final ReplyCallback callback = pendingReplyMessages.get(anwermessage.getReplyMessageId());
         System.out.println("[JVM] handleReply " + anwermessage + " callback=" + callback + ", pendingReplyMessages=" + pendingReplyMessages);
         if (callback != null) {
-            pendingReplyMessages.remove(anwermessage.getMessageId());
-            Message original = pendingReplyMessagesSource.remove(anwermessage.getMessageId());
+            pendingReplyMessages.remove(anwermessage.getReplyMessageId());
+            Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
             executor.submit(() -> {
                 callback.replyReceived(original, anwermessage, null);
             });
@@ -90,8 +91,9 @@ public class JVMChannel extends Channel {
 
     @Override
     public void sendReplyMessage(Message inAnswerTo, Message message) {
-        System.out.println("[JVM] sendReplyMessage " + inAnswerTo + " " + message);
+        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
         if (!active) {
+            System.out.println("[JVM] channel not active");
             return;
         }
         message.setMessageId(UUID.randomUUID().toString());

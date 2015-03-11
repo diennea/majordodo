@@ -22,7 +22,11 @@ package dodo.task;
 import dodo.clustering.DummyCommitLog;
 import dodo.worker.JVMBrokerLocator;
 import dodo.worker.WorkerCore;
+import dodo.worker.WorkerStatusListener;
 import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
@@ -35,10 +39,26 @@ public class JVMWorkerTest {
     @Test
     public void workerConnectionTest() throws Exception {
         Broker organizer = new Broker(new DummyCommitLog());
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        WorkerStatusListener listener = new WorkerStatusListener() {
 
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", new HashMap<>(), new JVMBrokerLocator(organizer));
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+                System.out.println("connectionEvent:" + event);
+            }
+
+        };
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", new HashMap<>(), new JVMBrokerLocator(organizer), listener);
         core.start();
-        Thread.sleep(10000);
+        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
         core.stop();
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
     }
 }
