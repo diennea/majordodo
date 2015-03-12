@@ -31,6 +31,6 @@ public abstract class CommitLog {
         public void actionCommitted(LogSequenceNumber number, Throwable error);
     }
 
-    public abstract void logAction(Action action, ActionLogCallback callback);
+    public abstract void logEvent(Event action, ActionLogCallback callback);
 
 }

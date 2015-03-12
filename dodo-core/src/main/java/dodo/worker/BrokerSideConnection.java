@@ -19,7 +19,7 @@
  */
 package dodo.worker;
 
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
@@ -145,8 +145,8 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
                         answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
                         return;
                     }
-                    Action action = Action.NODE_REGISTERED(workerId, location, maximumNumberOfTasks, actualRunningTasks);
-                    this.broker.executeAction(action, (a, result) -> {
+                    Event action = Event.NODE_REGISTERED(workerId, location, maximumNumberOfTasks, actualRunningTasks);
+                    this.broker.logEvent(action, (a, result) -> {
                         if (result.error != null) {
                             answerConnectionNotAcceptedAndClose(message, result.error);
                             return;
@@ -165,9 +165,9 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
             }
             case Message.TYPE_TASK_FINISHED:
                 long taskid = (Long) message.parameters.get("taskid");
-                Action action = Action.TASK_FINISHED(taskid, this.workerId);
+                Event action = Event.TASK_FINISHED(taskid, this.workerId);
                 try {
-                    manager.getBroker().executeAction(action, (a, result) -> {
+                    manager.getBroker().logEvent(action, (a, result) -> {
                         if (result.error != null) {
                             channel.sendReplyMessage(message, Message.ERROR(workerProcessId, result.error));
                         } else {

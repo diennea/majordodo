@@ -19,7 +19,7 @@
  */
 package dodo.worker;
 
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.network.Message;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;

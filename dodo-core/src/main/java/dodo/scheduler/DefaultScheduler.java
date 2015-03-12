@@ -19,7 +19,7 @@
  */
 package dodo.scheduler;
 
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
 import dodo.task.Task;
@@ -88,9 +88,9 @@ public class DefaultScheduler extends Scheduler {
         if (task != null) {
             task = estractTaskFromQueueTask(task.getTaskId(), task.getQueueName());
             if (task != null) {
-                Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), workerId);
+                Event action = Event.ASSIGN_TASK_TO_WORKER(task.getTaskId(), workerId);
                 try {
-                    broker.executeAction(action, (a, result) -> {
+                    broker.logEvent(action, (a, result) -> {
                         if (result.error != null) {
                             LOGGER.log(Level.SEVERE, "cannot assign new task", result.error);
                             return;

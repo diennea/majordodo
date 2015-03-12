@@ -27,7 +27,7 @@ import java.util.Set;
  *
  * @author enrico.olivelli
  */
-public final class Action {
+public final class Event {
 
     public static final short ACTION_TYPE_ADD_TASK = 1;
     public static final short ACTION_TYPE_WORKER_REGISTERED = 2;
@@ -65,24 +65,24 @@ public final class Action {
         return "Action{" + "actionType=" + typeToString(actionType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
     }
 
-    public static final Action ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
-        Action action = new Action();
+    public static final Event ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
+        Event action = new Event();
         action.actionType = TYPE_ASSIGN_TASK_TO_WORKER;
         action.workerId = nodeId;
         action.taskId = taskId;
         return action;
     }
 
-    public static final Action TASK_FINISHED(long taskId, String nodeId) {
-        Action action = new Action();
+    public static final Event TASK_FINISHED(long taskId, String nodeId) {
+        Event action = new Event();
         action.actionType = TYPE_TASK_FINISHED;
         action.workerId = nodeId;
         action.taskId = taskId;
         return action;
     }
 
-    public static final Action ADD_TASK(String queueName, String taskType, Map<String, Object> taskParameter, String queueTag) {
-        Action action = new Action();
+    public static final Event ADD_TASK(String queueName, String taskType, Map<String, Object> taskParameter, String queueTag) {
+        Event action = new Event();
         action.actionType = ACTION_TYPE_ADD_TASK;
         action.queueName = queueName;
         action.taskType = taskType;
@@ -91,8 +91,8 @@ public final class Action {
         return action;
     }
 
-    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
-        Action action = new Action();
+    public static final Event NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
+        Event action = new Event();
         action.actionType = ACTION_TYPE_WORKER_REGISTERED;
         action.workerId = nodeId;
         action.workerLocation = nodeLocation;

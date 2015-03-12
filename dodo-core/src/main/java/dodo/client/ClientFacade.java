@@ -19,7 +19,7 @@
  */
 package dodo.client;
 
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.clustering.ActionResult;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
@@ -55,12 +55,12 @@ public class ClientFacade {
      * @param callback
      */
     public void submitTaskAsync(String taskType, String queueName, String queueTag, Map<String, Object> parameters, ClientActionCallback callback) {
-        Action addTask = Action.ADD_TASK(queueName, taskType, parameters, queueTag);
+        Event addTask = Event.ADD_TASK(queueName, taskType, parameters, queueTag);
         try {
-            broker.executeAction(addTask, new Broker.ActionCallback() {
+            broker.logEvent(addTask, new Broker.ActionCallback() {
 
                 @Override
-                public void actionExecuted(Action action, ActionResult result) {
+                public void actionExecuted(Event action, ActionResult result) {
                     if (result.error != null) {
                         callback.actionResult(0, result.error);
                     } else {

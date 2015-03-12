@@ -20,7 +20,7 @@
 package dodo.task;
 
 import dodo.client.ClientFacade;
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.clustering.ActionResult;
 import dodo.clustering.CommitLog;
 import dodo.clustering.LogSequenceNumber;
@@ -113,9 +113,9 @@ public class Broker {
         return s;
     }
 
-    private void validateAction(Action action) throws InvalidActionException {
+    private void validateAction(Event action) throws InvalidActionException {
         switch (action.actionType) {
-            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
+            case Event.TYPE_ASSIGN_TASK_TO_WORKER: {
                 long taskId = action.taskId;
                 Task task = tasks.get(taskId);
                 if (task == null) {
@@ -126,7 +126,7 @@ public class Broker {
                 }
                 return;
             }
-            case Action.TYPE_TASK_FINISHED: {
+            case Event.TYPE_TASK_FINISHED: {
                 long taskId = action.taskId;
                 String workerId = action.workerId;
                 Task task = tasks.get(taskId);
@@ -141,10 +141,10 @@ public class Broker {
                 }
                 return;
             }
-            case Action.ACTION_TYPE_ADD_TASK: {
+            case Event.ACTION_TYPE_ADD_TASK: {
                 return;
             }
-            case Action.ACTION_TYPE_WORKER_REGISTERED: {
+            case Event.ACTION_TYPE_WORKER_REGISTERED: {
                 WorkerStatus node = nodes.get(action.workerId);
                 if (node != null) {
                     throw new InvalidActionException("not " + action.workerId + " already registered");
@@ -172,10 +172,10 @@ public class Broker {
 
     public static interface ActionCallback {
 
-        public void actionExecuted(Action action, ActionResult result);
+        public void actionExecuted(Event action, ActionResult result);
     }
 
-    public void executeAction(final Action action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
+    public void logEvent(final Event action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
         System.out.println("[BROKER] executeAction " + action);
         LOGGER.log(Level.FINE, "executeAction {0}", action);
 
@@ -186,7 +186,7 @@ public class Broker {
             lock.readLock().unlock();
         }
 
-        log.logAction(action, new CommitLog.ActionLogCallback() {
+        log.logEvent(action, new CommitLog.ActionLogCallback() {
 
             @Override
             public void actionCommitted(LogSequenceNumber number, Throwable error) {
@@ -197,9 +197,7 @@ public class Broker {
                 }
 
                 try {
-                    ActionResult result = applyAction(action);
-                    LOGGER.log(Level.FINE, "executeAction {0} -> result {1}", new Object[]{action, result});
-                    callback.actionExecuted(action, result);
+                    applyAction(action, callback);
                 } catch (Throwable t) {
                     callback.actionExecuted(action, ActionResult.ERROR(t));
                 }
@@ -208,13 +206,13 @@ public class Broker {
 
     }
 
-    private ActionResult applyAction(Action action) {
+    private void applyAction(Event action, ActionCallback callback) {
 
         LOGGER.log(Level.FINE, "applyAction {0}", action);
         lock.writeLock().lock();
         try {
             switch (action.actionType) {
-                case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
+                case Event.TYPE_ASSIGN_TASK_TO_WORKER: {
                     long taskId = action.taskId;
                     String workerId = action.workerId;
                     Task task = tasks.get(taskId);
@@ -224,9 +222,9 @@ public class Broker {
                     queue.removeNext(taskId);
                     WorkerStatus node = nodes.get(workerId);
                     nodeManagers.getNodeManager(node).taskAssigned(task);
-                    return ActionResult.TASKID(taskId);
+                    callback.actionExecuted(action, ActionResult.TASKID(taskId));
                 }
-                case Action.TYPE_TASK_FINISHED: {
+                case Event.TYPE_TASK_FINISHED: {
                     long taskId = action.taskId;
                     String workerId = action.workerId;
                     Task task = tasks.get(taskId);
@@ -234,9 +232,9 @@ public class Broker {
                     task.setWorkerId(workerId);
                     TaskQueue queue = queues.get(task.getQueueName());
                     scheduler.taskFinished(workerId, queue.getTag());
-                    return ActionResult.TASKID(taskId);
+                    callback.actionExecuted(action, ActionResult.TASKID(taskId));
                 }
-                case Action.ACTION_TYPE_ADD_TASK: {
+                case Event.ACTION_TYPE_ADD_TASK: {
                     long newId = newTaskId.incrementAndGet();
                     Task task = new Task();
                     task.setTaskId(newId);
@@ -257,9 +255,9 @@ public class Broker {
                     tasks.put(newId, task);
                     queue.addNewTask(task);
                     scheduler.taskSubmitted(action.queueTag);
-                    return ActionResult.TASKID(newId);
+                    callback.actionExecuted(action, ActionResult.TASKID(newId));
                 }
-                case Action.ACTION_TYPE_WORKER_REGISTERED: {
+                case Event.ACTION_TYPE_WORKER_REGISTERED: {
                     WorkerStatus node = nodes.get(action.workerId);
                     if (node == null) {
                         node = new WorkerStatus();
@@ -268,13 +266,13 @@ public class Broker {
                         node.setWorkerLocation(action.workerLocation);
                         node.setMaximumNumberOfTasks(action.maximumNumberOfTasksPerTag);
                         nodes.put(action.workerId, node);
-                        return ActionResult.OK();
+                        callback.actionExecuted(action, ActionResult.OK());
                     } else {
                         throw new IllegalStateException();
                     }
                 }
                 default:
-                    return ActionResult.ERROR(new IllegalStateException("invalid action type " + action.actionType).fillInStackTrace());
+                    callback.actionExecuted(action, ActionResult.ERROR(new IllegalStateException("invalid action type " + action.actionType).fillInStackTrace()));
 
             }
         } finally {

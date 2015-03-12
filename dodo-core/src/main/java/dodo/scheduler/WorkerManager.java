@@ -19,7 +19,7 @@
  */
 package dodo.scheduler;
 
-import dodo.clustering.Action;
+import dodo.clustering.Event;
 import dodo.clustering.LogNotAvailableException;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;

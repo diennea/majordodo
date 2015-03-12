@@ -34,7 +34,7 @@ public class DummyCommitLog extends CommitLog {
     private final ExecutorService service = Executors.newCachedThreadPool();
 
     @Override
-    public void logAction(Action action, ActionLogCallback callback) {
+    public void logEvent(Event action, ActionLogCallback callback) {
         long newNumber = sequenceNumber.incrementAndGet();
         service.submit(() -> {
             callback.actionCommitted(new LogSequenceNumber(1, newNumber), null);
