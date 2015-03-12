@@ -26,6 +26,8 @@ import dodo.task.Task;
 import dodo.task.TaskQueue;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,15 +63,26 @@ public class DefaultScheduler extends Scheduler {
 
     @Override
     public void taskSubmitted(String tag) {
+
         List<PendingWorker> workers = pendingWorkersByTag.get(tag);
+        LOGGER.log(Level.FINE, "taskSubmitted {0}, pending workers: {1}", new Object[]{tag, workers});
         if (workers != null && !workers.isEmpty()) {
             PendingWorker w = workers.remove(0);
-            nodeSlotIsAvailable(w.workerId, tag);
+            taskFinished(w.workerId, tag);
         }
     }
 
     @Override
-    public void nodeSlotIsAvailable(String workerId, String tag) {
+    public void workerConnected(String workerId, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
+        maximumNumberOfTasksPerTag.forEach((tag, max) -> {
+            for (int i = 0; i < max; i++) {
+                taskFinished(workerId, tag);
+            }
+        });
+    }
+
+    @Override
+    public void taskFinished(String workerId, String tag) {
         Task task = getNewTask(tag);
         boolean done = false;
         if (task != null) {
@@ -98,6 +111,7 @@ public class DefaultScheduler extends Scheduler {
     }
 
     private Task getNewTask(String tag) {
+        LOGGER.log(Level.INFO, "getNewTask tag={0}", tag);
         try {
             return broker.readonlyAccess(() -> {
                 for (TaskQueue q : broker.queues.values()) {

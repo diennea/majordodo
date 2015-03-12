@@ -157,6 +157,10 @@ public class Broker {
         }
     }
 
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(Action action, ActionResult result);
@@ -165,31 +169,40 @@ public class Broker {
     public void executeAction(final Action action, final ActionCallback callback) throws InterruptedException, InvalidActionException {
         System.out.println("[BROKER] executeAction " + action);
         LOGGER.log(Level.FINE, "executeAction {0}", action);
-        lock.writeLock().lock();
+
+        lock.readLock().lock();
         try {
             validateAction(action);
-            log.logAction(action, new CommitLog.ActionLogCallback() {
-
-                @Override
-                public void actionCommitted(LogSequenceNumber number, Throwable error) {
-
-                    if (error != null) {
-                        callback.actionExecuted(action, ActionResult.ERROR(error));
-                        return;
-                    }
-                    try {
-                        callback.actionExecuted(action, applyAction(action));
-                    } catch (Throwable t) {
-                        callback.actionExecuted(action, ActionResult.ERROR(t));
-                    }
-                }
-            });
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
+
+        log.logAction(action, new CommitLog.ActionLogCallback() {
+
+            @Override
+            public void actionCommitted(LogSequenceNumber number, Throwable error) {
+
+                if (error != null) {
+                    callback.actionExecuted(action, ActionResult.ERROR(error));
+                    return;
+                }
+                lock.writeLock().lock();
+                try {
+                    ActionResult result = applyAction(action);
+                    LOGGER.log(Level.FINE, "executeAction {0} -> result {1}", new Object[]{action, result});
+                    callback.actionExecuted(action, result);
+                } catch (Throwable t) {
+                    callback.actionExecuted(action, ActionResult.ERROR(t));
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+        });
+
     }
 
     private ActionResult applyAction(Action action) {
+        LOGGER.log(Level.FINE, "applyAction {0}", action);
         switch (action.actionType) {
             case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
                 long taskId = action.taskId;
@@ -210,7 +223,7 @@ public class Broker {
                 task.setStatus(Task.STATUS_FINISHED);
                 task.setWorkerId(workerId);
                 TaskQueue queue = queues.get(task.getQueueName());
-                scheduler.nodeSlotIsAvailable(workerId, queue.getTag());
+                scheduler.taskFinished(workerId, queue.getTag());
                 return ActionResult.TASKID(taskId);
             }
             case Action.ACTION_TYPE_ADD_TASK: {

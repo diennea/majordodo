@@ -34,6 +34,21 @@ public final class Action {
     public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
     public static final short TYPE_TASK_FINISHED = 4;
 
+    public static String typeToString(short type) {
+        switch (type) {
+            case ACTION_TYPE_ADD_TASK:
+                return "ADD_TASK";
+            case ACTION_TYPE_WORKER_REGISTERED:
+                return "WORKER_REGISTERED";
+            case TYPE_ASSIGN_TASK_TO_WORKER:
+                return "ASSIGN_TASK_TO_WORKER";
+            case TYPE_TASK_FINISHED:
+                return "TASK_FINISHED";
+            default:
+                return "?" + type;
+        }
+    }
+
     public short actionType;
     public String queueName;
     public String taskType;
@@ -43,10 +58,11 @@ public final class Action {
     public String workerId;
     public String workerLocation;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
+    public Set<Long> actualRunningTasks;
 
     @Override
     public String toString() {
-        return "Action{" + "actionType=" + actionType + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + '}';
+        return "Action{" + "actionType=" + typeToString(actionType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
     }
 
     public static final Action ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
@@ -75,12 +91,13 @@ public final class Action {
         return action;
     }
 
-    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag) {
+    public static final Action NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
         Action action = new Action();
         action.actionType = ACTION_TYPE_WORKER_REGISTERED;
         action.workerId = nodeId;
         action.workerLocation = nodeLocation;
         action.maximumNumberOfTasksPerTag = maximumNumberOfTasksPerTag;
+        action.actualRunningTasks = actualRunningTasks;
         return action;
     }
 

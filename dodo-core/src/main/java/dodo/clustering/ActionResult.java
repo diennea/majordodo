@@ -31,6 +31,11 @@ public class ActionResult {
     public final long taskId;
     public final Throwable error;
 
+    @Override
+    public String toString() {
+        return "{" + "taskId=" + taskId + ", error=" + error + '}';
+    }
+
     private ActionResult(long taskId, Throwable error) {
         this.taskId = taskId;
         this.error = error;

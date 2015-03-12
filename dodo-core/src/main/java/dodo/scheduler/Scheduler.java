@@ -19,6 +19,9 @@
  */
 package dodo.scheduler;
 
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Main class of the strategy for the execution of tasks
  *
@@ -26,9 +29,13 @@ package dodo.scheduler;
  */
 public class Scheduler {
 
-    public void nodeSlotIsAvailable(String workerId, String tag) {
+    public void taskFinished(String workerId, String tag) {
     }
 
     public void taskSubmitted(String tag) {
+    }
+
+    public void workerConnected(String workerId, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
+
     }
 }

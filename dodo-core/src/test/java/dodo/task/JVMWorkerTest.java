@@ -19,7 +19,6 @@
  */
 package dodo.task;
 
-import dodo.client.ClientFacade;
 import dodo.clustering.DummyCommitLog;
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorFactory;
@@ -30,6 +29,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -42,6 +43,11 @@ public class JVMWorkerTest {
 
     @Test
     public void workerConnectionTest() throws Exception {
+        java.util.logging.LogManager.getLogManager().reset();
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").addHandler(ch);
         Broker broker = new Broker(new DummyCommitLog());
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);

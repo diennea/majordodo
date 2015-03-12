@@ -23,11 +23,11 @@ import dodo.clustering.Action;
 import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
-import dodo.network.ReplyCallback;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -136,13 +136,14 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
                     }
                     this.workerProcessId = (String) message.parameters.get("processId");
                     this.location = (String) message.parameters.get("location");
-                    this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumNumberOfTasks");
+                    this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumThreadPerTag");
+                    Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
                     BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
                     if (actual != null) {
                         answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
                         return;
                     }
-                    Action action = Action.NODE_REGISTERED(workerId, location, maximumNumberOfTasks);
+                    Action action = Action.NODE_REGISTERED(workerId, location, maximumNumberOfTasks, actualRunningTasks);
                     this.broker.executeAction(action, (a, result) -> {
                         if (result.error != null) {
                             answerConnectionNotAcceptedAndClose(message, result.error);
@@ -151,7 +152,7 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
                         broker.getAcceptor().getWorkersConnections().put(workerId, this);
                         this.manager = broker.getWorkerManager(workerId);
                         answerConnectionAccepted(message);
-
+                        broker.getScheduler().workerConnected(workerId, maximumNumberOfTasks, actualRunningTasks);
                     });
                 } catch (InterruptedException ex) {
                     answerConnectionNotAcceptedAndClose(message, ex);
