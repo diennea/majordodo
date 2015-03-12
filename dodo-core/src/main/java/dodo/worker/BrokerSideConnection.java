@@ -26,6 +26,8 @@ import dodo.network.Message;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
 import dodo.task.InvalidActionException;
+import dodo.task.Task;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -186,6 +188,14 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
 
     void answerConnectionAccepted(Message connectionRequestMessage) {
         channel.sendReplyMessage(connectionRequestMessage, Message.ACK(workerProcessId));
+    }
+
+    public void sendTaskAssigned(Task task) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("taskid", task.getTaskId());
+        params.put("tasktype", task.getType());
+        params.putAll(task.getParameters());
+        channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params));
     }
 
 }

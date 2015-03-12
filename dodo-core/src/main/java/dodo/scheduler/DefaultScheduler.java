@@ -86,24 +86,27 @@ public class DefaultScheduler extends Scheduler {
         Task task = getNewTask(tag);
         boolean done = false;
         if (task != null) {
-            Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), workerId);
-            try {
-                broker.executeAction(action, (a, result) -> {
-                    if (result.error != null) {
-                        LOGGER.log(Level.SEVERE, "cannot assign new task", result.error);
-                        return;
-                    }
-                    if (!done) {
-                        List<PendingWorker> workers = pendingWorkersByTag.get(tag);
-                        if (workers == null) {
-                            workers = new ArrayList<>();
-                            pendingWorkersByTag.put(tag, workers);
+            task = estractTaskFromQueueTask(task.getTaskId(), task.getQueueName());
+            if (task != null) {
+                Action action = Action.ASSIGN_TASK_TO_WORKER(task.getTaskId(), workerId);
+                try {
+                    broker.executeAction(action, (a, result) -> {
+                        if (result.error != null) {
+                            LOGGER.log(Level.SEVERE, "cannot assign new task", result.error);
+                            return;
                         }
-                        workers.add(new PendingWorker(workerId, tag));
-                    }
-                });
-            } catch (InterruptedException | InvalidActionException nothingToDo) {
-                LOGGER.log(Level.SEVERE, "fatal error", nothingToDo);
+                        if (!done) {
+                            List<PendingWorker> workers = pendingWorkersByTag.get(tag);
+                            if (workers == null) {
+                                workers = new ArrayList<>();
+                                pendingWorkersByTag.put(tag, workers);
+                            }
+                            workers.add(new PendingWorker(workerId, tag));
+                        }
+                    });
+                } catch (InterruptedException | InvalidActionException nothingToDo) {
+                    LOGGER.log(Level.SEVERE, "fatal error", nothingToDo);
+                }
             }
 
         }
@@ -123,6 +126,18 @@ public class DefaultScheduler extends Scheduler {
                     }
                 }
                 return null;
+            });
+        } catch (Exception err) {
+            LOGGER.log(Level.SEVERE, "cannot get a new task", err);
+            return null;
+        }
+    }
+
+    private Task estractTaskFromQueueTask(long taskid, String queue) {
+        LOGGER.log(Level.INFO, "estractTaskFromQueueTask taskid={0}", taskid);
+        try {
+            return broker.writeAccess(() -> {
+                return broker.queues.get(queue).removeNext(taskid);
             });
         } catch (Exception err) {
             LOGGER.log(Level.SEVERE, "cannot get a new task", err);

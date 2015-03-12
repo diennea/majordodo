@@ -84,6 +84,15 @@ public class Broker {
         }
     }
 
+    public <T> T writeAccess(Callable<T> action) throws Exception {
+        lock.writeLock().lock();
+        try {
+            return action.call();
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public TaskStatusView getTaskStatus(long taskId) throws InterruptedException {
         Task task;
         lock.readLock().lock();
@@ -186,15 +195,13 @@ public class Broker {
                     callback.actionExecuted(action, ActionResult.ERROR(error));
                     return;
                 }
-                lock.writeLock().lock();
+
                 try {
                     ActionResult result = applyAction(action);
                     LOGGER.log(Level.FINE, "executeAction {0} -> result {1}", new Object[]{action, result});
                     callback.actionExecuted(action, result);
                 } catch (Throwable t) {
                     callback.actionExecuted(action, ActionResult.ERROR(t));
-                } finally {
-                    lock.writeLock().unlock();
                 }
             }
         });
@@ -202,70 +209,76 @@ public class Broker {
     }
 
     private ActionResult applyAction(Action action) {
-        LOGGER.log(Level.FINE, "applyAction {0}", action);
-        switch (action.actionType) {
-            case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
-                long taskId = action.taskId;
-                String workerId = action.workerId;
-                Task task = tasks.get(taskId);
-                task.setStatus(Task.STATUS_RUNNING);
-                task.setWorkerId(workerId);
-                TaskQueue queue = queues.get(task.getQueueName());
-                queue.removeNext(taskId);
-                WorkerStatus node = nodes.get(workerId);
-                nodeManagers.getNodeManager(node).taskAssigned(task);
-                return ActionResult.TASKID(taskId);
-            }
-            case Action.TYPE_TASK_FINISHED: {
-                long taskId = action.taskId;
-                String workerId = action.workerId;
-                Task task = tasks.get(taskId);
-                task.setStatus(Task.STATUS_FINISHED);
-                task.setWorkerId(workerId);
-                TaskQueue queue = queues.get(task.getQueueName());
-                scheduler.taskFinished(workerId, queue.getTag());
-                return ActionResult.TASKID(taskId);
-            }
-            case Action.ACTION_TYPE_ADD_TASK: {
-                long newId = newTaskId.incrementAndGet();
-                Task task = new Task();
-                task.setTaskId(newId);
-                task.setCreatedTimestamp(System.currentTimeMillis());
-                task.setParameters(action.taskParameter);
-                task.setType(action.taskType);
-                task.setQueueName(action.queueName);
-                task.setStatus(Task.STATUS_WAITING);
-                TaskQueue queue = queues.get(action.queueName);
-                if (queue == null) {
-                    String queueTag = action.queueTag;
-                    if (queueTag == null) {
-                        queueTag = TaskQueue.DEFAULT_TAG;
-                    }
-                    queue = new TaskQueue(queueTag);
-                    queues.put(action.queueName, queue);
-                }
-                tasks.put(newId, task);
-                queue.addNewTask(task);
-                scheduler.taskSubmitted(action.queueTag);
-                return ActionResult.TASKID(newId);
-            }
-            case Action.ACTION_TYPE_WORKER_REGISTERED: {
-                WorkerStatus node = nodes.get(action.workerId);
-                if (node == null) {
-                    node = new WorkerStatus();
-                    node.setWorkerId(action.workerId);
-                    node.setStatus(WorkerStatus.STATUS_ALIVE);
-                    node.setWorkerLocation(action.workerLocation);
-                    node.setMaximumNumberOfTasks(action.maximumNumberOfTasksPerTag);
-                    nodes.put(action.workerId, node);
-                    return ActionResult.OK();
-                } else {
-                    throw new IllegalStateException();
-                }
-            }
-            default:
-                return ActionResult.ERROR(new IllegalStateException("invalid action type " + action.actionType).fillInStackTrace());
 
+        LOGGER.log(Level.FINE, "applyAction {0}", action);
+        lock.writeLock().lock();
+        try {
+            switch (action.actionType) {
+                case Action.TYPE_ASSIGN_TASK_TO_WORKER: {
+                    long taskId = action.taskId;
+                    String workerId = action.workerId;
+                    Task task = tasks.get(taskId);
+                    task.setStatus(Task.STATUS_RUNNING);
+                    task.setWorkerId(workerId);
+                    TaskQueue queue = queues.get(task.getQueueName());
+                    queue.removeNext(taskId);
+                    WorkerStatus node = nodes.get(workerId);
+                    nodeManagers.getNodeManager(node).taskAssigned(task);
+                    return ActionResult.TASKID(taskId);
+                }
+                case Action.TYPE_TASK_FINISHED: {
+                    long taskId = action.taskId;
+                    String workerId = action.workerId;
+                    Task task = tasks.get(taskId);
+                    task.setStatus(Task.STATUS_FINISHED);
+                    task.setWorkerId(workerId);
+                    TaskQueue queue = queues.get(task.getQueueName());
+                    scheduler.taskFinished(workerId, queue.getTag());
+                    return ActionResult.TASKID(taskId);
+                }
+                case Action.ACTION_TYPE_ADD_TASK: {
+                    long newId = newTaskId.incrementAndGet();
+                    Task task = new Task();
+                    task.setTaskId(newId);
+                    task.setCreatedTimestamp(System.currentTimeMillis());
+                    task.setParameters(action.taskParameter);
+                    task.setType(action.taskType);
+                    task.setQueueName(action.queueName);
+                    task.setStatus(Task.STATUS_WAITING);
+                    TaskQueue queue = queues.get(action.queueName);
+                    if (queue == null) {
+                        String queueTag = action.queueTag;
+                        if (queueTag == null) {
+                            queueTag = TaskQueue.DEFAULT_TAG;
+                        }
+                        queue = new TaskQueue(queueTag);
+                        queues.put(action.queueName, queue);
+                    }
+                    tasks.put(newId, task);
+                    queue.addNewTask(task);
+                    scheduler.taskSubmitted(action.queueTag);
+                    return ActionResult.TASKID(newId);
+                }
+                case Action.ACTION_TYPE_WORKER_REGISTERED: {
+                    WorkerStatus node = nodes.get(action.workerId);
+                    if (node == null) {
+                        node = new WorkerStatus();
+                        node.setWorkerId(action.workerId);
+                        node.setStatus(WorkerStatus.STATUS_ALIVE);
+                        node.setWorkerLocation(action.workerLocation);
+                        node.setMaximumNumberOfTasks(action.maximumNumberOfTasksPerTag);
+                        nodes.put(action.workerId, node);
+                        return ActionResult.OK();
+                    } else {
+                        throw new IllegalStateException();
+                    }
+                }
+                default:
+                    return ActionResult.ERROR(new IllegalStateException("invalid action type " + action.actionType).fillInStackTrace());
+
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 

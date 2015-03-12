@@ -77,6 +77,7 @@ public class WorkerManager {
 
     public void taskAssigned(Task task) {
         System.out.println("taskAssigned " + task.getTaskId());
+        connection.sendTaskAssigned(task);
     }
 
     public void detectedOldNodeProcess() {

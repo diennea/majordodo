@@ -52,6 +52,7 @@ public class TaskQueue {
 
     public Task removeNext(long expectedTaskId) {
         Task t = tasks.poll();
+        System.out.println("removeNext:" + t);
         if (t == null || t.getTaskId() != expectedTaskId) {
             throw new RuntimeException();
         }
