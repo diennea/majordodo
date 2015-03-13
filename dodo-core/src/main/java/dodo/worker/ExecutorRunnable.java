@@ -21,6 +21,7 @@ package dodo.worker;
 
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorStatus;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -31,11 +32,11 @@ import java.util.Map;
 public class ExecutorRunnable implements Runnable {
 
     private WorkerCore core;
-    private String taskId;
+    private Long taskId;
     private Map<String, Object> parameters;
     private TaskExecutionCallback callback;
 
-    public ExecutorRunnable(WorkerCore core, String taskId, Map<String, Object> parameters, TaskExecutionCallback callback) {
+    public ExecutorRunnable(WorkerCore core, Long taskId, Map<String, Object> parameters, TaskExecutionCallback callback) {
         this.core = core;
         this.taskId = taskId;
         this.parameters = parameters;
@@ -44,20 +45,20 @@ public class ExecutorRunnable implements Runnable {
 
     public static interface TaskExecutionCallback {
 
-        public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Throwable error);
+        public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, Map<String, Object> results, Throwable error);
     }
 
     @Override
     public void run() {
+        Map<String, Object> results = new HashMap<>();
         try {
-            this.taskId = (String) parameters.get("taskid");
             String taskType = (String) parameters.get("tasktype");
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, null);
-            TaskExecutor executor = core.createTaskExecutor(taskType);
-            executor.executeTask(parameters);
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, null);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, results, null);
+            TaskExecutor executor = core.createTaskExecutor(taskType, parameters);
+            executor.executeTask(parameters, results);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, results, null);
         } catch (Throwable t) {
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, t);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, results, t);
         }
     }
 }

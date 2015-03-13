@@ -29,13 +29,17 @@ import java.util.Set;
  */
 public class Scheduler {
 
-    public void taskFinished(String workerId, String tag) {
-    }
-
-    public void taskSubmitted(String tag) {
-    }
-
     public void workerConnected(String workerId, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
 
+    }
+
+    void workerDied(String workerId) {
+    }
+
+    public void wakeUpOnNewTask(long taskId, String queueTag) {
+
+    }
+
+    public void wakeUpOnTaskFinished(String workerId, String tag) {
     }
 }

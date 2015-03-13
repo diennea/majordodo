@@ -26,8 +26,8 @@ package dodo.executors;
  */
 public class TaskExecutorStatus {
 
-    public static final String RUNNING = "running";
     public static final String FINISHED = "finished";
     public static final String NEEDS_RECOVERY = "needs_recovery";
     public static final String ERROR = "error";
+    public static final String RUNNING = "running";
 }

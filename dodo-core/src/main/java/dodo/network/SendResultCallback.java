@@ -17,28 +17,14 @@
  under the License.
 
  */
-package dodo.clustering;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
+package dodo.network;
 
 /**
- * Dummy commit log
+ * Callback for async calls
  *
  * @author enrico.olivelli
  */
-public class DummyCommitLog extends CommitLog {
+public interface SendResultCallback {
 
-    private final AtomicLong sequenceNumber = new AtomicLong();
-    private final ExecutorService service = Executors.newCachedThreadPool();
-
-    @Override
-    public void logEvent(Event action, ActionLogCallback callback) {
-        long newNumber = sequenceNumber.incrementAndGet();
-        service.submit(() -> {
-            callback.actionCommitted(new LogSequenceNumber(1, newNumber), null);
-        });
-    }
-
+    public void messageSent(Message originalMessage, Throwable error);
 }

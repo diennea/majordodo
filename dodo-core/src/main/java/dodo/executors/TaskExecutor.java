@@ -28,7 +28,7 @@ import java.util.Map;
  */
 public class TaskExecutor {
 
-    public void executeTask(Map<String, Object> parameters) throws Exception {
+    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
         throw new UnsupportedOperationException("task execution not implemented for this tasktype, parameters:" + parameters);
     }
 

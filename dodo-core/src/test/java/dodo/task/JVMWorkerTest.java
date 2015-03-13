@@ -19,7 +19,7 @@
  */
 package dodo.task;
 
-import dodo.clustering.DummyCommitLog;
+import dodo.clustering.MemoryCommitLog;
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorFactory;
 import dodo.worker.JVMBrokerLocator;
@@ -48,7 +48,8 @@ public class JVMWorkerTest {
         ch.setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").addHandler(ch);
-        Broker broker = new Broker(new DummyCommitLog());
+        Broker broker = new Broker(new MemoryCommitLog());
+        broker.start();
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
         CountDownLatch taskExecuted = new CountDownLatch(1);
@@ -67,7 +68,7 @@ public class JVMWorkerTest {
 
         };
         Map<String, Integer> tags = new HashMap<>();
-        tags.put("tag1", 10);
+        tags.put("tag1", 1);
         WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
@@ -79,8 +80,9 @@ public class JVMWorkerTest {
                 return new TaskExecutor() {
 
                     @Override
-                    public void executeTask(Map<String, Object> parameters) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters);
+                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
+                        results.put("res1", "myvalue");
                         taskExecuted.countDown();
                     }
 
@@ -94,7 +96,7 @@ public class JVMWorkerTest {
         long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
         System.out.println("taskId: " + taskId);
 
-        assertTrue(taskExecuted.await(10, TimeUnit.SECONDS));
+        assertTrue(taskExecuted.await(30, TimeUnit.SECONDS));
 
         core.stop();
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
