@@ -25,8 +25,10 @@ import dodo.executors.TaskExecutorStatus;
 import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
+import dodo.network.SendResultCallback;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -43,6 +45,7 @@ public class WorkerCore implements InboundMessagesReceiver {
     private final String workerId;
     private final String location;
     private final Map<String, Integer> maximumThreadPerTag;
+    private final Map<Long, Object> runningTasks = new ConcurrentHashMap<>();
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
     private volatile boolean stopped = false;
@@ -51,6 +54,10 @@ public class WorkerCore implements InboundMessagesReceiver {
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
     private Map<String, TaskExecutorFactory> factoryExecutors = new HashMap<>();
+
+    public Map<Long, Object> getRunningTasks() {
+        return runningTasks;
+    }
 
     public void registerTaskExecutorFactor(String taskType, TaskExecutorFactory factory) {
         factoryExecutors.put(taskType, factory);
@@ -98,17 +105,30 @@ public class WorkerCore implements InboundMessagesReceiver {
         String taskid = (String) message.parameters.get("taskid");
         ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, new ExecutorRunnable.TaskExecutionCallback() {
             @Override
-            public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Throwable error) {
+            public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Map<String, Object> results, Throwable error) {
                 switch (finalStatus) {
                     case TaskExecutorStatus.ERROR:
-                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, error));
+                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
+
+                            @Override
+                            public void messageSent(Message originalMessage, Throwable error) {
+                                // swallow
+                            }
+                        });
                         break;
                     case TaskExecutorStatus.RUNNING:
                         break;
                     case TaskExecutorStatus.NEEDS_RECOVERY:
                         throw new RuntimeException("not implemented");
                     case TaskExecutorStatus.FINISHED:
-                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, null));
+                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, null), new SendResultCallback() {
+
+                            @Override
+                            public void messageSent(Message originalMessage, Throwable error
+                            ) {
+                                // swallow
+                            }
+                        });
                         break;
                 }
             }
@@ -151,7 +171,13 @@ public class WorkerCore implements InboundMessagesReceiver {
 
             Channel _channel = channel;
             if (_channel != null) {
-                _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId));
+                _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId), new SendResultCallback() {
+
+                    @Override
+                    public void messageSent(Message originalMessage, Throwable error) {
+                        // ignore
+                    }
+                });
                 disconnect();
             }
 

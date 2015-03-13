@@ -17,30 +17,15 @@
  under the License.
 
  */
-package dodo.client;
-
-import dodo.clustering.StatusEdit;
-import dodo.clustering.ActionResult;
-import dodo.task.Broker;
-import dodo.task.InvalidActionException;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+package dodo.clustering;
 
 /**
- * Client API
+ * Log of mofications, this is the base of the replication system
  *
  * @author enrico.olivelli
  */
-public class ClientFacade {
+public abstract class StatusChangesLog {
 
-    private Broker broker;
+    public abstract LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException;
 
-    public ClientFacade(Broker broker) {
-        this.broker = broker;
-    }
-
-    public long submitTask(String taskType, String queueName, String queueTag, Map<String, Object> parameters) throws Exception {
-        return broker.addTask(queueName, taskType, queueTag, parameters);
-    }
 }

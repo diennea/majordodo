@@ -19,14 +19,10 @@
  */
 package dodo.scheduler;
 
-import dodo.clustering.Event;
-import dodo.clustering.LogNotAvailableException;
 import dodo.task.Broker;
-import dodo.task.InvalidActionException;
 import dodo.worker.BrokerSideConnection;
-import dodo.task.Task;
-import dodo.task.TaskQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Runtime status manager for a Node
@@ -35,13 +31,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class WorkerManager {
 
-    private final WorkerStatus workerStatus;
+    private static final Logger LOGGER = Logger.getLogger(WorkerManager.class.getName());
+
+    private final String workerId;
     private final Scheduler scheduler;
     private final Broker broker;
     private BrokerSideConnection connection;
+    private long lastWakeup = System.currentTimeMillis();
 
-    public WorkerManager(WorkerStatus node, Scheduler scheduler, Broker broker) {
-        this.workerStatus = node;
+    public WorkerManager(String workerId, Scheduler scheduler, Broker broker) {
+        this.workerId = workerId;
         this.scheduler = scheduler;
         this.broker = broker;
     }
@@ -54,34 +53,51 @@ public class WorkerManager {
         return scheduler;
     }
 
-    public WorkerStatus getWorker() {
-        return workerStatus;
+    private static final long MAX_IDLE_TIME = 1000 * 60; // TODO: configuration
+
+    public void wakeUp() {
+        long now = System.currentTimeMillis();
+        long _lastWakeUpDelta = now - lastWakeup;
+        lastWakeup = now;
+        if (connection == null) {
+            LOGGER.log(Level.FINE, "wakeup {0} -> no connection", workerId);
+            WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
+            if (status == null) {
+                // ???
+                return;
+            }
+            if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
+                status.setStatus(WorkerStatus.STATUS_DISCONNECTED);
+            }
+            if (_lastWakeUpDelta > MAX_IDLE_TIME) {
+                status.setStatus(WorkerStatus.STATUS_DEAD);
+                connection.workerDied();
+                scheduler.workerDied(workerId);
+                connection = null;
+                LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
+            }
+            return;
+        }
+        LOGGER.log(Level.FINE, "wakeup {0} ", workerId);
+        long delta = System.currentTimeMillis() - connection.getLastReceivedMessageTs();
+        if (delta > MAX_IDLE_TIME) {
+            LOGGER.log(Level.FINE, "worker {0} is no more alive, receovery needed", workerId);
+            WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
+            status.setStatus(WorkerStatus.STATUS_DEAD);
+            connection.workerDied();
+            scheduler.workerDied(workerId);
+            LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (no message received)", workerId);
+            connection = null;
+        }
+
     }
 
     public void activateConnection(BrokerSideConnection connection) {
         this.connection = connection;
-
-        workerStatus.getMaximumNumberOfTasks().forEach((tag, max) -> {
-            int remaining;
-            AtomicInteger actualCount = workerStatus.getActualNumberOfTasks().get(tag);
-            if (actualCount != null) {
-                remaining = max - actualCount.get();
-            } else {
-                remaining = max;
-            }
-            for (int i = 0; i < remaining; i++) {
-                scheduler.taskFinished(workerStatus.getWorkerId(), tag);
-            }
-        });
     }
 
-    public void taskAssigned(Task task) {
-        System.out.println("taskAssigned " + task.getTaskId());
-        connection.sendTaskAssigned(task);
-    }
-
-    public void detectedOldNodeProcess() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void wakeUpOnTaskAssigned(long taskId) {
+        // TODO
     }
 
 }

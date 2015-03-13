@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A message (from broker to worker or from worker to broker)
@@ -56,20 +57,22 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, null);
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, Map<String, Integer> maximumThreadPerTag, String location) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, Map<String, Integer> maximumThreadPerTag, String location, Set<Long> actualRunningTasks) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
         params.put("maximumThreadPerTag", maximumThreadPerTag);
+        params.put("actualRunningTasks", actualRunningTasks);
         params.put("location", location);
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
-    public static Message TASK_FINISHED(String processId, String taskId, String finalStatus, Throwable error) {
+    public static Message TASK_FINISHED(String processId, String taskId, String finalStatus, Map<String, Object> results, Throwable error) {
         Map<String, Object> params = new HashMap<>();
         params.put("taskId", taskId);
         params.put("processId", processId);
         params.put("status", finalStatus);
+        params.put("results", results);
         if (error != null) {
             StringWriter r = new StringWriter();
             PrintWriter t = new PrintWriter(r);

@@ -19,14 +19,15 @@
  */
 package dodo.worker;
 
-import dodo.clustering.Event;
+import dodo.callbacks.SimpleCallback;
+import dodo.clustering.LogNotAvailableException;
 import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
-import dodo.task.InvalidActionException;
-import dodo.task.Task;
+import dodo.clustering.Task;
+import dodo.network.SendResultCallback;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +48,7 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
     private WorkerManager manager;
     private Channel channel;
     private Broker broker;
+    private long lastReceivedMessageTs;
 
     private static final AtomicLong sessionId = new AtomicLong();
 
@@ -115,69 +117,64 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
         this.manager = manager;
     }
 
+    public long getLastReceivedMessageTs() {
+        return lastReceivedMessageTs;
+    }
+
     @Override
     public void messageReceived(Message message) {
+        lastReceivedMessageTs = System.currentTimeMillis();
         System.out.println("[BROKER] receivedMessageFromWorker " + message);
-        if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
-            // worker process is not the same as the one we expect, send a "die" message and close the channel
-            Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
-            channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
-                // any way we are closing the channel
-                channel.close();
-            });
-            return;
-        }
-
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
-                try {
-                    this.workerId = (String) message.parameters.get("workerId");
-                    if (this.workerId == null) {
-                        answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
-                        return;
-                    }
-                    this.workerProcessId = (String) message.parameters.get("processId");
-                    this.location = (String) message.parameters.get("location");
-                    this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumThreadPerTag");
-                    Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
-                    BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
-                    if (actual != null) {
-                        answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
-                        return;
-                    }
-                    Event action = Event.NODE_REGISTERED(workerId, location, maximumNumberOfTasks, actualRunningTasks);
-                    this.broker.logEvent(action, (a, result) -> {
-                        if (result.error != null) {
-                            answerConnectionNotAcceptedAndClose(message, result.error);
-                            return;
-                        }
-                        broker.getAcceptor().getWorkersConnections().put(workerId, this);
-                        this.manager = broker.getWorkerManager(workerId);
-                        answerConnectionAccepted(message);
-                        broker.getScheduler().workerConnected(workerId, maximumNumberOfTasks, actualRunningTasks);
+                if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
+                    // worker process is not the same as the one we expect, send a "die" message and close the channel
+                    Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
+                    channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
+                        // any way we are closing the channel
+                        channel.close();
                     });
-                } catch (InterruptedException ex) {
-                    answerConnectionNotAcceptedAndClose(message, ex);
-                } catch (InvalidActionException ex) {
-                    answerConnectionNotAcceptedAndClose(message, ex);
+                    return;
                 }
+                this.workerId = (String) message.parameters.get("workerId");
+                if (this.workerId == null) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
+                    return;
+                }
+                this.workerProcessId = (String) message.parameters.get("processId");
+                this.location = (String) message.parameters.get("location");
+                this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumThreadPerTag");
+                Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
+                BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
+                if (actual != null) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
+                    return;
+                }
+                try {
+                    this.broker.workerConnected(workerId, location, maximumNumberOfTasks, actualRunningTasks, System.currentTimeMillis());
+                } catch (LogNotAvailableException error) {
+                    answerConnectionNotAcceptedAndClose(message, error);
+                    return;
+                }
+                broker.getAcceptor().getWorkersConnections().put(workerId, this);
+                this.manager = broker.getWorkers().getNodeManager(workerId);
+                answerConnectionAccepted(message);
+                broker.getScheduler().workerConnected(workerId, maximumNumberOfTasks, actualRunningTasks);
                 break;
             }
+
             case Message.TYPE_TASK_FINISHED:
                 long taskid = (Long) message.parameters.get("taskid");
-                Event action = Event.TASK_FINISHED(taskid, this.workerId);
+                String status = (String) message.parameters.get("status");
+                Map<String, Object> results = (Map<String, Object>) message.parameters.get("results");
+                int finalStatus = Task.taskExecutorStatusToTaskStatus(status);
                 try {
-                    manager.getBroker().logEvent(action, (a, result) -> {
-                        if (result.error != null) {
-                            channel.sendReplyMessage(message, Message.ERROR(workerProcessId, result.error));
-                        } else {
-                            channel.sendReplyMessage(message, Message.ACK(workerProcessId));
-                        }
-                    });
-                } catch (InterruptedException | InvalidActionException err) {
-                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, err));
+                    broker.taskFinished(workerId, taskid, finalStatus, results);
+                    channel.sendReplyMessage(message, Message.ACK(workerProcessId));
+                } catch (LogNotAvailableException error) {
+                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
-
+                break;
         }
 
     }
@@ -190,12 +187,29 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
         channel.sendReplyMessage(connectionRequestMessage, Message.ACK(workerProcessId));
     }
 
-    public void sendTaskAssigned(Task task) {
+    public void sendTaskAssigned(Task task, SimpleCallback<Void> callback) {
         Map<String, Object> params = new HashMap<>();
         params.put("taskid", task.getTaskId());
         params.put("tasktype", task.getType());
         params.putAll(task.getParameters());
-        channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params));
+        channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params), new SendResultCallback() {
+
+            @Override
+            public void messageSent(Message originalMessage, Throwable error) {
+                callback.onResult(null, error);
+            }
+        });
+    }
+
+    public void workerDied() {
+        channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
+            @Override
+            public void messageSent(Message originalMessage, Throwable error) {
+                // any way we are closing the channel
+                channel.close();
+            }
+        });
+
     }
 
 }

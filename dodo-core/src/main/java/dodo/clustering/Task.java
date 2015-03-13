@@ -17,8 +17,9 @@
  under the License.
 
  */
-package dodo.task;
+package dodo.clustering;
 
+import dodo.executors.TaskExecutorStatus;
 import java.util.Map;
 
 /**
@@ -31,6 +32,21 @@ public class Task {
     public static final int STATUS_WAITING = 0;
     public static final int STATUS_RUNNING = 1;
     public static final int STATUS_FINISHED = 2;
+    public static final int STATUS_NEEDS_RECOVERY = 3;
+    public static final int STATUS_ERROR = 4;
+
+    public static int taskExecutorStatusToTaskStatus(String status) {
+        switch (status) {
+            case TaskExecutorStatus.ERROR:
+                return STATUS_ERROR;
+            case TaskExecutorStatus.FINISHED:
+                return STATUS_FINISHED;
+            case TaskExecutorStatus.NEEDS_RECOVERY:
+                return STATUS_NEEDS_RECOVERY;
+            default:
+                throw new IllegalArgumentException(status + "");
+        }
+    }
 
     private String type;
     private Map<String, Object> parameters;

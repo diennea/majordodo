@@ -17,46 +17,26 @@
  under the License.
 
  */
-package dodo.task;
+package dodo.clustering;
 
-import java.util.ArrayDeque;
-import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * A queue of tasks
+ * In memory commit log
  *
  * @author enrico.olivelli
  */
-public class TaskQueue {
+public class MemoryCommitLog extends StatusChangesLog {
 
-    public static final String DEFAULT_TAG = "default";
+    private final AtomicLong sequenceNumber = new AtomicLong();
+    private final ExecutorService service = Executors.newCachedThreadPool();
 
-    private final Queue<Task> tasks = new ArrayDeque<>();
-    private final String tag;
-
-    public TaskQueue(String tag) {
-        this.tag = tag;
-    }
-
-    public String getTag() {
-        return tag;
-    }
-
-    void addNewTask(Task task) {
-        tasks.add(task);
-    }
-
-    public Task peekNext() {
-        return tasks.peek();
-    }
-
-    public Task removeNext(long expectedTaskId) {
-        Task t = tasks.poll();
-        System.out.println("removeNext:" + t);
-        if (t == null || t.getTaskId() != expectedTaskId) {
-            throw new RuntimeException();
-        }
-        return t;
+    @Override
+    public LogSequenceNumber logStatusEdit(StatusEdit action) {
+        long newNumber = sequenceNumber.incrementAndGet();
+        return new LogSequenceNumber(1, newNumber);
     }
 
 }

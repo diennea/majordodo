@@ -31,13 +31,24 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class WorkerStatus {
 
-    public static final int STATUS_ALIVE = 0;
+    public static final int STATUS_CONNECTED = 0;
+    public static final int STATUS_DEAD = 1;
+    public static final int STATUS_DISCONNECTED = 2;
 
     private String workerId;
     private int status;
     private String workerLocation;
+    private long lastConnectionTs;
     private Map<String, Integer> maximumNumberOfTasks;
     private final Map<String, AtomicInteger> actualNumberOfTasks = new HashMap<>();
+
+    public long getLastConnectionTs() {
+        return lastConnectionTs;
+    }
+
+    public void setLastConnectionTs(long lastConnectionTs) {
+        this.lastConnectionTs = lastConnectionTs;
+    }
 
     public Map<String, AtomicInteger> getActualNumberOfTasks() {
         return actualNumberOfTasks;

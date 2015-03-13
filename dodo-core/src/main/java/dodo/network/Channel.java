@@ -36,7 +36,7 @@ public abstract class Channel {
         this.messagesReceiver = messagesReceiver;
     }
 
-    public abstract void sendOneWayMessage(Message message);
+    public abstract void sendOneWayMessage(Message message, SendResultCallback callback);
 
     public abstract void sendReplyMessage(Message inAnswerTo, Message message);
 

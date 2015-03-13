@@ -17,20 +17,21 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.callbacks;
 
 /**
- * Log of mofications, this is the base of the replication system
+ * Generic callback
  *
  * @author enrico.olivelli
  */
-public abstract class CommitLog {
+public interface SimpleCallback<T> {
 
-    public static interface ActionLogCallback {
-
-        public void actionCommitted(LogSequenceNumber number, Throwable error);
-    }
-
-    public abstract void logEvent(Event action, ActionLogCallback callback);
-
+    /**
+     * If an error occurred than the error parameter will be not null, otherwise
+     * the result parameter will be the result of the action
+     *
+     * @param result
+     * @param error
+     */
+    public void onResult(T result, Throwable error);
 }

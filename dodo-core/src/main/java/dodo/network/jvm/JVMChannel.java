@@ -23,6 +23,7 @@ import dodo.network.Channel;
 import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
 import dodo.network.ReplyCallback;
+import dodo.network.SendResultCallback;
 import dodo.task.Broker;
 import dodo.worker.BrokerSideConnection;
 import java.util.Map;
@@ -68,12 +69,15 @@ public class JVMChannel extends Channel {
     }
 
     @Override
-    public void sendOneWayMessage(Message message) {
+    public void sendOneWayMessage(Message message, SendResultCallback callback) {
         System.out.println("[JVM] sendOneWayMessage " + message);
         if (!active) {
             return;
         }
         otherSide.receiveMessageFromPeer(message);
+        executor.submit(() -> {
+            callback.messageSent(message, null);
+        });
     }
 
     private void handleReply(Message anwermessage) {

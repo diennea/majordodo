@@ -21,6 +21,7 @@ package dodo.worker;
 
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorStatus;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -44,20 +45,21 @@ public class ExecutorRunnable implements Runnable {
 
     public static interface TaskExecutionCallback {
 
-        public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Throwable error);
+        public void taskStatusChanged(String taskId, Map<String, Object> parameters, String finalStatus, Map<String, Object> results, Throwable error);
     }
 
     @Override
     public void run() {
+        Map<String, Object> results = new HashMap<>();
         try {
             this.taskId = (String) parameters.get("taskid");
             String taskType = (String) parameters.get("tasktype");
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, null);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, results, null);
             TaskExecutor executor = core.createTaskExecutor(taskType);
-            executor.executeTask(parameters);
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, null);
+            executor.executeTask(parameters, results);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, results, null);
         } catch (Throwable t) {
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, t);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, results, t);
         }
     }
 }

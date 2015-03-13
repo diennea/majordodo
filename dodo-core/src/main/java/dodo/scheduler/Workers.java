@@ -41,8 +41,7 @@ public class Workers {
         this.broker = broker;
     }
 
-    public WorkerManager getNodeManager(WorkerStatus node) {
-        String id = node.getWorkerId();
+    public WorkerManager getNodeManager(String id) {
         WorkerManager man;
         lock.readLock().lock();
         try {
@@ -55,7 +54,7 @@ public class Workers {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
-                    man = new WorkerManager(node, scheduler,broker);
+                    man = new WorkerManager(id, scheduler, broker);
                     nodeManagers.put(id, man);
                 }
             } finally {
@@ -63,5 +62,13 @@ public class Workers {
             }
         }
         return man;
+    }
+
+    public void start() {
+
+    }
+
+    public void stop() {
+
     }
 }

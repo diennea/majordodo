@@ -19,7 +19,7 @@
  */
 package dodo.task;
 
-import dodo.clustering.DummyCommitLog;
+import dodo.clustering.MemoryCommitLog;
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorFactory;
 import dodo.worker.JVMBrokerLocator;
@@ -48,7 +48,7 @@ public class JVMWorkerTest {
         ch.setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").addHandler(ch);
-        Broker broker = new Broker(new DummyCommitLog());
+        Broker broker = new Broker(new MemoryCommitLog());
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
         CountDownLatch taskExecuted = new CountDownLatch(1);
@@ -79,8 +79,9 @@ public class JVMWorkerTest {
                 return new TaskExecutor() {
 
                     @Override
-                    public void executeTask(Map<String, Object> parameters) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters);
+                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
+                        results.put("res1", "myvalue");
                         taskExecuted.countDown();
                     }
 

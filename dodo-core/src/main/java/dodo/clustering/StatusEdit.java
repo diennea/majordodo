@@ -27,10 +27,10 @@ import java.util.Set;
  *
  * @author enrico.olivelli
  */
-public final class Event {
+public final class StatusEdit {
 
     public static final short ACTION_TYPE_ADD_TASK = 1;
-    public static final short ACTION_TYPE_WORKER_REGISTERED = 2;
+    public static final short ACTION_TYPE_WORKER_CONNECTED = 2;
     public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
     public static final short TYPE_TASK_FINISHED = 4;
 
@@ -38,8 +38,8 @@ public final class Event {
         switch (type) {
             case ACTION_TYPE_ADD_TASK:
                 return "ADD_TASK";
-            case ACTION_TYPE_WORKER_REGISTERED:
-                return "WORKER_REGISTERED";
+            case ACTION_TYPE_WORKER_CONNECTED:
+                return "WORKER_CONNECTED";
             case TYPE_ASSIGN_TASK_TO_WORKER:
                 return "ASSIGN_TASK_TO_WORKER";
             case TYPE_TASK_FINISHED:
@@ -49,10 +49,12 @@ public final class Event {
         }
     }
 
-    public short actionType;
+    public short editType;
     public String queueName;
     public String taskType;
     public long taskId;
+    public int taskStatus;
+    public long timestamp;
     public String queueTag;
     public Map<String, Object> taskParameter;
     public String workerId;
@@ -62,28 +64,30 @@ public final class Event {
 
     @Override
     public String toString() {
-        return "Action{" + "actionType=" + typeToString(actionType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
+        return "Action{" + "actionType=" + typeToString(editType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
     }
 
-    public static final Event ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
-        Event action = new Event();
-        action.actionType = TYPE_ASSIGN_TASK_TO_WORKER;
+    public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_ASSIGN_TASK_TO_WORKER;
         action.workerId = nodeId;
         action.taskId = taskId;
         return action;
     }
 
-    public static final Event TASK_FINISHED(long taskId, String nodeId) {
-        Event action = new Event();
-        action.actionType = TYPE_TASK_FINISHED;
-        action.workerId = nodeId;
+    public static final StatusEdit TASK_FINISHED(long taskId, String workerId, int finalStatus, Map<String, Object> results) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_TASK_FINISHED;
+        action.workerId = workerId;
         action.taskId = taskId;
+        action.taskStatus = finalStatus;
+        action.taskParameter = results;
         return action;
     }
 
-    public static final Event ADD_TASK(String queueName, String taskType, Map<String, Object> taskParameter, String queueTag) {
-        Event action = new Event();
-        action.actionType = ACTION_TYPE_ADD_TASK;
+    public static final StatusEdit ADD_TASK(String queueName, String taskType, Map<String, Object> taskParameter, String queueTag) {
+        StatusEdit action = new StatusEdit();
+        action.editType = ACTION_TYPE_ADD_TASK;
         action.queueName = queueName;
         action.taskType = taskType;
         action.taskParameter = taskParameter;
@@ -91,10 +95,11 @@ public final class Event {
         return action;
     }
 
-    public static final Event NODE_REGISTERED(String nodeId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
-        Event action = new Event();
-        action.actionType = ACTION_TYPE_WORKER_REGISTERED;
-        action.workerId = nodeId;
+    public static final StatusEdit WORKER_CONNETED(String workerId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) {
+        StatusEdit action = new StatusEdit();
+        action.editType = ACTION_TYPE_WORKER_CONNECTED;
+        action.timestamp = timestamp;
+        action.workerId = workerId;
         action.workerLocation = nodeLocation;
         action.maximumNumberOfTasksPerTag = maximumNumberOfTasksPerTag;
         action.actualRunningTasks = actualRunningTasks;
