@@ -27,15 +27,13 @@ import dodo.clustering.ActionResult;
 import dodo.clustering.BrokerStatus;
 import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.StatusChangesLog;
-import dodo.clustering.LogSequenceNumber;
 import dodo.scheduler.DefaultScheduler;
-import dodo.scheduler.WorkerStatus;
 import dodo.scheduler.Workers;
 import dodo.scheduler.Scheduler;
 import dodo.worker.BrokerServerEndpoint;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -126,7 +124,13 @@ public class Broker {
     public void taskFinished(String workerId, long taskId, int finalstatus, Map<String, Object> results) throws LogNotAvailableException {
         StatusEdit edit = StatusEdit.TASK_FINISHED(taskId, workerId, finalstatus, results);
         this.brokerStatus.applyModification(edit);
-        this.scheduler.wakeUpOnTaskFinished(workerId, workerId);
+        Task task = brokerStatus.getTask(taskId);
+        if (task != null) {
+            TaskQueue queue = brokerStatus.getTaskQueue(task.getQueueName());
+            if (queue != null) {
+                this.scheduler.wakeUpOnTaskFinished(workerId, queue.getTag());
+            }
+        }
     }
 
     public void workerConnected(String workerId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
