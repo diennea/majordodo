@@ -27,6 +27,8 @@ import dodo.worker.WorkerCore;
 import dodo.worker.WorkerStatusListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
@@ -100,5 +102,76 @@ public class JVMWorkerTest {
 
         core.stop();
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void registerNewWorker1() throws Exception {
+        java.util.logging.LogManager.getLogManager().reset();
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").addHandler(ch);
+        Broker broker = new Broker(new MemoryCommitLog());
+        broker.start();
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        for (int i = 0; i < 10; i++) {
+            Map<String, Object> taskParams = new HashMap<>();
+            taskParams.put("param1", "value1");
+            taskParams.put("param2", "value2");
+            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+            System.out.println("taskId: " + taskId);
+            todo.add(taskId);
+        }
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+                System.out.println("connectionEvent:" + event);
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put("tag1", 1);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
+        core.start();
+        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+
+        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+
+            @Override
+            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
+                return new TaskExecutor() {
+
+                    @Override
+                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
+                        results.put("res1", "myvalue");
+                        allTaskExecuted.countDown();
+                        long taskid = (Long) parameters.get("taskid");
+                        todo.remove(taskid);
+                    }
+
+                };
+            }
+        });
+
+        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+
+        core.stop();
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
     }
 }

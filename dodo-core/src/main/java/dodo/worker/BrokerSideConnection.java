@@ -116,10 +116,6 @@ public class BrokerSideConnection implements InboundMessagesReceiver {
         return lastReceivedMessageTs;
     }
 
-    public long getLastReceivedMessageTs() {
-        return lastReceivedMessageTs;
-    }
-
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();

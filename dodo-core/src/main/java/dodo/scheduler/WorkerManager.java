@@ -97,7 +97,7 @@ public class WorkerManager {
         }
 
         if (connection != null) {
-            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.peek(); // head does not change, tasks are only removed from this operation
+            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.remove();
             LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
             if (taskToBeSubmitted != null) {
                 Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
@@ -111,7 +111,9 @@ public class WorkerManager {
                             @Override
                             public void onResult(Void result, Throwable error) {
                                 if (error != null) {
-                                    taskToBeSubmittedToRemoteWorker.remove(taskToBeSubmitted);  // head does not change, tasks are only removed from this operation
+                                    // the write failed
+                                    taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
+                                } else {
                                     tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
                                 }
                             }
