@@ -60,6 +60,11 @@ public class DefaultScheduler extends Scheduler {
             this.tag = tag;
         }
 
+        @Override
+        public String toString() {
+            return "{" + "workerId=" + workerId + " for tag=" + tag + '}';
+        }
+
     }
 
     public DefaultScheduler(Broker organizer) {

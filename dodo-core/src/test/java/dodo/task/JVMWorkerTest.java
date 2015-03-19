@@ -34,6 +34,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import static org.junit.Assert.assertTrue;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -45,11 +47,6 @@ public class JVMWorkerTest {
 
     @Test
     public void workerConnectionTest() throws Exception {
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
         Broker broker = new Broker(new MemoryCommitLog());
         broker.start();
         CountDownLatch connectedLatch = new CountDownLatch(1);
@@ -106,11 +103,6 @@ public class JVMWorkerTest {
 
     @Test
     public void manyTasks_max1() throws Exception {
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
         Broker broker = new Broker(new MemoryCommitLog());
         broker.start();
 
@@ -198,7 +190,7 @@ public class JVMWorkerTest {
 
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
-        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
         WorkerStatusListener listener = new WorkerStatusListener() {
 
             @Override
@@ -245,16 +237,19 @@ public class JVMWorkerTest {
 
         assertTrue(todo.isEmpty());
     }
-    
-    
-    
-    @Test
-    public void manyassignTaskAfterStart() throws Exception {
+
+    @BeforeClass
+    public static void setupLogger() throws Exception {
         java.util.logging.LogManager.getLogManager().reset();
         ConsoleHandler ch = new ConsoleHandler();
         ch.setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
         java.util.logging.Logger.getLogger("").addHandler(ch);
+    }
+
+    @Test
+    public void manyassignTaskAfterStart() throws Exception {
+
         Broker broker = new Broker(new MemoryCommitLog());
         broker.start();
 
@@ -271,7 +266,7 @@ public class JVMWorkerTest {
 
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
-        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
         WorkerStatusListener listener = new WorkerStatusListener() {
 
             @Override
