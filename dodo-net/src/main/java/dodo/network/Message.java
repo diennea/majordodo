@@ -19,21 +19,135 @@
  */
 package dodo.network;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 /**
- * Message
+ * A message (from broker to worker or from worker to broker)
  *
  * @author enrico.olivelli
  */
-public class Message {
+public final class Message {
 
-    public final long messageId;
-    public final int messageType;
-    public final Object payload;
+    public static Message WORKER_SHUTDOWN(String workerProcessId) {
+        return new Message(workerProcessId, TYPE_WORKER_SHUTDOWN, null);
+    }
 
-    public Message(long messageId, int messageType, Object payload) {
+    public static Message TYPE_TASK_ASSIGNED(String workerProcessId, Map<String, Object> taskParameters) {
+        return new Message(workerProcessId, TYPE_TASK_ASSIGNED, taskParameters);
+    }
+
+    public static Message KILL_WORKER(String workerProcessId) {
+        return new Message(workerProcessId, TYPE_KILL_WORKER, null);
+    }
+
+    public static Message ERROR(String workerProcessId, Throwable error) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("error", error);
+        StringWriter writer = new StringWriter();
+        error.printStackTrace(new PrintWriter(writer));
+        params.put("stackTrace", writer.toString());
+        return new Message(workerProcessId, TYPE_ERROR, params);
+    }
+
+    public static Message ACK(String workerProcessId) {
+        return new Message(workerProcessId, TYPE_ACK, null);
+    }
+
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, Map<String, Integer> maximumThreadPerTag, String location, Set<Long> actualRunningTasks) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("workerId", workerId);
+        params.put("processId", processId);
+        params.put("maximumThreadPerTag", maximumThreadPerTag);
+        params.put("actualRunningTasks", actualRunningTasks);
+        params.put("location", location);
+        return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
+    }
+
+    public static Message TASK_FINISHED(String processId, long taskId, String finalStatus, Map<String, Object> results, Throwable error) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("taskid", taskId);
+        params.put("processId", processId);
+        params.put("status", finalStatus);
+        params.put("results", results);
+        if (error != null) {
+            StringWriter r = new StringWriter();
+            PrintWriter t = new PrintWriter(r);
+            error.printStackTrace(t);
+            params.put("error", r.toString());
+        }
+        return new Message(processId, TYPE_TASK_FINISHED, params);
+    }
+
+    public final String workerProcessId;
+    public final int type;
+    public final Map<String, Object> parameters;
+    public String messageId;
+    public String replyMessageId;
+
+    @Override
+    public String toString() {
+        if (replyMessageId != null) {
+            return typeToString(type) + ", parameters=" + parameters + ", id=" + messageId + ", replyMessageId=" + replyMessageId;
+        } else {
+            return typeToString(type) + ", parameters=" + parameters + ", id=" + messageId;
+        }
+    }
+
+    public static final int TYPE_TASK_FINISHED = 1;
+    public static final int TYPE_KILL_WORKER = 2;
+    public static final int TYPE_ERROR = 3;
+    public static final int TYPE_ACK = 4;
+    public static final int TYPE_WORKER_SHUTDOWN = 5;
+    public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
+    public static final int TYPE_TASK_ASSIGNED = 7;
+
+    public static String typeToString(int type) {
+        switch (type) {
+            case TYPE_TASK_FINISHED:
+                return "TYPE_TASK_FINISHED";
+            case TYPE_KILL_WORKER:
+                return "TYPE_KILL_WORKER";
+            case TYPE_ERROR:
+                return "TYPE_ERROR";
+            case TYPE_ACK:
+                return "TYPE_ACK";
+            case TYPE_WORKER_SHUTDOWN:
+                return "TYPE_WORKER_SHUTDOWN";
+            case TYPE_WORKER_CONNECTION_REQUEST:
+                return "TYPE_WORKER_CONNECTION_REQUEST";
+            case TYPE_TASK_ASSIGNED:
+                return "TYPE_TASK_ASSIGNED";
+            default:
+                return "?" + type;
+        }
+    }
+
+    public Message(String workerProcessId, int type, Map<String, Object> parameters) {
+        this.workerProcessId = workerProcessId;
+        this.type = type;
+        this.parameters = parameters;
+    }
+
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public Message setMessageId(String messageId) {
         this.messageId = messageId;
-        this.messageType = messageType;
-        this.payload = payload;
+        return this;
+    }
+
+    public String getReplyMessageId() {
+        return replyMessageId;
+    }
+
+    public Message setReplyMessageId(String replyMessageId) {
+        this.replyMessageId = replyMessageId;
+        return this;
     }
 
 }

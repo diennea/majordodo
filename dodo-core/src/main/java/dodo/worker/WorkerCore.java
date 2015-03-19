@@ -19,6 +19,10 @@
  */
 package dodo.worker;
 
+import dodo.network.BrokerRejectedConnectionException;
+import dodo.network.BrokerNotAvailableException;
+import dodo.network.BrokerLocator;
+import dodo.network.ConnectionRequestInfo;
 import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorFactory;
 import dodo.executors.TaskExecutorStatus;
@@ -28,6 +32,7 @@ import dodo.network.Message;
 import dodo.network.SendResultCallback;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,7 +45,7 @@ import java.util.logging.Logger;
  *
  * @author enrico.olivelli
  */
-public class WorkerCore implements InboundMessagesReceiver {
+public class WorkerCore implements InboundMessagesReceiver, ConnectionRequestInfo {
 
     private final ExecutorService threadpool;
     private final String processId;
@@ -68,6 +73,11 @@ public class WorkerCore implements InboundMessagesReceiver {
 
     public Map<Long, Object> getRunningTasks() {
         return runningTasks;
+    }
+
+    @Override
+    public Set<Long> getRunningTaskIds() {
+        return runningTasks.keySet();
     }
 
     public TaskExecutorFactory getExecutorFactory() {
@@ -207,7 +217,7 @@ public class WorkerCore implements InboundMessagesReceiver {
     private void connect() throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
         System.out.println("[WORKER] connecting");
         disconnect();
-        channel = brokerLocator.connect(this);
+        channel = brokerLocator.connect(this, this);
         System.out.println("[WORKER] connected, channel:" + channel);
         listener.connectionEvent("connected", this);
     }

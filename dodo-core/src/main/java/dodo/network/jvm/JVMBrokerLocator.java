@@ -17,12 +17,18 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.network.jvm;
 
+import dodo.network.BrokerLocator;
 import dodo.network.Channel;
+import dodo.network.ConnectionRequestInfo;
+import dodo.network.InboundMessagesReceiver;
 import dodo.network.Message;
 import dodo.network.jvm.JVMChannel;
 import dodo.task.Broker;
+import dodo.network.BrokerNotAvailableException;
+import dodo.network.BrokerRejectedConnectionException;
+import dodo.worker.BrokerSideConnection;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -39,7 +45,7 @@ public class JVMBrokerLocator implements BrokerLocator {
     }
 
     @Override
-    public Channel connect(WorkerCore worker) throws InterruptedException, BrokerRejectedConnectionException, BrokerNotAvailableException {
+    public Channel connect(InboundMessagesReceiver worker, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerRejectedConnectionException, BrokerNotAvailableException {
         if (!broker.isRunning()) {
             throw new BrokerNotAvailableException(new Exception("embedded broker is not running"));
         }
@@ -53,7 +59,7 @@ public class JVMBrokerLocator implements BrokerLocator {
 
         broker.getAcceptor().registerConnection(connection);
 
-        Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(worker.getWorkerId(), worker.getProcessId(), worker.getMaximumThreadPerTag(), worker.getLocation(),worker.getRunningTasks().keySet());
+        Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getMaximumThreadPerTag(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);
             if (connectionResponse.type == Message.TYPE_ACK) {

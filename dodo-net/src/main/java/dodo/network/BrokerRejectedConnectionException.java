@@ -19,22 +19,14 @@
  */
 package dodo.network;
 
-import io.netty.util.Attribute;
-
 /**
- * Transport
+ * Broker rejected connection attempt
+ *
  * @author enrico.olivelli
  */
-public class Transport  {
+public class BrokerRejectedConnectionException extends Exception {
 
-    public void exceptionCaught(Throwable cause) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public BrokerRejectedConnectionException(String message) {
+        super(message);
     }
-
-    public void messageReceived(Message message) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    
-     
 }

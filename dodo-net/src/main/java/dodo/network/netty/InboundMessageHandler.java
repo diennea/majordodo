@@ -20,7 +20,6 @@
 package dodo.network.netty;
 
 import dodo.network.Message;
-import dodo.network.Transport;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.AttributeKey;
@@ -32,23 +31,22 @@ import io.netty.util.AttributeKey;
  */
 public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 
-    private final static AttributeKey<Transport> transport = new AttributeKey<Transport>("transport");
-
+//    private final static AttributeKey<Transport> transport = new AttributeKey<Transport>("transport");
     public InboundMessageHandler() {
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        Transport transport = ctx.channel().attr(transport);
-        transport.exceptionCaught(cause);
-        ctx.close();
+//        Transport transport = ctx.channel().attr(transport);
+//        transport.exceptionCaught(cause);
+//        ctx.close();
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) { // (2)
-        Message message = (Message) msg;
-        Transport transport = ctx.channel().attr(transport);
-        transport.messageReceived(message);
+//        Message message = (Message) msg;
+//        Transport transport = ctx.channel().attr(transport);
+//        transport.messageReceived(message);
     }
 
 }

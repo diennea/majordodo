@@ -17,18 +17,26 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.network;
 
-import dodo.network.Channel;
-import java.util.concurrent.BrokenBarrierException;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Locates the current broker
+ * Information for the current worker process
  *
  * @author enrico.olivelli
  */
-public interface BrokerLocator {
+public interface ConnectionRequestInfo {
 
-    public Channel connect(WorkerCore aThis) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
+    Set<Long> getRunningTaskIds();
+
+    String getWorkerId();
+
+    String getProcessId();
+
+    Map<String, Integer> getMaximumThreadPerTag();
+
+    String getLocation();
 
 }

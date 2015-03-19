@@ -21,8 +21,7 @@ package dodo.task;
 
 import dodo.clustering.MemoryCommitLog;
 import dodo.executors.TaskExecutor;
-import dodo.executors.TaskExecutorFactory;
-import dodo.worker.JVMBrokerLocator;
+import dodo.network.jvm.JVMBrokerLocator;
 import dodo.worker.WorkerCore;
 import dodo.worker.WorkerStatusListener;
 import java.util.ArrayList;

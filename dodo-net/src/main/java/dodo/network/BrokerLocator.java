@@ -17,20 +17,15 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.network;
 
 /**
- * No Broker is avilable
+ * Locates the current broker
  *
  * @author enrico.olivelli
  */
-public class BrokerNotAvailableException extends Exception {
+public interface BrokerLocator {
 
-    public BrokerNotAvailableException() {
-    }
-
-    public BrokerNotAvailableException(Throwable cause) {
-        super(cause);
-    }
+    public Channel connect(InboundMessagesReceiver messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
 
 }

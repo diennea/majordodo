@@ -7,6 +7,7 @@
     <packaging>pom</packaging>
     <name>Dodo</name>
     <modules>
+        <module>./dodo-net</module>
         <module>./dodo-core</module>
     </modules>
     <properties>

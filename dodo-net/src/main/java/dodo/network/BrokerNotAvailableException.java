@@ -17,16 +17,20 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.network;
 
 /**
- * Broker rejected connection attempt
+ * No Broker is avilable
  *
  * @author enrico.olivelli
  */
-public class BrokerRejectedConnectionException extends Exception {
+public class BrokerNotAvailableException extends Exception {
 
-    public BrokerRejectedConnectionException(String message) {
-        super(message);
+    public BrokerNotAvailableException() {
     }
+
+    public BrokerNotAvailableException(Throwable cause) {
+        super(cause);
+    }
+
 }
