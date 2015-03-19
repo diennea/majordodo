@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Core of the worker inside the JVM
@@ -53,14 +55,27 @@ public class WorkerCore implements InboundMessagesReceiver {
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
-    private Map<String, TaskExecutorFactory> factoryExecutors = new HashMap<>();
+
+    private static final class NotImplementedTaskExecutorFactory implements TaskExecutorFactory {
+
+        @Override
+        public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
+            return new TaskExecutor();
+        }
+
+    };
+    private TaskExecutorFactory executorFactory = new NotImplementedTaskExecutorFactory();
 
     public Map<Long, Object> getRunningTasks() {
         return runningTasks;
     }
 
-    public void registerTaskExecutorFactor(String taskType, TaskExecutorFactory factory) {
-        factoryExecutors.put(taskType, factory);
+    public TaskExecutorFactory getExecutorFactory() {
+        return executorFactory;
+    }
+
+    public void setExecutorFactory(TaskExecutorFactory executorFactory) {
+        this.executorFactory = executorFactory;
     }
 
     public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<String, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener) {
@@ -74,7 +89,7 @@ public class WorkerCore implements InboundMessagesReceiver {
 
             @Override
             public Thread newThread(Runnable r) {
-                return new Thread(r, "dodo-worker-thread");
+                return new Thread(r, "dodo-worker-thread-" + workerId);
             }
         });
         this.processId = processId;
@@ -82,7 +97,7 @@ public class WorkerCore implements InboundMessagesReceiver {
         this.location = location;
         this.maximumThreadPerTag = maximumThreadPerTag;
         this.brokerLocator = brokerLocator;
-        this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager");
+        this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
     }
 
     public void start() {
@@ -138,21 +153,15 @@ public class WorkerCore implements InboundMessagesReceiver {
 
     public void stop() {
         stopped = true;
+        try {
+            coreThread.join();
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     }
 
     TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
-        TaskExecutorFactory factory = this.factoryExecutors.get(taskType);
-        if (factory == null) {
-            return new TaskExecutor() {
-
-                @Override
-                public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                    throw new Exception("factory for type " + taskType + " is not registered on this worker");
-                }
-
-            };
-        }
-        return factory.createTaskExecutor(parameters);
+        return executorFactory.createTaskExecutor(taskType, parameters);
     }
 
     private class ConnectionManager implements Runnable {

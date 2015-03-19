@@ -25,7 +25,9 @@ import dodo.executors.TaskExecutorFactory;
 import dodo.worker.JVMBrokerLocator;
 import dodo.worker.WorkerCore;
 import dodo.worker.WorkerStatusListener;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -33,9 +35,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.SimpleFormatter;
 import static org.junit.Assert.assertTrue;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -51,7 +54,7 @@ public class JVMWorkerTest {
         broker.start();
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
-        CountDownLatch taskExecuted = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(1);
         WorkerStatusListener listener = new WorkerStatusListener() {
 
             @Override
@@ -61,8 +64,7 @@ public class JVMWorkerTest {
                 }
                 if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
                     disconnectedLatch.countDown();
-                }
-                System.out.println("connectionEvent:" + event);
+                }                
             }
 
         };
@@ -72,30 +74,22 @@ public class JVMWorkerTest {
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
-                return new TaskExecutor() {
-
-                    @Override
-                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
-                        results.put("res1", "myvalue");
-                        taskExecuted.countDown();
-                    }
-
-                };
+            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                results.put("res1", "myvalue");
+                allTaskExecuted.countDown();
             }
+
         });
 
         Map<String, Object> taskParams = new HashMap<>();
         taskParams.put("param1", "value1");
         taskParams.put("param2", "value2");
-        long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
-        System.out.println("taskId: " + taskId);
+        long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);        
 
-        assertTrue(taskExecuted.await(30, TimeUnit.SECONDS));
+        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         core.stop();
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
@@ -112,8 +106,7 @@ public class JVMWorkerTest {
             Map<String, Object> taskParams = new HashMap<>();
             taskParams.put("param1", "value1");
             taskParams.put("param2", "value2");
-            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
-            System.out.println("taskId: " + taskId);
+            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);            
             todo.add(taskId);
         }
 
@@ -129,36 +122,28 @@ public class JVMWorkerTest {
                 }
                 if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
                     disconnectedLatch.countDown();
-                }
-                System.out.println("connectionEvent:" + event);
+                }                
             }
 
         };
         Map<String, Integer> tags = new HashMap<>();
         tags.put("tag1", 1);
         WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
-        core.start();
-        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
-                return new TaskExecutor() {
-
-                    @Override
-                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
-                        results.put("res1", "myvalue");
-                        allTaskExecuted.countDown();
-                        long taskid = (Long) parameters.get("taskid");
-                        todo.remove(taskid);
-                    }
-
-                };
+            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                results.put("res1", "myvalue");
+                allTaskExecuted.countDown();
+                long taskid = (Long) parameters.get("taskid");
+                todo.remove(taskid);
+                System.out.println("executeTask:"+parameters);
             }
-        });
 
+        });
+        core.start();
+        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         core.stop();
@@ -183,8 +168,7 @@ public class JVMWorkerTest {
             Map<String, Object> taskParams = new HashMap<>();
             taskParams.put("param1", "value1");
             taskParams.put("param2", "value2");
-            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
-            System.out.println("taskId: " + taskId);
+            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);            
             todo.add(taskId);
         }
 
@@ -200,35 +184,27 @@ public class JVMWorkerTest {
                 }
                 if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
                     disconnectedLatch.countDown();
-                }
-                System.out.println("connectionEvent:" + event);
+                }                
             }
 
         };
         Map<String, Integer> tags = new HashMap<>();
         tags.put("tag1", 10);
         WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
-        core.start();
-        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
-                return new TaskExecutor() {
-
-                    @Override
-                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
-                        results.put("res1", "myvalue");
-                        allTaskExecuted.countDown();
-                        long taskid = (Long) parameters.get("taskid");
-                        todo.remove(taskid);
-                    }
-
-                };
+            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                results.put("res1", "myvalue");
+                allTaskExecuted.countDown();
+                long taskid = (Long) parameters.get("taskid");
+                todo.remove(taskid);
             }
+
         });
+        core.start();
+        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -238,12 +214,35 @@ public class JVMWorkerTest {
         assertTrue(todo.isEmpty());
     }
 
-    @BeforeClass
-    public static void setupLogger() throws Exception {
+    @Before
+    public void setupLogger() throws Exception {
+        Level level = Level.ALL;
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
+                e.printStackTrace();
+            }
+        });
         java.util.logging.LogManager.getLogManager().reset();
         ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
+        ch.setLevel(level);
+        SimpleFormatter f = new SimpleFormatter() {
+
+            @Override
+            public synchronized String format(LogRecord record) {
+                if (record.getThrown() != null) {
+                    return super.format(record);
+                } else {
+                    return record.getThreadID() + " - " + record.getLoggerName() + " - " + java.text.MessageFormat.format(record.getMessage(), record.getParameters()) + "\r\n";
+                }
+            }
+
+        };
+
+        ch.setFormatter(f);
+        java.util.logging.Logger.getLogger("").setLevel(level);
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
@@ -259,8 +258,7 @@ public class JVMWorkerTest {
             Map<String, Object> taskParams = new HashMap<>();
             taskParams.put("param1", "value1");
             taskParams.put("param2", "value2");
-            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
-            System.out.println("taskId: " + taskId);
+            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);            
             todo.add(taskId);
         }
 
@@ -276,39 +274,99 @@ public class JVMWorkerTest {
                 }
                 if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
                     disconnectedLatch.countDown();
-                }
-                System.out.println("connectionEvent:" + event);
+                }                
             }
 
         };
         Map<String, Integer> tags = new HashMap<>();
         tags.put("tag1", 1);
         WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, new JVMBrokerLocator(broker), listener);
-        core.start();
-        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        core.registerTaskExecutorFactor("mytasktype", new TaskExecutorFactory() {
+        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public TaskExecutor createTaskExecutor(Map<String, Object> parameters) {
-                return new TaskExecutor() {
-
-                    @Override
-                    public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                        System.out.println("[WORKER] executeTask:" + parameters + " results=" + results);
-                        results.put("res1", "myvalue");
-                        allTaskExecuted.countDown();
-                        long taskid = (Long) parameters.get("taskid");
-                        todo.remove(taskid);
-                    }
-
-                };
+            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                results.put("res1", "myvalue");
+                allTaskExecuted.countDown();
+                long taskid = (Long) parameters.get("taskid");
+                todo.remove(taskid);
             }
-        });
 
+        });
+        core.start();
+        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         core.stop();
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
+
+    @Test
+    public void multipleWorkers() throws Exception {
+
+        Broker broker = new Broker(new MemoryCommitLog());
+        broker.start();
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        for (int i = 0; i < 100; i++) {
+            Map<String, Object> taskParams = new HashMap<>();
+            taskParams.put("param1", "value1");
+            taskParams.put("param2", "value2");
+            long taskId = broker.getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);            
+            todo.add(taskId);
+        }
+
+        CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
+        // launch 10 workers
+        List<WorkerCore> cores = new ArrayList<>();
+        final int numWorkers = 2;
+        CountDownLatch disconnectedLatch = new CountDownLatch(numWorkers);
+        for (int i = 0; i < numWorkers; i++) {
+            String workerId = "tester" + i;
+            String workerProcessId = "tester" + i + "_" + System.nanoTime();
+            CountDownLatch connectedLatch = new CountDownLatch(1);
+
+            WorkerStatusListener listener = new WorkerStatusListener() {
+
+                @Override
+                public void connectionEvent(String event, WorkerCore core) {
+                    if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                        connectedLatch.countDown();
+                    }
+                    if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                        disconnectedLatch.countDown();
+                    }
+                }
+
+            };
+            Map<String, Integer> tags = new HashMap<>();
+            tags.put("tag1", 1);
+            WorkerCore core = new WorkerCore(10, workerProcessId, workerId, "localhost", tags, new JVMBrokerLocator(broker), listener);
+            cores.add(core);
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
+                    results.put("res1", "myvalue");
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+        }
+
+        assertTrue(allTaskExecuted.await(300, TimeUnit.SECONDS));
+
+        for (WorkerCore core : cores) {
+            core.stop();
+        }
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
         assertTrue(todo.isEmpty());

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -80,8 +81,9 @@ public class Workers {
                         man.wakeUp();
                     });
                 }
-            } catch (InterruptedException exit) {
+            } catch (Throwable exit) {
                 // exiting loop
+                exit.printStackTrace();
             }
         }
     }

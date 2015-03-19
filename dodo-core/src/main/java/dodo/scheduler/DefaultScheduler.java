@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -83,7 +84,7 @@ public class DefaultScheduler extends Scheduler {
             LOGGER.log(Level.FINE, "taskSubmitted {0}, pending workers: {1}", new Object[]{tag, workers});
             if (workers != null && !workers.isEmpty()) {
                 PendingWorker w = workers.remove(0);
-                wakeUpOnTaskFinished(w.workerId, tag);
+                slotAvailable(w.workerId, tag);
             }
         });
 
@@ -96,7 +97,9 @@ public class DefaultScheduler extends Scheduler {
 
     @Override
     public void workerConnected(String workerId, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
+
         Map<String, Integer> remainingTasksPerTag = new HashMap<>(maximumNumberOfTasksPerTag);
+        LOGGER.log(Level.INFO, "workerConnected {0}, maximumNumberOfTasksPerTag {1}, actualRunningTasks={2}", new Object[]{workerId, maximumNumberOfTasksPerTag, actualRunningTasks});
         for (long taskId : actualRunningTasks) {
             Task task = broker.getBrokerStatus().getTask(taskId);
             if (task != null) {
@@ -113,7 +116,6 @@ public class DefaultScheduler extends Scheduler {
                 }
             }
         }
-
         maximumNumberOfTasksPerTag.forEach((tag, max) -> {
             for (int i = 0; i < max; i++) {
                 slotAvailable(workerId, tag);
@@ -143,7 +145,7 @@ public class DefaultScheduler extends Scheduler {
             }
 
             if (!done) {
-                LOGGER.log(Level.INFO, "wakeUpOnTaskFinished {0} tag {1} -> NO TASK", new Object[]{workerId, tag});
+                LOGGER.log(Level.INFO, "slotAvailable {0} tag {1} -> NO TASK", new Object[]{workerId, tag});
                 // put the request in a queue
                 List<PendingWorker> workers = pendingWorkersByTag.get(tag);
                 if (workers == null) {
@@ -151,7 +153,7 @@ public class DefaultScheduler extends Scheduler {
                     pendingWorkersByTag.put(tag, workers);
                 }
                 PendingWorker w = new PendingWorker(workerId, tag);
-                LOGGER.log(Level.INFO, "pending {0}", w);
+                LOGGER.log(Level.INFO, "slotAvailable pending {0}", w);
                 workers.add(w);
             }
         });

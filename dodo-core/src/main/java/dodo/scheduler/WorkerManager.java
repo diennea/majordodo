@@ -97,7 +97,7 @@ public class WorkerManager {
         }
 
         if (connection != null) {
-            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.remove();
+            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
             LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
             if (taskToBeSubmitted != null) {
                 Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
