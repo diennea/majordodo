@@ -49,16 +49,14 @@ public class JVMBrokerLocator implements BrokerLocator {
         if (!broker.isRunning()) {
             throw new BrokerNotAvailableException(new Exception("embedded broker is not running"));
         }
-        JVMChannel workerSide = new JVMChannel(worker);
-        BrokerSideConnection connection = new BrokerSideConnection();
-        JVMChannel brokerSide = new JVMChannel(connection);
+        JVMChannel workerSide = new JVMChannel();
+        workerSide.setMessagesReceiver(worker);
+        JVMChannel brokerSide = new JVMChannel();
+        BrokerSideConnection connection = broker.getAcceptor().createConnection(brokerSide);
         brokerSide.setOtherSide(workerSide);
         workerSide.setOtherSide(brokerSide);
         connection.setChannel(brokerSide);
         connection.setBroker(broker);
-
-        broker.getAcceptor().registerConnection(connection);
-
         Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getMaximumThreadPerTag(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);

@@ -17,12 +17,15 @@
  under the License.
 
  */
-package dodo.network.jvm;
+package dodo.network.netty;
 
 import dodo.network.Channel;
 import dodo.network.Message;
 import dodo.network.ReplyCallback;
 import dodo.network.SendResultCallback;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,24 +33,23 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * In-JVM comunications
+ * Channel implemented on Netty
  *
  * @author enrico.olivelli
  */
-public class JVMChannel extends Channel {
+public class NettyChannel extends Channel {
 
-    private volatile boolean active = false;
+    SocketChannel socket;
+
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
-    private JVMChannel otherSide;
     private final ExecutorService callbackexecutor = Executors.newCachedThreadPool();
-    private final ExecutorService executionserializer = Executors.newFixedThreadPool(1);
 
-    public JVMChannel() {
+    public NettyChannel(SocketChannel socket) {
+        this.socket = socket;
     }
 
-    private void receiveMessageFromPeer(Message message) {
-//        System.out.println("receiveMessageFromPeer:" + message);
+    public void messageReceived(Message message) {
         if (message.getReplyMessageId() != null) {
             handleReply(message);
         } else {
@@ -60,30 +62,9 @@ public class JVMChannel extends Channel {
         }
     }
 
-    public void setOtherSide(JVMChannel brokerSide) {
-        this.otherSide = brokerSide;
-        this.active = true;
-    }
-
-    @Override
-    public void sendOneWayMessage(Message message, SendResultCallback callback) {
-//        System.out.println("[JVM] sendOneWayMessage " + message);
-        if (!active) {
-            return;
-        }
-        executionserializer.submit(() -> {
-            otherSide.receiveMessageFromPeer(message);
-            callbackexecutor.submit(() -> {
-                callback.messageSent(message, null);
-            });
-        });
-
-    }
-
     private void handleReply(Message anwermessage) {
 
         final ReplyCallback callback = pendingReplyMessages.get(anwermessage.getReplyMessageId());
-//        System.out.println("[JVM] handleReply " + anwermessage + " callback=" + callback + ", pendingReplyMessages=" + pendingReplyMessages);
         if (callback != null) {
             pendingReplyMessages.remove(anwermessage.getReplyMessageId());
             Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
@@ -96,39 +77,74 @@ public class JVMChannel extends Channel {
     }
 
     @Override
-    public void sendReplyMessage(Message inAnswerTo, Message message) {
-        executionserializer.submit(() -> {
-//        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
-            if (!active) {
-                System.out.println("[JVM] channel not active, discarding reply message " + message);
-                return;
+    public void sendOneWayMessage(Message message, SendResultCallback callback) {
+        this.socket.write(message).addListener(new GenericFutureListener() {
+
+            @Override
+            public void operationComplete(Future future) throws Exception {
+                if (future.isSuccess()) {
+                    callback.messageSent(message, null);
+                } else {
+                    callback.messageSent(message, future.cause());
+                }
             }
-            message.setMessageId(UUID.randomUUID().toString());
-            message.setReplyMessageId(inAnswerTo.messageId);
-            otherSide.receiveMessageFromPeer(message);
+
+        });
+    }
+
+    @Override
+    public void sendReplyMessage(Message inAnswerTo, Message message) {
+
+        if (this.socket == null) {
+            System.out.println("channel not active, discarding reply message " + message);
+            return;
+        }
+        message.setMessageId(UUID.randomUUID().toString());
+        message.setReplyMessageId(inAnswerTo.messageId);
+        sendOneWayMessage(message, new SendResultCallback() {
+
+            @Override
+            public void messageSent(Message originalMessage, Throwable error) {
+                if (error != null) {
+                    error.printStackTrace();
+                }
+            }
         });
     }
 
     @Override
     public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
-        executionserializer.submit(() -> {
-//        System.out.println("[JVM] sendMessageWithAsyncReply " + message);
-            if (!active) {
-                callbackexecutor.submit(() -> {
-                    callback.replyReceived(message, null, new Exception("connection is not active"));
-                });
-                return;
+
+        if (this.socket == null) {
+            callbackexecutor.submit(() -> {
+                callback.replyReceived(message, null, new Exception("connection is not active"));
+            });
+            return;
+        }
+        message.setMessageId(UUID.randomUUID().toString());
+        pendingReplyMessages.put(message.getMessageId(), callback);
+        pendingReplyMessagesSource.put(message.getMessageId(), message);
+        sendOneWayMessage(message, new SendResultCallback() {
+
+            @Override
+            public void messageSent(Message originalMessage, Throwable error) {
+                if (error != null) {
+                    error.printStackTrace();
+                }
             }
-            message.setMessageId(UUID.randomUUID().toString());
-            pendingReplyMessages.put(message.getMessageId(), callback);
-            pendingReplyMessagesSource.put(message.getMessageId(), message);
-            otherSide.receiveMessageFromPeer(message);
         });
     }
 
     @Override
     public void close() {
-        active = false;
+        try {
+            socket.close().await();
+        } catch (InterruptedException err) {
+            Thread.currentThread().interrupt();
+        } finally {
+            socket = null;
+        }
+
         pendingReplyMessages.forEach((key, callback) -> {
             callbackexecutor.submit(() -> {
                 Message original = pendingReplyMessagesSource.remove(key);
@@ -138,11 +154,6 @@ public class JVMChannel extends Channel {
             });
         });
         pendingReplyMessages.clear();
-
-        if (otherSide.active) {
-            otherSide.close();
-        }
-        executionserializer.shutdown();
         callbackexecutor.shutdown();
     }
 

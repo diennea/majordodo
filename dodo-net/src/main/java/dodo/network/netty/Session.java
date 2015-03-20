@@ -19,33 +19,10 @@
  */
 package dodo.network.netty;
 
-import dodo.network.Message;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-
 /**
- * Handles messages
  *
  * @author enrico.olivelli
  */
-public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
-
-    NettyChannel session;
-
-    public InboundMessageHandler(NettyChannel session) {
-        this.session = session;
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        Message message = (Message) msg;
-        session.messageReceived(message);
-    }
-
+public class Session {
+    
 }

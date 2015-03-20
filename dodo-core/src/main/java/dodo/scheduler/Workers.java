@@ -75,7 +75,7 @@ public class Workers {
             try {
                 while (!stop) {
                     synchronized (waitForEvent) {
-                        waitForEvent.wait(1000);
+                        waitForEvent.wait(500);
                     }
                     nodeManagers.values().stream().forEach((man) -> {
                         man.wakeUp();

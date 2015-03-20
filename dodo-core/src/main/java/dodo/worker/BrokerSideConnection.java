@@ -28,6 +28,7 @@ import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
 import dodo.clustering.Task;
 import dodo.network.SendResultCallback;
+import dodo.network.ServerSideConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author enrico.olivelli
  */
-public class BrokerSideConnection implements InboundMessagesReceiver {
+public class BrokerSideConnection implements InboundMessagesReceiver, ServerSideConnection {
 
     private String workerId;
     private String workerProcessId;

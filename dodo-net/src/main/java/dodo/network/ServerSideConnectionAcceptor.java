@@ -17,35 +17,16 @@
  under the License.
 
  */
-package dodo.network.netty;
-
-import dodo.network.Message;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+package dodo.network;
 
 /**
- * Handles messages
+ * Interface implemented by the broker in order to accept/register incoming
+ * connections
  *
  * @author enrico.olivelli
  */
-public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
+public interface ServerSideConnectionAcceptor<T extends ServerSideConnection> {
 
-    NettyChannel session;
-
-    public InboundMessageHandler(NettyChannel session) {
-        this.session = session;
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        Message message = (Message) msg;
-        session.messageReceived(message);
-    }
+    public T createConnection(Channel channel);
 
 }

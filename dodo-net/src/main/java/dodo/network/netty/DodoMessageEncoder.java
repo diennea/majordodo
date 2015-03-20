@@ -20,32 +20,30 @@
 package dodo.network.netty;
 
 import dodo.network.Message;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
+import java.nio.charset.StandardCharsets;
 
 /**
- * Handles messages
+ * Encodes messages to bytes
  *
  * @author enrico.olivelli
  */
-public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
+public class DodoMessageEncoder extends ChannelOutboundHandlerAdapter {
 
-    NettyChannel session;
-
-    public InboundMessageHandler(NettyChannel session) {
-        this.session = session;
+    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+        Message m = (Message) msg;
+        ByteBuf encoded = ctx.alloc().buffer();
+        DodoMessageUtils.encodeMessage(encoded, m);
+        ctx.writeAndFlush(encoded, promise);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         cause.printStackTrace();
-        ctx.close();
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        Message message = (Message) msg;
-        session.messageReceived(message);
     }
 
 }

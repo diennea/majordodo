@@ -30,9 +30,16 @@ import java.util.concurrent.TimeoutException;
  */
 public abstract class Channel {
 
-    protected final InboundMessagesReceiver messagesReceiver;
+    protected InboundMessagesReceiver messagesReceiver;
 
-    public Channel(InboundMessagesReceiver messagesReceiver) {
+    public Channel() {
+    }
+
+    public InboundMessagesReceiver getMessagesReceiver() {
+        return messagesReceiver;
+    }
+
+    public void setMessagesReceiver(InboundMessagesReceiver messagesReceiver) {
         this.messagesReceiver = messagesReceiver;
     }
 

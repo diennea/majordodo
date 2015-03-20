@@ -19,33 +19,26 @@
  */
 package dodo.network.netty;
 
-import dodo.network.Message;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 
 /**
- * Handles messages
+ * Decodes bytes to messages
  *
  * @author enrico.olivelli
  */
-public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
-
-    NettyChannel session;
-
-    public InboundMessageHandler(NettyChannel session) {
-        this.session = session;
-    }
+public class DodoMessageDecoder extends ChannelInboundHandlerAdapter {
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
-    }
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        ByteBuf in = (ByteBuf) msg;
+        try {
+            ctx.fireChannelRead(DodoMessageUtils.decodeMessage(in));
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        Message message = (Message) msg;
-        session.messageReceived(message);
     }
-
 }

@@ -19,11 +19,9 @@
  */
 package dodo.worker;
 
-import dodo.clustering.StatusEdit;
-import dodo.network.Message;
-import dodo.scheduler.WorkerManager;
+import dodo.network.Channel;
+import dodo.network.ServerSideConnectionAcceptor;
 import dodo.task.Broker;
-import dodo.task.InvalidActionException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author enrico.olivelli
  */
-public class BrokerServerEndpoint {
+public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<BrokerSideConnection> {
 
     private final Map<String, BrokerSideConnection> workersConnections = new ConcurrentHashMap<>();
     private final Map<Long, BrokerSideConnection> connections = new ConcurrentHashMap<>();
@@ -43,10 +41,14 @@ public class BrokerServerEndpoint {
         this.broker = broker;
     }
 
-    public void registerConnection(BrokerSideConnection connection) {
+    @Override
+    public BrokerSideConnection createConnection(Channel channel) {
+        BrokerSideConnection connection = new BrokerSideConnection();
+        channel.setMessagesReceiver(connection);
         connections.put(connection.getConnectionId(), connection);
+        return connection;
     }
-
+    
     public Map<String, BrokerSideConnection> getWorkersConnections() {
         return workersConnections;
     }
@@ -54,7 +56,5 @@ public class BrokerServerEndpoint {
     public Map<Long, BrokerSideConnection> getConnections() {
         return connections;
     }
-    
-    
 
 }
