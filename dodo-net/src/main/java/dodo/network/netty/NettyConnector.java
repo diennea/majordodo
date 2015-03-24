@@ -99,6 +99,9 @@ public class NettyConnector implements AutoCloseable {
     }
 
     public void close() {
+        if (channel != null) {
+            channel.close();
+        }
         if (socketchannel != null) {
             try {
                 socketchannel.close();
