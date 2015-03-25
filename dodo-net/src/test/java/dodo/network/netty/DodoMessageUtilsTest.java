@@ -23,7 +23,9 @@ import dodo.network.Message;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -39,6 +41,18 @@ public class DodoMessageUtilsTest {
         pp.put("1", 1);
         pp.put("2", 2L);
         pp.put("3", "3");
+        Set<Object> runningTasks = new HashSet<>();
+        runningTasks.add(null);
+        runningTasks.add(Integer.valueOf(1));
+        runningTasks.add(Long.valueOf(1));
+        runningTasks.add("teststring");
+        pp.put("4", runningTasks);
+        Map<String, Object> tags = new HashMap<>();
+        tags.put("a", null);
+        tags.put("b", Integer.valueOf(1));
+        tags.put("c", Long.valueOf(1));
+        tags.put("d", "teststring");
+        pp.put("5", tags);
         Message m = new Message("a", Message.TYPE_KILL_WORKER, pp);
         m.replyMessageId = "b";
         m.messageId = "c";
@@ -51,6 +65,8 @@ public class DodoMessageUtilsTest {
         assertEquals(read.parameters.get("1"), m.parameters.get("1"));
         assertEquals(read.parameters.get("2"), m.parameters.get("2"));
         assertEquals(read.parameters.get("3"), m.parameters.get("3"));
+        assertEquals(read.parameters.get("4"), m.parameters.get("4"));
+        assertEquals(read.parameters.get("5"), m.parameters.get("5"));
     }
 
 }

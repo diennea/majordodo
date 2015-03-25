@@ -23,7 +23,10 @@ import dodo.network.Message;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  *
@@ -38,6 +41,12 @@ public class DodoMessageUtils {
     private static final byte OPCODE_STRING_PARAMETER = 3;
     private static final byte OPCODE_INT_PARAMETER = 4;
     private static final byte OPCODE_LONG_PARAMETER = 5;
+    private static final byte OPCODE_SET_PARAMETER = 6;
+    private static final byte OPCODE_MAP_PARAMETER = 7;
+    private static final byte OPCODE_STRING_VALUE = 8;
+    private static final byte OPCODE_LONG_VALUE = 9;
+    private static final byte OPCODE_INT_VALUE = 10;
+    private static final byte OPCODE_NULL_VALUE = 11;
 
     private static void writeUTF8String(ByteBuf buf, String s) {
         byte[] asarray = s.getBytes(StandardCharsets.UTF_8);
@@ -80,6 +89,51 @@ public class DodoMessageUtils {
                         encoded.writeByte(OPCODE_INT_PARAMETER);
                         writeUTF8String(encoded, p.getKey());
                         encoded.writeInt((Integer) value);
+                    } else if (value instanceof Set) {
+                        Set set = (Set) value;
+                        encoded.writeByte(OPCODE_SET_PARAMETER);
+                        writeUTF8String(encoded, p.getKey());
+                        encoded.writeInt(set.size());
+                        for (Object o : set) {
+                            if (o == null) {
+                                encoded.writeByte(OPCODE_NULL_VALUE);
+                            } else if (o instanceof String) {
+                                encoded.writeByte(OPCODE_STRING_VALUE);
+                                writeUTF8String(encoded, (String) o);
+                            } else if (o instanceof Integer) {
+                                encoded.writeByte(OPCODE_INT_VALUE);
+                                encoded.writeInt((Integer) o);
+                            } else if (o instanceof Long) {
+                                encoded.writeByte(OPCODE_LONG_VALUE);
+                                encoded.writeLong((Long) o);
+                            } else {
+                                throw new RuntimeException("unsupported class " + o.getClass());
+                            }
+                        }
+                    } else if (value instanceof Map) {
+                        Map set = (Map) value;
+                        encoded.writeByte(OPCODE_MAP_PARAMETER);
+                        writeUTF8String(encoded, p.getKey());
+                        encoded.writeInt(set.size());
+                        for (Map.Entry entry : (Iterable<Entry>) set.entrySet()) {
+                            String key = entry.getKey() + "";
+                            Object o = entry.getValue();
+                            writeUTF8String(encoded, key);
+                            if (o == null) {
+                                encoded.writeByte(OPCODE_NULL_VALUE);
+                            } else if (o instanceof String) {
+                                encoded.writeByte(OPCODE_STRING_VALUE);
+                                writeUTF8String(encoded, (String) o);
+                            } else if (o instanceof Integer) {
+                                encoded.writeByte(OPCODE_INT_VALUE);
+                                encoded.writeInt((Integer) o);
+                            } else if (o instanceof Long) {
+                                encoded.writeByte(OPCODE_LONG_VALUE);
+                                encoded.writeLong((Long) o);
+                            } else {
+                                throw new RuntimeException("unsupported class " + o.getClass());
+                            }
+                        }
                     } else {
                         throw new RuntimeException("bad parameter type key= " + p.getKey() + ", class =" + p.getClass());
                     }
@@ -126,6 +180,61 @@ public class DodoMessageUtils {
                     params.put(key, p);
                 }
                 break;
+                case OPCODE_SET_PARAMETER: {
+                    String key = readUTF8String(encoded);
+                    int len = encoded.readInt();
+                    Set<Object> ret = new HashSet<>();
+                    for (int i = 0; i < len; i++) {
+                        byte _opcode = encoded.readByte();
+                        switch (_opcode) {
+                            case OPCODE_NULL_VALUE:
+                                ret.add(null);
+                                break;
+                            case OPCODE_STRING_VALUE:
+                                ret.add(readUTF8String(encoded));
+                                break;
+                            case OPCODE_INT_VALUE:
+                                ret.add(encoded.readInt());
+                                break;
+                            case OPCODE_LONG_VALUE:
+                                ret.add(encoded.readLong());
+                                break;
+                            default:
+                                throw new RuntimeException("invalid opcode: " + _opcode);
+                        }
+                    }
+                    params.put(key, ret);
+                    break;
+                }
+                case OPCODE_MAP_PARAMETER: {
+                    String key = readUTF8String(encoded);
+                    int len = encoded.readInt();
+                    Map<String, Object> ret = new HashMap<>();
+                    for (int i = 0; i < len; i++) {
+                        String mapkey = readUTF8String(encoded);
+                        byte _opcode = encoded.readByte();
+                        switch (_opcode) {
+                            case OPCODE_NULL_VALUE:
+                                ret.put(mapkey, null);
+                                break;
+                            case OPCODE_STRING_VALUE:
+                                ret.put(mapkey, readUTF8String(encoded));
+                                break;
+                            case OPCODE_INT_VALUE:
+                                ret.put(mapkey, encoded.readInt());
+                                break;
+                            case OPCODE_LONG_VALUE:
+                                ret.put(mapkey, encoded.readLong());
+                                break;
+                            default:
+                                throw new RuntimeException("invalid opcode: " + _opcode);
+                        }
+                    }
+                    params.put(key, ret);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("invalid opcode: " + opcode);
             }
         }
         Message m = new Message(workerProcessId, type, params);
