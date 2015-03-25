@@ -20,7 +20,7 @@
 package dodo.network.netty;
 
 import dodo.network.Channel;
-import dodo.network.InboundMessagesReceiver;
+import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.network.ReplyCallback;
 import dodo.network.ServerSideConnection;
@@ -97,7 +97,6 @@ public class NettyChannelTest {
 //        java.util.logging.Logger.getLogger("").setLevel(level);
 //        java.util.logging.Logger.getLogger("").addHandler(ch);
 //    }
-
     @Test
     public void clientServerTest() throws Exception {
         List<Message> receivedFromServer = new CopyOnWriteArrayList<Message>();
@@ -105,16 +104,22 @@ public class NettyChannelTest {
 
             @Override
             public ServerSideConnection createConnection(final Channel channel) {
-                channel.setMessagesReceiver(new InboundMessagesReceiver() {
+                channel.setMessagesReceiver(new ChannelEventListener() {
 
                     @Override
                     public void messageReceived(Message message) {
                         receivedFromServer.add(message);
                         channel.sendReplyMessage(message, Message.ACK("ok"));
                     }
+
+                    @Override
+                    public void channelClosed() {
+                    }
+
                 });
                 return new SimpleServerSideConnection();
             }
+
         };
         BlockingQueue<Message> receivedFromClient = new ArrayBlockingQueue<>(100);
         BlockingQueue<Message> replyReceivedFromClient = new ArrayBlockingQueue<>(100);
@@ -122,11 +127,15 @@ public class NettyChannelTest {
         try (NettyChannelAcceptor server = new NettyChannelAcceptor(acceptor);) {
             server.setHost("0.0.0.0");
             server.start();
-            try (NettyConnector connector = new NettyConnector(new InboundMessagesReceiver() {
+            try (NettyConnector connector = new NettyConnector(new ChannelEventListener() {
 
                 @Override
                 public void messageReceived(Message message) {
                     receivedFromClient.add(message);
+                }
+
+                @Override
+                public void channelClosed() {
                 }
             })) {
                 NettyChannel channel = connector.connect();
@@ -138,7 +147,7 @@ public class NettyChannelTest {
                         replyReceivedFromClient.add(message);
                     }
                 });
-                Message response = replyReceivedFromClient.take();                
+                Message response = replyReceivedFromClient.take();
                 assertEquals(Message.TYPE_ACK, response.type);
             }
         }

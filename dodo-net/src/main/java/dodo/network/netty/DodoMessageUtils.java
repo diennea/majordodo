@@ -135,7 +135,7 @@ public class DodoMessageUtils {
                             }
                         }
                     } else {
-                        throw new RuntimeException("bad parameter type key= " + p.getKey() + ", class =" + p.getClass());
+                        throw new RuntimeException("bad parameter type key= " + p.getKey() + ", class =" + value.getClass());
                     }
                 }
             }

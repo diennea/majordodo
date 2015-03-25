@@ -26,6 +26,6 @@ package dodo.network;
  */
 public interface BrokerLocator {
 
-    public Channel connect(InboundMessagesReceiver messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
+    public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
 
 }

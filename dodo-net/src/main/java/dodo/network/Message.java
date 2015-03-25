@@ -46,7 +46,7 @@ public final class Message {
 
     public static Message ERROR(String workerProcessId, Throwable error) {
         Map<String, Object> params = new HashMap<>();
-        params.put("error", error);
+        params.put("error", error+"");
         StringWriter writer = new StringWriter();
         error.printStackTrace(new PrintWriter(writer));
         params.put("stackTrace", writer.toString());

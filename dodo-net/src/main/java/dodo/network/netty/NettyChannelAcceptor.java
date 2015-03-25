@@ -68,8 +68,6 @@ public class NettyChannelAcceptor implements AutoCloseable {
         this.acceptor = acceptor;
     }
 
-    private static final int MAX_FRAME_LENGTH = 10 * 1024 * 1024;
-
     public void start() throws Exception {
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();

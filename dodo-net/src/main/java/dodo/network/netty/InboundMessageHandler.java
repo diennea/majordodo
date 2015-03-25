@@ -40,8 +40,14 @@ public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         cause.printStackTrace();
         ctx.close();
+        session.exceptionCaught(cause);
     }
 
+    @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        session.channeldClosed();
+    }
+        
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         Message message = (Message) msg;

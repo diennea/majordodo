@@ -27,7 +27,7 @@ import dodo.executors.TaskExecutor;
 import dodo.executors.TaskExecutorFactory;
 import dodo.executors.TaskExecutorStatus;
 import dodo.network.Channel;
-import dodo.network.InboundMessagesReceiver;
+import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.network.SendResultCallback;
 import java.util.HashMap;
@@ -45,7 +45,7 @@ import java.util.logging.Logger;
  *
  * @author enrico.olivelli
  */
-public class WorkerCore implements InboundMessagesReceiver, ConnectionRequestInfo {
+public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
 
     private final ExecutorService threadpool;
     private final String processId;
@@ -124,6 +124,12 @@ public class WorkerCore implements InboundMessagesReceiver, ConnectionRequestInf
         if (message.type == Message.TYPE_TASK_ASSIGNED) {
             startTask(message);
         }
+    }
+
+    @Override
+    public void channelClosed() {
+        System.out.println("[BROKER->WORKER] channel closed");
+        disconnect();
     }
 
     private void startTask(Message message) {
@@ -215,6 +221,13 @@ public class WorkerCore implements InboundMessagesReceiver, ConnectionRequestInf
     }
 
     private void connect() throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
+        if (channel != null) {
+            try {
+                channel.close();
+            } finally {
+                channel = null;
+            }
+        }
         System.out.println("[WORKER] connecting");
         disconnect();
         channel = brokerLocator.connect(this, this);
@@ -224,8 +237,12 @@ public class WorkerCore implements InboundMessagesReceiver, ConnectionRequestInf
 
     private void disconnect() {
         if (channel != null) {
-            channel.close();
-            listener.connectionEvent("disconnected", this);
+            try {
+                channel.close();
+                listener.connectionEvent("disconnected", this);
+            } finally {
+                channel = null;
+            }
         }
 
     }

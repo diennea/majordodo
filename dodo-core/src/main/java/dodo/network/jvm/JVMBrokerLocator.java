@@ -22,7 +22,7 @@ package dodo.network.jvm;
 import dodo.network.BrokerLocator;
 import dodo.network.Channel;
 import dodo.network.ConnectionRequestInfo;
-import dodo.network.InboundMessagesReceiver;
+import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.network.jvm.JVMChannel;
 import dodo.task.Broker;
@@ -45,7 +45,7 @@ public class JVMBrokerLocator implements BrokerLocator {
     }
 
     @Override
-    public Channel connect(InboundMessagesReceiver worker, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerRejectedConnectionException, BrokerNotAvailableException {
+    public Channel connect(ChannelEventListener worker, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerRejectedConnectionException, BrokerNotAvailableException {
         if (!broker.isRunning()) {
             throw new BrokerNotAvailableException(new Exception("embedded broker is not running"));
         }

@@ -130,9 +130,8 @@ public class DefaultScheduler extends Scheduler {
 
     private void slotAvailable(String workerId, String tag) {
         threadpool.submit(() -> {
-            LOGGER.log(Level.INFO, "slotAvailable {0} tag {1}", new Object[]{workerId, tag});
+            LOGGER.log(Level.FINEST, "slotAvailable {0} tag {1}", new Object[]{workerId, tag});
             Task task = getNewTask(tag);
-            LOGGER.log(Level.INFO, "slotAvailable {0} tag {1} -> new task", new Object[]{workerId, tag, task});
             boolean done = false;
             if (task != null) {
                 try {
@@ -145,7 +144,7 @@ public class DefaultScheduler extends Scheduler {
             }
 
             if (!done) {
-                LOGGER.log(Level.INFO, "slotAvailable {0} tag {1} -> NO TASK", new Object[]{workerId, tag});
+                //LOGGER.log(Level.INFO, "slotAvailable {0} tag {1} -> NO TASK", new Object[]{workerId, tag});
                 // put the request in a queue
                 List<PendingWorker> workers = pendingWorkersByTag.get(tag);
                 if (workers == null) {
@@ -153,7 +152,7 @@ public class DefaultScheduler extends Scheduler {
                     pendingWorkersByTag.put(tag, workers);
                 }
                 PendingWorker w = new PendingWorker(workerId, tag);
-                LOGGER.log(Level.INFO, "slotAvailable pending {0}", w);
+                //LOGGER.log(Level.INFO, "slotAvailable pending {0}", w);
                 workers.add(w);
             }
         });

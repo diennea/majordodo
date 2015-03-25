@@ -17,15 +17,24 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.network;
 
 /**
- * Log of mofications, this is the base of the replication system
+ * Receives inbound messages from the channel
  *
  * @author enrico.olivelli
  */
-public abstract class StatusChangesLog {
+public interface ChannelEventListener {
 
-    public abstract LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException;
-
+    /**
+     * Called for each message which is not a direct reply to another message.
+     * Any unchecked Exception thrown by this method will cause the channel to
+     * be closed
+     *
+     * @param message
+     */
+    public void messageReceived(Message message);
+    
+    public void channelClosed();
+    
 }

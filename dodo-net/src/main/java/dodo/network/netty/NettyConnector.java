@@ -19,7 +19,7 @@
  */
 package dodo.network.netty;
 
-import dodo.network.InboundMessagesReceiver;
+import dodo.network.ChannelEventListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -58,9 +58,9 @@ public class NettyConnector implements AutoCloseable {
         return host;
     }
 
-    private InboundMessagesReceiver receiver;
+    private ChannelEventListener receiver;
 
-    public NettyConnector(InboundMessagesReceiver receiver) {
+    public NettyConnector(ChannelEventListener receiver) {
         this.receiver = receiver;
     }
 

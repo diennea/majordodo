@@ -18,7 +18,7 @@ public class NettyBrokerLocator implements BrokerLocator  {
     }
 
     @Override
-    public Channel connect(InboundMessagesReceiver messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
+    public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
         boolean ok = false;
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {

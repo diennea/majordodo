@@ -22,7 +22,7 @@ package dodo.worker;
 import dodo.callbacks.SimpleCallback;
 import dodo.clustering.LogNotAvailableException;
 import dodo.network.Channel;
-import dodo.network.InboundMessagesReceiver;
+import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
@@ -33,13 +33,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Connection to a node from the broker side
  *
  * @author enrico.olivelli
  */
-public class BrokerSideConnection implements InboundMessagesReceiver, ServerSideConnection {
+public class BrokerSideConnection implements ChannelEventListener, ServerSideConnection {
+
+    private static final Logger LOGGER = Logger.getLogger(BrokerSideConnection.class.getName());
 
     private String workerId;
     private String workerProcessId;
@@ -120,7 +124,7 @@ public class BrokerSideConnection implements InboundMessagesReceiver, ServerSide
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();
-        System.out.println("[BROKER] receivedMessageFromWorker " + message);
+        LOGGER.log(Level.FINE, "[BROKER] receivedMessageFromWorker " + message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
@@ -141,6 +145,7 @@ public class BrokerSideConnection implements InboundMessagesReceiver, ServerSide
                 this.location = (String) message.parameters.get("location");
                 this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumThreadPerTag");
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
+                LOGGER.log(Level.FINE, "registering connection workerId:" + workerId + ", processId=" + workerProcessId + ", location=" + location + " maximumThreadPerTag=" + maximumNumberOfTasks);
                 BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
                 if (actual != null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
@@ -176,6 +181,12 @@ public class BrokerSideConnection implements InboundMessagesReceiver, ServerSide
 
     }
 
+    @Override
+    public void channelClosed() {
+        channel = null;
+        broker.getAcceptor().connectionClosed(this);
+    }
+
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex) {
         channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
     }
@@ -204,9 +215,32 @@ public class BrokerSideConnection implements InboundMessagesReceiver, ServerSide
             public void messageSent(Message originalMessage, Throwable error) {
                 // any way we are closing the channel
                 channel.close();
+                broker.getAcceptor().connectionClosed(BrokerSideConnection.this);
             }
         });
 
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 43 * hash + (int) (this.connectionId ^ (this.connectionId >>> 32));
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final BrokerSideConnection other = (BrokerSideConnection) obj;
+        if (this.connectionId != other.connectionId) {
+            return false;
+        }
+        return true;
     }
 
 }

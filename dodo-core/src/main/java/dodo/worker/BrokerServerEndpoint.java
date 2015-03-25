@@ -44,17 +44,24 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
     @Override
     public BrokerSideConnection createConnection(Channel channel) {
         BrokerSideConnection connection = new BrokerSideConnection();
+        connection.setBroker(broker);
+        connection.setChannel(channel);
         channel.setMessagesReceiver(connection);
         connections.put(connection.getConnectionId(), connection);
         return connection;
     }
-    
+
     public Map<String, BrokerSideConnection> getWorkersConnections() {
         return workersConnections;
     }
 
     public Map<Long, BrokerSideConnection> getConnections() {
         return connections;
+    }
+
+    void connectionClosed(BrokerSideConnection con) {
+        connections.remove(con.getConnectionId());
+        workersConnections.remove(con.getWorkerId(), con); // to ber remove only if the connection is the current connection
     }
 
 }

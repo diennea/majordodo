@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
  */
 public class NettyChannel extends Channel {
 
-    SocketChannel socket;
+    volatile SocketChannel socket;
 
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
@@ -155,6 +155,24 @@ public class NettyChannel extends Channel {
         });
         pendingReplyMessages.clear();
         callbackexecutor.shutdown();
+    }
+
+    void exceptionCaught(Throwable cause) {
+        callbackexecutor.submit(() -> {
+            if (this.messagesReceiver != null) {
+                this.messagesReceiver.channelClosed();
+            }
+        });
+    }
+
+    void channeldClosed() {
+        if (socket != null) {
+            callbackexecutor.submit(() -> {
+                if (this.messagesReceiver != null) {
+                    this.messagesReceiver.channelClosed();
+                }
+            });
+        }
     }
 
 }
