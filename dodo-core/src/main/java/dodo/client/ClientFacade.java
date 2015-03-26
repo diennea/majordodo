@@ -19,13 +19,11 @@
  */
 package dodo.client;
 
-import dodo.clustering.StatusEdit;
-import dodo.clustering.ActionResult;
+import dodo.clustering.Task;
 import dodo.task.Broker;
-import dodo.task.InvalidActionException;
+import dodo.task.TaskStatusView;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Client API
@@ -43,4 +41,13 @@ public class ClientFacade {
     public long submitTask(String taskType, String queueName, String queueTag, Map<String, Object> parameters) throws Exception {
         return broker.addTask(queueName, taskType, queueTag, parameters);
     }
+
+    public List<TaskStatusView> getAllTasks() {
+        return broker.getBrokerStatus().getAllTasks();
+    }
+
+    public TaskStatusView getTask(long taskid) {
+        return broker.getBrokerStatus().getTaskStatus(taskid);
+    }
+
 }

@@ -56,7 +56,7 @@ public final class StatusEdit {
     public int taskStatus;
     public long timestamp;
     public String queueTag;
-    public Map<String, Object> taskParameter;
+    public Map<String, Object> contextualValuescontextualValues;
     public String workerId;
     public String workerLocation;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
@@ -64,7 +64,7 @@ public final class StatusEdit {
 
     @Override
     public String toString() {
-        return "Action{" + "actionType=" + typeToString(editType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + taskParameter + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
+        return "Action{" + "actionType=" + typeToString(editType) + ", queueName=" + queueName + ", taskType=" + taskType + ", taskId=" + taskId + ", queueTag=" + queueTag + ", taskParameter=" + contextualValuescontextualValues + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ",actualRunningTasks=" + actualRunningTasks + "}";
     }
 
     public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
@@ -81,7 +81,7 @@ public final class StatusEdit {
         action.workerId = workerId;
         action.taskId = taskId;
         action.taskStatus = finalStatus;
-        action.taskParameter = results;
+        action.contextualValuescontextualValues = results;
         return action;
     }
 
@@ -90,7 +90,7 @@ public final class StatusEdit {
         action.editType = ACTION_TYPE_ADD_TASK;
         action.queueName = queueName;
         action.taskType = taskType;
-        action.taskParameter = taskParameter;
+        action.contextualValuescontextualValues = taskParameter;
         action.queueTag = queueTag;
         return action;
     }

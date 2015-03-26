@@ -55,6 +55,7 @@ public class Task {
 
     private String type;
     private Map<String, Object> parameters;
+    private Map<String, Object> results;
     private long createdTimestamp;
     private int status;
     private long taskId;
@@ -99,6 +100,14 @@ public class Task {
 
     public void setParameters(Map<String, Object> parameters) {
         this.parameters = parameters;
+    }
+
+    public Map<String, Object> getResults() {
+        return results;
+    }
+
+    public void setResults(Map<String, Object> results) {
+        this.results = results;
     }
 
     public long getCreatedTimestamp() {

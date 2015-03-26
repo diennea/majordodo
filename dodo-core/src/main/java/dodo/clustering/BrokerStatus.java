@@ -21,6 +21,7 @@ package dodo.clustering;
 
 import dodo.scheduler.WorkerStatus;
 import dodo.task.TaskStatusView;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,39 @@ public class BrokerStatus {
 
     public BrokerStatus(StatusChangesLog log) {
         this.log = log;
+    }
+
+    public List<TaskStatusView> getAllTasks() {
+        List<TaskStatusView> result = new ArrayList<>();
+        lock.readLock().lock();
+        try {
+            tasks.values().stream().forEach((k) -> {
+                result.add(createTaskStatusView(k));
+            });
+        } finally {
+            lock.readLock().unlock();
+        }
+        return result;
+    }
+
+    private TaskStatusView createTaskStatusView(Task task) {
+        if (task == null) {
+            return null;
+        }
+        TaskStatusView s = new TaskStatusView();
+        s.setCreatedTimestamp(task.getCreatedTimestamp());
+        s.setQueueName(task.getQueueName());
+        s.setWorkerId(task.getWorkerId());
+        s.setStatus(task.getStatus());
+        s.setTaskId(task.getTaskId());
+        s.setParameters(task.getParameters()); // should be cloned
+        if (task.getResults() != null) {
+            s.setResults(task.getResults()); // should be cloned
+        } else {
+            s.setResults(new HashMap<>());
+        }
+
+        return s;
     }
 
     public static final class ModificationResult {
@@ -110,6 +144,7 @@ public class BrokerStatus {
                         throw new IllegalStateException("bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
                     task.setStatus(Task.STATUS_FINISHED);
+                    task.setResults(edit.contextualValuescontextualValues);
                     return new ModificationResult(num, -1);
                 }
                 case StatusEdit.ACTION_TYPE_ADD_TASK: {
@@ -117,7 +152,7 @@ public class BrokerStatus {
                     Task task = new Task();
                     task.setTaskId(newId);
                     task.setCreatedTimestamp(System.currentTimeMillis());
-                    task.setParameters(edit.taskParameter);
+                    task.setParameters(edit.contextualValuescontextualValues);
                     task.setType(edit.taskType);
                     task.setQueueName(edit.queueName);
                     task.setStatus(Task.STATUS_WAITING);
@@ -197,7 +232,7 @@ public class BrokerStatus {
         }
     }
 
-    public TaskStatusView getTaskStatus(long taskId) throws InterruptedException {
+    public TaskStatusView getTaskStatus(long taskId) {
         Task task;
         lock.readLock().lock();
         try {
@@ -205,15 +240,8 @@ public class BrokerStatus {
         } finally {
             lock.readLock().unlock();
         }
-        if (task == null) {
-            return null;
-        }
-        TaskStatusView s = new TaskStatusView();
-        s.setCreatedTimestamp(task.getCreatedTimestamp());
-        s.setQueueName(task.getQueueName());
-        s.setWorkerId(task.getWorkerId());
-        s.setStatus(task.getStatus());
-        s.setTaskId(task.getTaskId());
+
+        TaskStatusView s = createTaskStatusView(task);
         return s;
     }
 

@@ -19,6 +19,8 @@
  */
 package dodo.task;
 
+import java.util.Map;
+
 /**
  * Visible status of a task for clients
  *
@@ -31,6 +33,24 @@ public class TaskStatusView {
     private String queueName;
     private String workerId;
     private long createdTimestamp;
+    private Map<String, Object> parameters;
+    private Map<String, Object> results;
+
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
+
+    public void setParameters(Map<String, Object> parameters) {
+        this.parameters = parameters;
+    }
+
+    public Map<String, Object> getResults() {
+        return results;
+    }
+
+    public void setResults(Map<String, Object> results) {
+        this.results = results;
+    }
 
     public String getWorkerId() {
         return workerId;
