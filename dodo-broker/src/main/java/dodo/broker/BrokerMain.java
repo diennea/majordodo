@@ -11,17 +11,65 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.server.ServerProperties;
 
 /**
  * Created by enrico.olivelli on 23/03/2015.
  */
-public class BrokerMain {
+public class BrokerMain implements AutoCloseable {
 
-    public static Broker broker;
-    
+    private Broker broker;
+    private Server httpserver;
+    private NettyChannelAcceptor server;
+    private final Properties configuration;
+
+    public static BrokerMain runningInstance;
+
+    public Broker getBroker() {
+        return broker;
+    }
+
+    public BrokerMain(Properties configuration) {
+        this.configuration = configuration;
+    }
+
+    @Override
+    public void close() {
+        if (server != null) {
+            try {
+                server.close();
+            } catch (Exception ex) {
+                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                server = null;
+            }
+        }
+        if (httpserver != null) {
+            try {
+                httpserver.stop();
+                httpserver.join();
+            } catch (Exception ex) {
+                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                httpserver = null;
+            }
+        }
+        if (broker != null) {
+            try {
+                broker.stop();
+            } catch (Exception ex) {
+                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                broker = null;
+            }
+        }
+    }
+
     public static void main(String... args) {
         try {
             Properties configuration = new Properties();
@@ -34,48 +82,47 @@ public class BrokerMain {
             try (FileReader reader = new FileReader(configFile)) {
                 configuration.load(reader);
             }
-            String host = configuration.getProperty("broker.host", "127.0.0.1");
-            int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
-            String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
-            int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
-            System.out.println("Starting MajorDodo Broker");
-            broker = new Broker(new MemoryCommitLog());
-            broker.start();
-            System.out.println("Listening for workers connections on " + host + ":" + port);
-            try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
-                server.setHost(host);
-                server.setPort(port);
-                server.start();
-                Server httpserver = new Server(new InetSocketAddress(httphost, httpport));
-                ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-                httpserver.setHandler(context);
-                context.setContextPath("/");
-                ServletHolder jerseyServlet = context.addServlet(
-                        org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-                jerseyServlet.setInitOrder(0);
-
-                // Tells the Jersey Servlet which REST service/class to load.
-                jerseyServlet.setInitParameter("jersey.config.server.provider.classnames",
-                        HttpAPI.class.getCanonicalName());
-
-                System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport);
-                httpserver.start();
-                try {
-                    httpserver.join();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                    System.out.println("Type ENTER to exit...");
-                    reader.readLine();
-                    System.out.println("Shitting down");
-                } finally {
-                    httpserver.stop();
-                }
+            try (BrokerMain main = new BrokerMain(configuration)) {
+                main.start();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                System.out.println("Type ENTER to exit...");
+                reader.readLine();
+                System.out.println("Shutting down");
             }
-            broker.stop();
-
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-            System.exit(0);
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
+    }
+
+    public void start() throws Exception {
+        runningInstance = this;
+        String host = configuration.getProperty("broker.host", "127.0.0.1");
+        int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
+        String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
+        int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
+
+        System.out.println("Starting MajorDodo Broker");
+        broker = new Broker(new MemoryCommitLog());
+
+        broker.start();
+
+        System.out.println("Listening for workers connections on " + host + ":" + port);
+        this.server = new NettyChannelAcceptor(broker.getAcceptor());
+        server.setHost(host);
+        server.setPort(port);
+        server.start();
+
+        httpserver = new Server(new InetSocketAddress(httphost, httpport));
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        httpserver.setHandler(context);
+        ServletHolder jerseyServlet = new ServletHolder(new org.glassfish.jersey.servlet.ServletContainer());
+        jerseyServlet.setInitParameter(ServerProperties.PROVIDER_CLASSNAMES, HttpAPI.class.getCanonicalName());
+        jerseyServlet.setInitOrder(0);
+        context.addServlet(jerseyServlet, "/*");
+        System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport);
+        httpserver.start();
+        System.out.println("Broker starter");
     }
 
 }

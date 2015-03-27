@@ -7,8 +7,9 @@ package dodo.broker.http;
 
 import javax.ws.rs.Path;
 
-@Path("/api")
+@Path("/")
 public class HttpAPI {
+
 
     @Path("/client")
     public ClientAPI client() {

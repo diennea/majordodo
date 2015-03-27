@@ -10,9 +10,16 @@ import dodo.clustering.Task;
 import dodo.task.TaskStatusView;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response.Status;
 
 /**
  * Client API
@@ -22,9 +29,10 @@ import javax.ws.rs.PathParam;
 public class ClientAPI {
 
     @GET
-    @Path("/all")
+    @Path("/tasks")
+    @Produces(MediaType.APPLICATION_JSON)
     public List<ClientTask> getAllTasks() {
-        List<TaskStatusView> tasks = BrokerMain.broker.getClient().getAllTasks();
+        List<TaskStatusView> tasks = BrokerMain.runningInstance.getBroker().getClient().getAllTasks();
         List<ClientTask> result = new ArrayList<>();
         for (TaskStatusView t : tasks) {
             result.add(createClientTask(t));
@@ -32,11 +40,38 @@ public class ClientAPI {
         return result;
     }
 
-    @GET
-    @Path("/{id}")
-    public ClientTask getTasks(@PathParam("id") long id) {
-        TaskStatusView task = BrokerMain.broker.getClient().getTask(id);
+    @POST
+    @Path("/tasks")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public ClientTask submitTask(Map<String, Object> data) {
+        System.out.println("submitTask:" + data);
+        String type = (String) data.get("type");
+        String queueName = (String) data.get("queueName");
+        String tag = (String) data.get("tag");
+        if (type == null || type.isEmpty()) {
+            throw new WebApplicationException(Status.BAD_REQUEST);
+        }
+        Map<String, Object> parameters = null;
+        try {
+            parameters = (Map< String, Object>) data.get("parameters");
+        } catch (Throwable t) {
+            throw new WebApplicationException(Status.BAD_REQUEST);
+        }
+        try {
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, queueName, queueName, parameters);
+            return getTask(taskId);
+        } catch (Exception err) {
+            err.printStackTrace();
+            throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
+        }
+    }
 
+    @GET
+    @Path("/tasks/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ClientTask getTask(@PathParam("id") long id) {
+        TaskStatusView task = BrokerMain.runningInstance.getBroker().getClient().getTask(id);
         return createClientTask(task);
     }
 
