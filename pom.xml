@@ -11,6 +11,7 @@
         <module>./dodo-core</module>
         <module>./dodo-broker</module>
         <module>./dodo-worker</module>
+        <module>./dodo-client</module>
         <module>./dodo-all</module>
     </modules>
     <properties>
