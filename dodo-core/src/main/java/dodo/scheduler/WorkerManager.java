@@ -98,7 +98,7 @@ public class WorkerManager {
         }
 
         if (connection != null) {
-            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();            
+            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
             if (taskToBeSubmitted != null) {
                 LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
                 Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
@@ -137,6 +137,13 @@ public class WorkerManager {
 
     public void taskAssigned(long taskId) {
         taskToBeSubmittedToRemoteWorker.add(taskId);
+    }
+
+    public void deactivateConnection(BrokerSideConnection aThis) {
+        LOGGER.log(Level.INFO, "deactivateConnection {0}", connection);
+        if (this.connection == aThis) {
+            this.connection = null;
+        }
     }
 
 }

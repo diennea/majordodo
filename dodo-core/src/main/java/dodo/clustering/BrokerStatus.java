@@ -123,7 +123,7 @@ public class BrokerStatus {
             default:
                 s = "?"+k.getStatus();
         }
-        res.setProcessId(s);
+        res.setProcessId(k.getProcessId());
         res.setStatus(s);
         return res;
     }

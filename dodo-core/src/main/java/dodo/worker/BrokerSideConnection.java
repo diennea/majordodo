@@ -184,6 +184,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     @Override
     public void channelClosed() {
         channel = null;
+        broker.getWorkers().getWorkerManager(workerId).deactivateConnection(this);
         broker.getAcceptor().connectionClosed(this);
         broker.getWorkers().wakeUp();
     }
