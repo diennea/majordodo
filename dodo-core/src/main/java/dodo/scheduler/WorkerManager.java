@@ -74,6 +74,7 @@ public class WorkerManager {
             }
             if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
                 status.setStatus(WorkerStatus.STATUS_DISCONNECTED);
+                LOGGER.log(Level.FINE, "wakeup {0} -> no connection -> setting STATUS_DISCONNECTED", workerId);
             }
             if (_lastWakeUpDelta > MAX_IDLE_TIME) {
                 status.setStatus(WorkerStatus.STATUS_DEAD);

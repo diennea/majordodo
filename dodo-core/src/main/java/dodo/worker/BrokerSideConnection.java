@@ -185,6 +185,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     public void channelClosed() {
         channel = null;
         broker.getAcceptor().connectionClosed(this);
+        broker.getWorkers().wakeUp();
     }
 
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex) {
@@ -210,14 +211,16 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     }
 
     public void workerDied() {
-        channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
-            @Override
-            public void messageSent(Message originalMessage, Throwable error) {
-                // any way we are closing the channel
-                channel.close();
-                broker.getAcceptor().connectionClosed(BrokerSideConnection.this);
-            }
-        });
+        if (channel != null) {
+            channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
+                @Override
+                public void messageSent(Message originalMessage, Throwable error) {
+                    // any way we are closing the channel
+                    channel.close();
+                    broker.getAcceptor().connectionClosed(BrokerSideConnection.this);
+                }
+            });
+        }
 
     }
 
