@@ -7,7 +7,8 @@ package dodo.broker.http;
 
 import dodo.broker.BrokerMain;
 import dodo.clustering.Task;
-import dodo.task.TaskStatusView;
+import dodo.client.TaskStatusView;
+import dodo.client.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,18 @@ public class ClientAPI {
         List<ClientTask> result = new ArrayList<>();
         for (TaskStatusView t : tasks) {
             result.add(createClientTask(t));
+        }
+        return result;
+    }
+
+    @GET
+    @Path("/workers")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<WorkerStatus> getAllWorkers() {
+        List<WorkerStatusView> tasks = BrokerMain.runningInstance.getBroker().getClient().getAllWorkers();
+        List<WorkerStatus> result = new ArrayList<>();
+        for (WorkerStatusView t : tasks) {
+            result.add(createWorkerStatus(t));
         }
         return result;
     }
@@ -74,9 +87,9 @@ public class ClientAPI {
         TaskStatusView task = BrokerMain.runningInstance.getBroker().getClient().getTask(id);
         return createClientTask(task);
     }
-    
+
     @GET
-    @Path("/version")    
+    @Path("/version")
     public String getVersion() {
         return "1.0";
     }
@@ -113,6 +126,16 @@ public class ClientAPI {
         tt.setResults(t.getResults());
 
         return tt;
+    }
+
+    private WorkerStatus createWorkerStatus(WorkerStatusView t) {
+        WorkerStatus res = new WorkerStatus();
+        res.setId(t.getId());
+        res.setLocation(t.getLocation());
+        res.setProcessId(t.getProcessId());
+        res.setRunningTasks(t.getRunningTasks());
+        res.setStatus(t.getStatus());
+        return res;
     }
 
 }

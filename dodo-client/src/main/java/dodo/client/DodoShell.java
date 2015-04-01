@@ -36,8 +36,12 @@ public class DodoShell {
             return;
         }
         String cmd = split[0];
-        if (cmd.equals("tasks-list")) {
+        if (cmd.equals("tasks")) {
             executeTaskList();
+        } else if (cmd.equals("workers")) {
+            executeWorkersList();
+        } else if (cmd.equals("version")) {
+            executeVersion();
         } else {
             write("error: no such command " + cmd);
         }
@@ -46,6 +50,24 @@ public class DodoShell {
     private void executeTaskList() throws Exception {
         try {
             String result = request("GET", null, "http://" + host + ":" + port + "/client/tasks");
+            write("result:" + result);
+        } catch (Exception err) {
+            err.printStackTrace();
+            write("err:" + err);
+        }
+    }
+    private void executeWorkersList() throws Exception {
+        try {
+            String result = request("GET", null, "http://" + host + ":" + port + "/client/workers");
+            write("result:" + result);
+        } catch (Exception err) {
+            err.printStackTrace();
+            write("err:" + err);
+        }
+    }
+     private void executeVersion() throws Exception {
+        try {
+            String result = request("GET", null, "http://" + host + ":" + port + "/client/version");
             write("result:" + result);
         } catch (Exception err) {
             err.printStackTrace();

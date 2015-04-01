@@ -21,7 +21,6 @@ package dodo.client;
 
 import dodo.clustering.Task;
 import dodo.task.Broker;
-import dodo.task.TaskStatusView;
 import java.util.List;
 import java.util.Map;
 
@@ -44,6 +43,9 @@ public class ClientFacade {
 
     public List<TaskStatusView> getAllTasks() {
         return broker.getBrokerStatus().getAllTasks();
+    }
+    public List<WorkerStatusView> getAllWorkers(){
+        return broker.getBrokerStatus().getAllWorkers();
     }
 
     public TaskStatusView getTask(long taskid) {

@@ -59,6 +59,7 @@ public final class StatusEdit {
     public Map<String, Object> contextualValuescontextualValues;
     public String workerId;
     public String workerLocation;
+    public String workerProcessId;
     public Map<String, Integer> maximumNumberOfTasksPerTag;
     public Set<Long> actualRunningTasks;
 
@@ -95,12 +96,13 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit WORKER_CONNETED(String workerId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) {
+    public static final StatusEdit WORKER_CONNECTED(String workerId, String processid, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) {
         StatusEdit action = new StatusEdit();
         action.editType = ACTION_TYPE_WORKER_CONNECTED;
         action.timestamp = timestamp;
         action.workerId = workerId;
         action.workerLocation = nodeLocation;
+        action.workerProcessId = processid;
         action.maximumNumberOfTasksPerTag = maximumNumberOfTasksPerTag;
         action.actualRunningTasks = actualRunningTasks;
         return action;

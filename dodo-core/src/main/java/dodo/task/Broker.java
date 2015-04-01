@@ -133,8 +133,8 @@ public class Broker {
         }
     }
 
-    public void workerConnected(String workerId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
-        StatusEdit edit = StatusEdit.WORKER_CONNETED(workerId, nodeLocation, maximumNumberOfTasksPerTag, actualRunningTasks, timestamp);
+    public void workerConnected(String workerId, String processId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
+        StatusEdit edit = StatusEdit.WORKER_CONNECTED(workerId, processId, nodeLocation, maximumNumberOfTasksPerTag, actualRunningTasks, timestamp);
         this.brokerStatus.applyModification(edit);
     }
 

@@ -20,7 +20,8 @@
 package dodo.clustering;
 
 import dodo.scheduler.WorkerStatus;
-import dodo.task.TaskStatusView;
+import dodo.client.TaskStatusView;
+import dodo.client.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,17 +45,30 @@ public class BrokerStatus {
 
     public final Map<String, TaskQueue> queues = new HashMap<>();
     private final Map<Long, Task> tasks = new HashMap<>();
-    private final Map<String, WorkerStatus> nodes = new HashMap<>();
+    private final Map<String, WorkerStatus> workers = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final StatusChangesLog log;
 
     public WorkerStatus getWorkerStatus(String workerId) {
-        return nodes.get(workerId);
+        return workers.get(workerId);
     }
 
     public BrokerStatus(StatusChangesLog log) {
         this.log = log;
+    }
+
+    public List<WorkerStatusView> getAllWorkers() {
+        List<WorkerStatusView> result = new ArrayList<>();
+        lock.readLock().lock();
+        try {
+            workers.values().stream().forEach((k) -> {
+                result.add(createWorkerStatusView(k));
+            });
+        } finally {
+            lock.readLock().unlock();
+        }
+        return result;
     }
 
     public List<TaskStatusView> getAllTasks() {
@@ -88,6 +102,30 @@ public class BrokerStatus {
         }
 
         return s;
+    }
+
+    private WorkerStatusView createWorkerStatusView(WorkerStatus k) {
+        WorkerStatusView res = new WorkerStatusView();
+        res.setId(k.getWorkerId());
+        res.setLocation(k.getWorkerLocation());
+        res.setRunningTasks(k.getActualNumberOfTasks().values().stream().mapToInt(i -> i.get()).sum());
+        String s;
+        switch (k.getStatus()) {
+            case WorkerStatus.STATUS_CONNECTED:
+                s = "CONNECTED";
+                break;
+            case WorkerStatus.STATUS_DEAD:
+                s = "DEAD";
+                break;
+            case WorkerStatus.STATUS_DISCONNECTED:
+                s = "DISCONNECTED";
+                break;
+            default:
+                s = "?"+k.getStatus();
+        }
+        res.setProcessId(s);
+        res.setStatus(s);
+        return res;
     }
 
     public static final class ModificationResult {
@@ -170,15 +208,16 @@ public class BrokerStatus {
                     return new ModificationResult(num, newId);
                 }
                 case StatusEdit.ACTION_TYPE_WORKER_CONNECTED: {
-                    WorkerStatus node = nodes.get(edit.workerId);
+                    WorkerStatus node = workers.get(edit.workerId);
                     if (node == null) {
                         node = new WorkerStatus();
                         node.setWorkerId(edit.workerId);
 
-                        nodes.put(edit.workerId, node);
+                        workers.put(edit.workerId, node);
                     }
                     node.setStatus(WorkerStatus.STATUS_CONNECTED);
                     node.setWorkerLocation(edit.workerLocation);
+                    node.setProcessId(edit.workerProcessId);
                     node.setMaximumNumberOfTasks(edit.maximumNumberOfTasksPerTag);
                     node.setLastConnectionTs(edit.timestamp);
                     return new ModificationResult(num, -1);

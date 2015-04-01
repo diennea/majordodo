@@ -38,6 +38,7 @@ public final class WorkerStatus {
     private String workerId;
     private int status;
     private String workerLocation;
+    private String processId;
     private long lastConnectionTs;
     private Map<String, Integer> maximumNumberOfTasks;
     private final Map<String, AtomicInteger> actualNumberOfTasks = new HashMap<>();
@@ -73,6 +74,15 @@ public final class WorkerStatus {
         this.workerId = workerId;
     }
 
+    public String getProcessId() {
+        return processId;
+    }
+
+    public void setProcessId(String processId) {
+        this.processId = processId;
+    }
+
+    
     public String getWorkerLocation() {
         return workerLocation;
     }
