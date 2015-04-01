@@ -11,8 +11,11 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.Properties;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -70,18 +73,24 @@ public class BrokerMain implements AutoCloseable {
         }
     }
 
-    public static void main(String... args) {
+    public static void main(String... args) {        
         try {
             Properties configuration = new Properties();
             File configFile;
             if (args.length > 0) {
                 configFile = new File(args[0]);
+                try (FileReader reader = new FileReader(configFile)) {
+                    configuration.load(reader);
+                }
             } else {
                 configFile = new File("conf/broker.properties");
+                if (configFile.isFile()) {
+                    try (FileReader reader = new FileReader(configFile)) {
+                        configuration.load(reader);
+                    }
+                }
             }
-            try (FileReader reader = new FileReader(configFile)) {
-                configuration.load(reader);
-            }
+
             try (BrokerMain main = new BrokerMain(configuration)) {
                 main.start();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));

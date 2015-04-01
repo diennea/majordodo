@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.SimpleFormatter;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
@@ -18,7 +22,7 @@ import org.junit.Test;
 public class BrokerClientTest {
 
     @Test
-    public void test() throws Exception {
+    public void test() throws Exception {       
         try (BrokerMain main = new BrokerMain(new Properties());) {
             main.start();
             {

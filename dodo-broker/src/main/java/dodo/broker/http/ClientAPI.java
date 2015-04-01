@@ -74,6 +74,12 @@ public class ClientAPI {
         TaskStatusView task = BrokerMain.runningInstance.getBroker().getClient().getTask(id);
         return createClientTask(task);
     }
+    
+    @GET
+    @Path("/version")    
+    public String getVersion() {
+        return "1.0";
+    }
 
     private static ClientTask createClientTask(TaskStatusView t) {
         if (t == null) {
