@@ -5,11 +5,15 @@
  */
 package dodo.client;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import jline.console.ConsoleReader;
+import jline.console.completer.CandidateListCompletionHandler;
+import jline.console.completer.CompletionHandler;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -56,6 +60,7 @@ public class DodoShell {
             write("err:" + err);
         }
     }
+
     private void executeWorkersList() throws Exception {
         try {
             String result = request("GET", null, "http://" + host + ":" + port + "/client/workers");
@@ -65,7 +70,8 @@ public class DodoShell {
             write("err:" + err);
         }
     }
-     private void executeVersion() throws Exception {
+
+    private void executeVersion() throws Exception {
         try {
             String result = request("GET", null, "http://" + host + ":" + port + "/client/version");
             write("result:" + result);
@@ -113,7 +119,9 @@ public class DodoShell {
 
     public void run() throws Exception {
         reader = new ConsoleReader();
-        String line = reader.readLine("admin@\u001B[32m@" + host + ":" + port + "\u001B[0m>");
+        reader.setPrompt("admin@" + ANSIUtils.color(host + ":" + port, ANSIUtils.ANSI_GREEN) + ">");
+
+        String line = reader.readLine();
 
         while (line != null) {
             write("line: " + line + "\r\n");
@@ -121,7 +129,7 @@ public class DodoShell {
                 break;
             }
             runCommand(line);
-            line = reader.readLine("admin@\u001B[32m@" + host + ":" + port + "\u001B[0m>");
+            line = reader.readLine();
         }
     }
 
