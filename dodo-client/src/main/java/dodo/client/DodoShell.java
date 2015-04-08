@@ -5,15 +5,14 @@
  */
 package dodo.client;
 
-import java.io.IOException;
+import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 import jline.console.ConsoleReader;
-import jline.console.completer.CandidateListCompletionHandler;
-import jline.console.completer.CompletionHandler;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -46,6 +45,12 @@ public class DodoShell {
             executeWorkersList();
         } else if (cmd.equals("version")) {
             executeVersion();
+        } else if (cmd.equals("task-run-script")) {
+            if (split.length != 4) {
+                reader.println("usage task-run-script script.groovy QUEUENAME TAG");
+                return;
+            }
+            executeTaskRunScript(split[1], split[2], split[3]);
         } else {
             write("error: no such command " + cmd);
         }
@@ -130,6 +135,25 @@ public class DodoShell {
             }
             runCommand(line);
             line = reader.readLine();
+        }
+    }
+
+    private void executeTaskRunScript(String scriptname, String queuename, String tag) {
+        try {
+            Map<String, Object> taskParams = new HashMap<>();
+            taskParams.put("type", "script");
+            taskParams.put("queueName", queuename);
+            taskParams.put("tag", tag);
+            Map<String, Object> pp = new HashMap<>();
+            File codefile = new File(scriptname);
+            byte[] content = Files.readAllBytes(codefile.toPath());
+            pp.put("code", new String(content, StandardCharsets.UTF_8));
+            taskParams.put("parameters", pp);
+            String result = request("POST", taskParams, "http://" + host + ":" + port + "/client/tasks");
+            write("result:" + result);
+        } catch (Exception err) {
+            err.printStackTrace();
+            write("err:" + err);
         }
     }
 

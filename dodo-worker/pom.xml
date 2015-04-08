@@ -42,7 +42,12 @@
             <artifactId>dodo-net</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+            <version>2.4.1</version>
+            <classifier>indy</classifier>
+        </dependency>
     </dependencies>
 
 </project>

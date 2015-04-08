@@ -1,6 +1,7 @@
 package dodo.worker;
 
 import dodo.clustering.MemoryCommitLog;
+import dodo.executors.TaskExecutorFactory;
 import dodo.network.BrokerLocator;
 import dodo.network.netty.NettyBrokerLocator;
 import dodo.network.netty.NettyChannelAcceptor;
@@ -20,6 +21,7 @@ import java.util.Properties;
  * Created by enrico.olivelli on 24/03/2015.
  */
 public class WorkerMain {
+
     public static void main(String... args) {
         try {
             Properties configuration = new Properties();
@@ -33,35 +35,44 @@ public class WorkerMain {
                 configuration.load(reader);
             }
             // TODO: location with ZK
-            String host = configuration.getProperty("broker.host","127.0.0.1");
+            String host = configuration.getProperty("broker.host", "127.0.0.1");
             int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
 
-            String workerid = configuration.getProperty("worker.id","localhost");
-            int maxthreads = Integer.parseInt(configuration.getProperty("worker.maxthreads","100"));
+            String workerid = configuration.getProperty("worker.id", "localhost");
+            int maxthreads = Integer.parseInt(configuration.getProperty("worker.maxthreads", "100"));
+            String executorFactory = configuration.getProperty("worker.executorfactory", "dodo.worker.DefaultExecutorFactory");
             String processid = ManagementFactory.getRuntimeMXBean().getName();
             String location = InetAddress.getLocalHost().getCanonicalHostName();
             Map<String, Integer> maximumThreadPerTag = new HashMap<>();
+            boolean notag = true;
             for (Object key : configuration.keySet()) {
                 String k = key.toString();
                 if (k.startsWith("tag.")) {
                     String tag = k.substring(4);
-                    int maxThreadPerTag = Integer.parseInt(configuration.getProperty(key+""));
-                    maximumThreadPerTag.put(tag,maxThreadPerTag);
+                    notag = false;
+                    int maxThreadPerTag = Integer.parseInt(configuration.getProperty(key + ""));
+                    maximumThreadPerTag.put(tag, maxThreadPerTag);
                 }
             }
-            BrokerLocator brokerLocator = new NettyBrokerLocator(host,port);
-            System.out.println("Starting MajorDodo Worker, workerid="+workerid);
+            if (notag) {
+                System.out.println("No configuration line tag.xxx found, defaulting to tag 'default', with max threads = 1");
+                maximumThreadPerTag.put("default", 1);
+            }
+            BrokerLocator brokerLocator = new NettyBrokerLocator(host, port);
+            System.out.println("Starting MajorDodo Worker, workerid=" + workerid);
             WorkerStatusListener listener = new WorkerStatusListener() {
                 @Override
                 public void connectionEvent(String event, WorkerCore core) {
-                    System.out.println("connectionEvent:"+event);
+                    System.out.println("connectionEvent:" + event);
                 }
             };
-            WorkerCore workerCore = new WorkerCore(maxthreads,processid,workerid,
-                    location, maximumThreadPerTag,brokerLocator,  listener);
+            WorkerCore workerCore = new WorkerCore(maxthreads, processid, workerid,
+                    location, maximumThreadPerTag, brokerLocator, listener);
+            System.out.println("worker.executorfactory=" + executorFactory);
+            workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
             workerCore.start();
             System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTag:" + maximumThreadPerTag);
-            System.out.println("WorkerID:"+workerid+", processid:"+processid+" location:"+location);
+            System.out.println("WorkerID:" + workerid + ", processid:" + processid + " location:" + location);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Type ENTER to exit...");
             reader.readLine();
