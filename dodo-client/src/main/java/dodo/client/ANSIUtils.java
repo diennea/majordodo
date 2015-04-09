@@ -22,6 +22,6 @@ public class ANSIUtils {
     public static final String ANSI_WHITE = "\u001B[37m";
 
     public static String color(String msg, String color) {
-        return ANSI_WHITE + msg + ANSI_RESET;
+        return color + msg + ANSI_RESET;
     }
 }
