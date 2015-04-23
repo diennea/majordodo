@@ -61,7 +61,7 @@ public class DodoMessageUtils {
         return new String(s, StandardCharsets.UTF_8);
     }
 
-    public static void encodeMessage(ByteBuf encoded, Message m) {
+    public static void encodeMessage(ByteBuf encoded, Message m) {        
         encoded.writeByte(VERSION);
         encoded.writeInt(m.type);
         writeUTF8String(encoded, m.messageId);

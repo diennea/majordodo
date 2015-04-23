@@ -17,18 +17,40 @@
  under the License.
 
  */
-package dodo.network;
+package dodo.task;
+
+import dodo.network.BrokerLocator;
+import dodo.network.jvm.JVMBrokerLocator;
+import dodo.network.netty.NettyBrokerLocator;
+import dodo.network.netty.NettyChannelAcceptor;
+import org.junit.After;
+import org.junit.Before;
 
 /**
- * Locates the current broker
+ * simple tests using real network connector
  *
  * @author enrico.olivelli
  */
-public interface BrokerLocator extends AutoCloseable {
+public class RemoteWorkerTest extends SimpleBrokerSuite {
 
-    public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
+    NettyChannelAcceptor server;
 
     @Override
-    public default void close() {
+    protected BrokerLocator createBrokerLocator() {
+        return new NettyBrokerLocator(server.getHost(), server.getPort());
     }
+
+    @Before
+    public void startServer() throws Exception {
+        server = new NettyChannelAcceptor(broker.getAcceptor());
+        server.start();
+    }
+
+    @After
+    public void stopServer() throws Exception {
+        if (server != null) {
+            server.close();
+        }
+    }
+
 }

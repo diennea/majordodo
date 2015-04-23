@@ -78,10 +78,14 @@ public class NettyChannel extends Channel {
 
     @Override
     public void sendOneWayMessage(Message message, SendResultCallback callback) {
+        if (message.getMessageId() == null) {
+            message.setMessageId(UUID.randomUUID().toString());
+        }
         this.socket.write(message).addListener(new GenericFutureListener() {
 
             @Override
             public void operationComplete(Future future) throws Exception {
+
                 if (future.isSuccess()) {
                     callback.messageSent(message, null);
                 } else {
@@ -94,12 +98,13 @@ public class NettyChannel extends Channel {
 
     @Override
     public void sendReplyMessage(Message inAnswerTo, Message message) {
-
+        if (message.getMessageId() == null) {
+            message.setMessageId(UUID.randomUUID().toString());
+        }
         if (this.socket == null) {
-            System.out.println("channel not active, discarding reply message " + message);
+            System.out.println("DEBUG: channel not active, discarding reply message " + message);
             return;
         }
-        message.setMessageId(UUID.randomUUID().toString());
         message.setReplyMessageId(inAnswerTo.messageId);
         sendOneWayMessage(message, new SendResultCallback() {
 
@@ -114,14 +119,15 @@ public class NettyChannel extends Channel {
 
     @Override
     public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
-
+        if (message.getMessageId() == null) {
+            message.setMessageId(UUID.randomUUID().toString());
+        }
         if (this.socket == null) {
             callbackexecutor.submit(() -> {
                 callback.replyReceived(message, null, new Exception("connection is not active"));
             });
             return;
         }
-        message.setMessageId(UUID.randomUUID().toString());
         pendingReplyMessages.put(message.getMessageId(), callback);
         pendingReplyMessagesSource.put(message.getMessageId(), message);
         sendOneWayMessage(message, new SendResultCallback() {
