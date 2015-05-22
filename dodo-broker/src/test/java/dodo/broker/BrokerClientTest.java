@@ -22,18 +22,14 @@ import org.junit.Test;
 public class BrokerClientTest {
 
     @Test
-    public void test() throws Exception {       
+    public void test() throws Exception {
         try (BrokerMain main = new BrokerMain(new Properties());) {
             main.start();
             {
                 Map<String, Object> taskParams = new HashMap<>();
-                taskParams.put("type","test");
-                taskParams.put("queueName","testQueue");
-                taskParams.put("tag","testTag");
-                Map<String,Object> pp = new HashMap<>();
-                pp.put("param1","test1");
-                pp.put("param2",20);
-                taskParams.put("parameters",pp);
+                taskParams.put("type", "1");
+
+                taskParams.put("parameter", "test1");
                 String result = request("POST", taskParams, "http://localhost:7364/client/tasks");
                 System.out.println("result2:" + result);
             }
