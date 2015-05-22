@@ -40,23 +40,17 @@ public class WorkerManager {
     private static final Logger LOGGER = Logger.getLogger(WorkerManager.class.getName());
 
     private final String workerId;
-    private final Scheduler scheduler;
     private final Broker broker;
     private BrokerSideConnection connection;
     private long lastWakeup = System.currentTimeMillis();
 
-    public WorkerManager(String workerId, Scheduler scheduler, Broker broker) {
+    public WorkerManager(String workerId, Broker broker) {
         this.workerId = workerId;
-        this.scheduler = scheduler;
         this.broker = broker;
     }
 
     public Broker getBroker() {
         return broker;
-    }
-
-    public Scheduler getScheduler() {
-        return scheduler;
     }
 
     private static final long MAX_IDLE_TIME = 1000 * 60; // TODO: configuration
@@ -79,7 +73,6 @@ public class WorkerManager {
             if (_lastWakeUpDelta > MAX_IDLE_TIME) {
                 status.setStatus(WorkerStatus.STATUS_DEAD);
                 connection.workerDied();
-                scheduler.workerDied(workerId);
                 connection = null;
                 LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
             }
@@ -92,7 +85,6 @@ public class WorkerManager {
             WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
             status.setStatus(WorkerStatus.STATUS_DEAD);
             connection.workerDied();
-            scheduler.workerDied(workerId);
             LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (no message received)", workerId);
             connection = null;
         }

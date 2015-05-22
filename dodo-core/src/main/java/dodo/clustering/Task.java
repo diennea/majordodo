@@ -35,11 +35,6 @@ public class Task {
     public static final int STATUS_NEEDS_RECOVERY = 3;
     public static final int STATUS_ERROR = 4;
 
-    @Override
-    public String toString() {
-        return "Task{" + "type=" + type + ", parameters=" + parameters + ", status=" + status + ", taskId=" + taskId + ", queueName=" + queueName + ", workerId=" + workerId + '}';
-    }
-
     public static int taskExecutorStatusToTaskStatus(String status) {
         switch (status) {
             case TaskExecutorStatus.ERROR:
@@ -53,13 +48,18 @@ public class Task {
         }
     }
 
-    private String type;
-    private Map<String, Object> parameters;
-    private Map<String, Object> results;
+    @Override
+    public String toString() {
+        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + ", taskId=" + taskId + ", tenantInfo=" + tenantInfo + ", workerId=" + workerId + '}';
+    }
+
+    private int type;
+    private String parameter;
+    private String result;
     private long createdTimestamp;
     private int status;
     private long taskId;
-    private String queueName;
+    private String tenantInfo;
     private String workerId;
 
     public String getWorkerId() {
@@ -70,12 +70,12 @@ public class Task {
         this.workerId = workerId;
     }
 
-    public String getQueueName() {
-        return queueName;
+    public String getTenantInfo() {
+        return tenantInfo;
     }
 
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public void setTenantInfo(String tenantInfo) {
+        this.tenantInfo = tenantInfo;
     }
 
     public long getTaskId() {
@@ -86,28 +86,28 @@ public class Task {
         this.taskId = taskId;
     }
 
-    public String getType() {
+    public int getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(int type) {
         this.type = type;
     }
 
-    public Map<String, Object> getParameters() {
-        return parameters;
+    public String getParameter() {
+        return parameter;
     }
 
-    public void setParameters(Map<String, Object> parameters) {
-        this.parameters = parameters;
+    public void setParameter(String parameter) {
+        this.parameter = parameter;
     }
 
-    public Map<String, Object> getResults() {
-        return results;
+    public String getResult() {
+        return result;
     }
 
-    public void setResults(Map<String, Object> results) {
-        this.results = results;
+    public void setResult(String result) {
+        this.result = result;
     }
 
     public long getCreatedTimestamp() {

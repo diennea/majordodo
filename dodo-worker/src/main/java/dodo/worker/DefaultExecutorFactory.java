@@ -16,9 +16,11 @@ import java.util.Map;
  */
 public class DefaultExecutorFactory implements TaskExecutorFactory {
 
+    public static final int TASKTYPE_GROOVYSCRIPT = 0;
+
     @Override
-    public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
-        if (taskType.equals("script")) {
+    public TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {
+        if (taskType == TASKTYPE_GROOVYSCRIPT) {
             return new GroovyScriptTaskExecutor(parameters);
         } else {
             return new TaskExecutor();

@@ -17,29 +17,17 @@
  under the License.
 
  */
-package dodo.scheduler;
-
-import java.util.Map;
-import java.util.Set;
+package dodo.clustering;
 
 /**
- * Main class of the strategy for the execution of tasks
+ * Function which maps a task to a tenant. This funciton mu be very fast,
+ * usually the implementation will be a HashMap lookup. This function must be
+ * trehead safe must it should never impose any lock
  *
  * @author enrico.olivelli
  */
-public class Scheduler {
+@FunctionalInterface
+public interface TenantMapperFunction {
 
-    public void workerConnected(String workerId, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks) {
-
-    }
-
-    void workerDied(String workerId) {
-    }
-
-    public void wakeUpOnNewTask(long taskId, String queueTag) {
-
-    }
-
-    public void wakeUpOnTaskFinished(String workerId, String tag) {
-    }
+    public int getActualTenant(long taskid, String assignerData);
 }

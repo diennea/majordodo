@@ -39,15 +39,13 @@ public class Workers {
 
     private final Map<String, WorkerManager> nodeManagers = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-    private final Scheduler scheduler;
     private final Broker broker;
     private final ExecutorService workersActivityThread;
     private volatile boolean stop;
 
     private final Object waitForEvent = new Object();
 
-    public Workers(Scheduler scheduler, Broker broker) {
-        this.scheduler = scheduler;
+    public Workers(Broker broker) {
         this.broker = broker;
         this.workersActivityThread = Executors.newFixedThreadPool(1, (r) -> {
             return new Thread(r, "workers-life");
@@ -107,7 +105,7 @@ public class Workers {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
-                    man = new WorkerManager(id, scheduler, broker);
+                    man = new WorkerManager(id, broker);
                     nodeManagers.put(id, man);
                 }
             } finally {

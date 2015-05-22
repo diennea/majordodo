@@ -2,6 +2,8 @@ package dodo.broker;
 
 import dodo.broker.http.HttpAPI;
 import dodo.clustering.MemoryCommitLog;
+import dodo.clustering.TasksHeap;
+import dodo.clustering.TenantMapperFunction;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.task.Broker;
 
@@ -73,7 +75,7 @@ public class BrokerMain implements AutoCloseable {
         }
     }
 
-    public static void main(String... args) {        
+    public static void main(String... args) {
         try {
             Properties configuration = new Properties();
             File configFile;
@@ -109,9 +111,33 @@ public class BrokerMain implements AutoCloseable {
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
-
+        int taskheapsize = Integer.parseInt(configuration.getProperty("tasksheap.size", "1000000"));
+        String assigner = configuration.getProperty("tasks.tenantmapper", "");
         System.out.println("Starting MajorDodo Broker");
-        broker = new Broker(new MemoryCommitLog());
+        TenantMapperFunction mapper;
+        if (assigner.isEmpty()) {
+            mapper = new TenantMapperFunction() {
+
+                @Override
+                public int getActualTenant(long taskid, String assignerData) {
+                    if (assignerData == null || assignerData.isEmpty()) {
+                        return 0;
+                    } else {
+                        try {
+                            return Integer.parseInt(assignerData);
+                        } catch (NumberFormatException err) {
+                            return 0;
+                        }
+                    }
+                }
+
+            };
+        } else {
+            mapper = (TenantMapperFunction) Class.forName(assigner).newInstance();
+            System.out.println("Teant Mapper:" + mapper);
+        }
+
+        broker = new Broker(new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
 
         broker.start();
 

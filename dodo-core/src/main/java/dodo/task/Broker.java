@@ -19,20 +19,17 @@
  */
 package dodo.task;
 
-import dodo.clustering.Task;
-import dodo.clustering.TaskQueue;
 import dodo.client.ClientFacade;
 import dodo.clustering.StatusEdit;
 import dodo.clustering.ActionResult;
 import dodo.clustering.BrokerStatus;
 import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.StatusChangesLog;
-import dodo.scheduler.DefaultScheduler;
+import dodo.clustering.TasksHeap;
 import dodo.scheduler.Workers;
-import dodo.scheduler.Scheduler;
 import dodo.worker.BrokerServerEndpoint;
-import java.util.Map;
-import java.util.Queue;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -47,8 +44,8 @@ public class Broker {
 
     private final StatusChangesLog log;
     private final Workers workers;
+    public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
-    private final Scheduler scheduler;
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
@@ -65,13 +62,13 @@ public class Broker {
         return brokerStatus;
     }
 
-    public Broker(StatusChangesLog log) {
+    public Broker(StatusChangesLog log, TasksHeap tasksHeap) {
         this.log = log;
-        this.scheduler = new DefaultScheduler(this);
-        this.workers = new Workers(scheduler, this);
+        this.workers = new Workers(this);
         this.acceptor = new BrokerServerEndpoint(this);
         this.client = new ClientFacade(this);
         this.brokerStatus = new BrokerStatus(log);
+        this.tasksHeap = tasksHeap;
     }
 
     public void start() {
@@ -89,12 +86,21 @@ public class Broker {
         return acceptor;
     }
 
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
     public boolean isRunning() {
         return started;
+    }
+
+    public List<Long> assignTasksToWorker(int tasktype, int maxtasks, int tenant, String workerId) throws LogNotAvailableException {
+        List<Long> tasks = new ArrayList<>();
+        for (int i = 0; i < maxtasks; i++) {
+            long taskId = tasksHeap.takeTask(tenant, tasktype);
+            if (taskId > 0) {
+                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId);
+                this.brokerStatus.applyModification(edit);
+                tasks.add(taskId);
+            }
+        }
+        return tasks;
     }
 
     public static interface ActionCallback {
@@ -102,39 +108,23 @@ public class Broker {
         public void actionExecuted(StatusEdit action, ActionResult result);
     }
 
-    public long addTask(String queueName,
-            String taskType,
-            String queueTag,
-            Map<String, Object> parameters) throws LogNotAvailableException {
-        if (queueTag == null) {
-            queueTag = TaskQueue.DEFAULT_TAG;
-        }
-        StatusEdit addTask = StatusEdit.ADD_TASK(queueName, taskType, parameters, queueTag);
+    public long addTask(
+            int taskType,
+            String tenantInfo,
+            String parameter) throws LogNotAvailableException {
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskType, parameter, tenantInfo);
         long taskId = this.brokerStatus.applyModification(addTask).newTaskId;
-        scheduler.wakeUpOnNewTask(taskId, queueTag);
+        this.tasksHeap.insertTask(taskId, taskType, tenantInfo);
         return taskId;
     }
 
-    public void assignTaskToWorker(String workerId, long taskId) throws LogNotAvailableException {
-        StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId);
+    public void taskFinished(String workerId, long taskId, int finalstatus, String result) throws LogNotAvailableException {
+        StatusEdit edit = StatusEdit.TASK_FINISHED(taskId, workerId, finalstatus, result);
         this.brokerStatus.applyModification(edit);
-        this.workers.wakeUpOnTaskAssigned(workerId, taskId);
     }
 
-    public void taskFinished(String workerId, long taskId, int finalstatus, Map<String, Object> results) throws LogNotAvailableException {
-        StatusEdit edit = StatusEdit.TASK_FINISHED(taskId, workerId, finalstatus, results);
-        this.brokerStatus.applyModification(edit);
-        Task task = brokerStatus.getTask(taskId);
-        if (task != null) {
-            TaskQueue queue = brokerStatus.getTaskQueue(task.getQueueName());
-            if (queue != null) {
-                this.scheduler.wakeUpOnTaskFinished(workerId, queue.getTag());
-            }
-        }
-    }
-
-    public void workerConnected(String workerId, String processId, String nodeLocation, Map<String, Integer> maximumNumberOfTasksPerTag, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
-        StatusEdit edit = StatusEdit.WORKER_CONNECTED(workerId, processId, nodeLocation, maximumNumberOfTasksPerTag, actualRunningTasks, timestamp);
+    public void workerConnected(String workerId, String processId, String nodeLocation, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
+        StatusEdit edit = StatusEdit.WORKER_CONNECTED(workerId, processId, nodeLocation, actualRunningTasks, timestamp);
         this.brokerStatus.applyModification(edit);
     }
 

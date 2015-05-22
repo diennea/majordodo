@@ -32,13 +32,21 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SimpleBrokerSuite extends BasicBrokerEnv {
+
+    private static final int TASKTYPE_MYTYPE = 987;
+    private static final String tenantName = "queue1";
+    private static final int tenant = 867;
+
+    @Before
+    public void before() throws Exception {
+        tenantsMap.clear();
+        tenantsMap.put(tenantName, tenant);
+    }
 
     @Test
     public void workerConnectionTest() throws Exception {
@@ -59,26 +67,25 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<String, Integer> tags = new HashMap<>();
-        tags.put("tag1", 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener);
+        Map<Integer, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+        core.setExecutorFactory((int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                results.put("res1", "myvalue");
+            public String executeTask(Map<String, Object> parameters) throws Exception {
+
                 allTaskExecuted.countDown();
+                return "";
             }
 
         });
 
-        Map<String, Object> taskParams = new HashMap<>();
-        taskParams.put("param1", "value1");
-        taskParams.put("param2", "value2");
-        long taskId = getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+        String taskParams = "param";
+        long taskId = getClient().submitTask(TASKTYPE_MYTYPE, tenantName, taskParams);
 
         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -92,10 +99,8 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
-            Map<String, Object> taskParams = new HashMap<>();
-            taskParams.put("param1", "value1");
-            taskParams.put("param2", "value2");
-            long taskId = getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, tenantName, taskParams);
             todo.add(taskId);
         }
 
@@ -115,19 +120,19 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<String, Integer> tags = new HashMap<>();
-        tags.put("tag1", 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener);
+        Map<Integer, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
 
-        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+        core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                results.put("res1", "myvalue");
+            public String executeTask(Map<String, Object> parameters) throws Exception {
+
                 allTaskExecuted.countDown();
                 long taskid = (Long) parameters.get("taskid");
                 todo.remove(taskid);
-                System.out.println("executeTask:" + parameters);
+                return "";
             }
 
         });
@@ -152,10 +157,8 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
-            Map<String, Object> taskParams = new HashMap<>();
-            taskParams.put("param1", "value1");
-            taskParams.put("param2", "value2");
-            long taskId = getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, tenantName, taskParams);
             todo.add(taskId);
         }
 
@@ -175,25 +178,26 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<String, Integer> tags = new HashMap<>();
-        tags.put("tag1", 10);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener);
+        Map<Integer, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 10);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
 
-        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+        core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                results.put("res1", "myvalue");
+            public String executeTask(Map<String, Object> parameters) throws Exception {
+
                 allTaskExecuted.countDown();
                 long taskid = (Long) parameters.get("taskid");
                 todo.remove(taskid);
+                return "";
             }
 
         });
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+        assertTrue(allTaskExecuted.await(60, TimeUnit.SECONDS));
 
         core.stop();
         assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
@@ -201,17 +205,14 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         assertTrue(todo.isEmpty());
     }
 
-    
     @Test
     public void manyassignTaskAfterStart() throws Exception {
 
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
-            Map<String, Object> taskParams = new HashMap<>();
-            taskParams.put("param1", "value1");
-            taskParams.put("param2", "value2");
-            long taskId = getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, tenantName, taskParams);
             todo.add(taskId);
         }
 
@@ -231,18 +232,19 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<String, Integer> tags = new HashMap<>();
-        tags.put("tag1", 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener);
+        Map<Integer, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
 
-        core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+        core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
             @Override
-            public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                results.put("res1", "myvalue");
+            public String executeTask(Map<String, Object> parameters) throws Exception {
+
                 allTaskExecuted.countDown();
                 long taskid = (Long) parameters.get("taskid");
                 todo.remove(taskid);
+                return "";
             }
 
         });
@@ -262,10 +264,8 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 100; i++) {
-            Map<String, Object> taskParams = new HashMap<>();
-            taskParams.put("param1", "value1");
-            taskParams.put("param2", "value2");
-            long taskId = getClient().submitTask("mytasktype", "queue1", "tag1", taskParams);
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, tenantName, taskParams);
             todo.add(taskId);
         }
 
@@ -292,19 +292,20 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
                 }
 
             };
-            Map<String, Integer> tags = new HashMap<>();
-            tags.put("tag1", 1);
-            WorkerCore core = new WorkerCore(10, workerProcessId, workerId, "localhost", tags, getBrokerLocator(), listener);
+            Map<Integer, Integer> tags = new HashMap<>();
+            tags.put(TASKTYPE_MYTYPE, 1);
+            WorkerCore core = new WorkerCore(10, workerProcessId, workerId, "localhost", tags, getBrokerLocator(), listener, tenant);
             cores.add(core);
 
-            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
-                public void executeTask(Map<String, Object> parameters, Map<String, Object> results) throws Exception {
-                    results.put("res1", "myvalue");
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
                     allTaskExecuted.countDown();
                     long taskid = (Long) parameters.get("taskid");
                     todo.remove(taskid);
+                    return "";
                 }
 
             });

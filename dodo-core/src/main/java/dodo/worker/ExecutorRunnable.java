@@ -45,20 +45,20 @@ public class ExecutorRunnable implements Runnable {
 
     public static interface TaskExecutionCallback {
 
-        public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, Map<String, Object> results, Throwable error);
+        public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error);
     }
 
     @Override
     public void run() {
         Map<String, Object> results = new HashMap<>();
         try {
-            String taskType = (String) parameters.get("tasktype");
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, results, null);
+            int taskType = (Integer) parameters.get("tasktype");
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, null, null);
             TaskExecutor executor = core.createTaskExecutor(taskType, parameters);
-            executor.executeTask(parameters, results);
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, results, null);
+            String result = executor.executeTask(parameters);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, result, null);
         } catch (Throwable t) {
-            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, results, t);
+            callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, null, t);
         }
     }
 }

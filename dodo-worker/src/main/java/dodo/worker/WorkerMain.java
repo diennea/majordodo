@@ -39,24 +39,25 @@ public class WorkerMain {
             int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
 
             String workerid = configuration.getProperty("worker.id", "localhost");
+            String tenantid = configuration.getProperty("worker.tenant", "0");
             int maxthreads = Integer.parseInt(configuration.getProperty("worker.maxthreads", "100"));
             String executorFactory = configuration.getProperty("worker.executorfactory", "dodo.worker.DefaultExecutorFactory");
             String processid = ManagementFactory.getRuntimeMXBean().getName();
             String location = InetAddress.getLocalHost().getCanonicalHostName();
-            Map<String, Integer> maximumThreadPerTag = new HashMap<>();
+            Map<Integer, Integer> maximumThreadPerTaskType = new HashMap<>();
             boolean notag = true;
             for (Object key : configuration.keySet()) {
                 String k = key.toString();
-                if (k.startsWith("tag.")) {
-                    String tag = k.substring(4);
+                if (k.startsWith("tasktype.")) {
+                    String tag = k.substring(9);
                     notag = false;
                     int maxThreadPerTag = Integer.parseInt(configuration.getProperty(key + ""));
-                    maximumThreadPerTag.put(tag, maxThreadPerTag);
+                    maximumThreadPerTaskType.put(Integer.parseInt(tag), maxThreadPerTag);
                 }
             }
             if (notag) {
-                System.out.println("No configuration line tag.xxx found, defaulting to tag 'default', with max threads = 1");
-                maximumThreadPerTag.put("default", 1);
+                System.out.println("No configuration line tag.xxx found, defaulting to tasktype 0, with max threads = 100");
+                maximumThreadPerTaskType.put(0, 100);
             }
             BrokerLocator brokerLocator = new NettyBrokerLocator(host, port);
             System.out.println("Starting MajorDodo Worker, workerid=" + workerid);
@@ -67,11 +68,11 @@ public class WorkerMain {
                 }
             };
             WorkerCore workerCore = new WorkerCore(maxthreads, processid, workerid,
-                    location, maximumThreadPerTag, brokerLocator, listener);
+                    location, maximumThreadPerTaskType, brokerLocator, listener, Integer.parseInt(tenantid));
             System.out.println("worker.executorfactory=" + executorFactory);
             workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
             workerCore.start();
-            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTag:" + maximumThreadPerTag);
+            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", tenantid=" + tenantid);
             System.out.println("WorkerID:" + workerid + ", processid:" + processid + " location:" + location);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Type ENTER to exit...");

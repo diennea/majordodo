@@ -29,7 +29,9 @@ import dodo.task.Broker;
 import dodo.clustering.Task;
 import dodo.network.SendResultCallback;
 import dodo.network.ServerSideConnection;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,7 +50,6 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     private String workerId;
     private String workerProcessId;
     private long connectionId;
-    private Map<String, Integer> maximumNumberOfTasks;
     private String location;
     private WorkerManager manager;
     private Channel channel;
@@ -81,10 +82,6 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         this.connectionId = connectionId;
     }
 
-    public void setMaximumNumberOfTasks(Map<String, Integer> maximumNumberOfTasks) {
-        this.maximumNumberOfTasks = maximumNumberOfTasks;
-    }
-
     public void setLocation(String location) {
         this.location = location;
     }
@@ -99,10 +96,6 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     public String getLocation() {
         return location;
-    }
-
-    public Map<String, Integer> getMaximumNumberOfTasks() {
-        return maximumNumberOfTasks;
     }
 
     public String getWorkerProcessId() {
@@ -143,16 +136,15 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 this.workerProcessId = (String) message.parameters.get("processId");
                 this.location = (String) message.parameters.get("location");
-                this.maximumNumberOfTasks = (Map<String, Integer>) message.parameters.get("maximumThreadPerTag");
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
-                LOGGER.log(Level.FINE, "registering connection workerId:" + workerId + ", processId=" + workerProcessId + ", location=" + location + " maximumThreadPerTag=" + maximumNumberOfTasks);
+                LOGGER.log(Level.FINE, "registering connection workerId:" + workerId + ", processId=" + workerProcessId + ", location=" + location);
                 BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
                 if (actual != null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
                     return;
                 }
                 try {
-                    this.broker.workerConnected(workerId, location, workerProcessId, maximumNumberOfTasks, actualRunningTasks, System.currentTimeMillis());
+                    this.broker.workerConnected(workerId, location, workerProcessId, actualRunningTasks, System.currentTimeMillis());
                 } catch (LogNotAvailableException error) {
                     answerConnectionNotAcceptedAndClose(message, error);
                     return;
@@ -161,22 +153,42 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
                 manager.activateConnection(this);
                 answerConnectionAccepted(message);
-                broker.getScheduler().workerConnected(workerId, maximumNumberOfTasks, actualRunningTasks);
                 break;
             }
 
             case Message.TYPE_TASK_FINISHED:
                 long taskid = (Long) message.parameters.get("taskid");
                 String status = (String) message.parameters.get("status");
-                Map<String, Object> results = (Map<String, Object>) message.parameters.get("results");
+                String result = (String) message.parameters.get("result");
                 int finalStatus = Task.taskExecutorStatusToTaskStatus(status);
                 try {
-                    broker.taskFinished(workerId, taskid, finalStatus, results);
+                    broker.taskFinished(workerId, taskid, finalStatus, result);
                     channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                 } catch (LogNotAvailableException error) {
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
+            case Message.TYPE_WORKER_TASKS_REQUEST:                
+                Map<Integer, Integer> availableSpace = (Map<Integer, Integer>) message.parameters.get("availableSpace");
+                int tenant = (Integer) message.parameters.get("tenant");
+                System.out.println("TYPE_WORKER_TASKS_REQUEST:"+message.parameters);
+                try {
+                    List<Long> taskIds = new ArrayList<>();
+                    for (Map.Entry<Integer, Integer> taskTypeMaxTasks : availableSpace.entrySet()) {
+                        int tasktype = taskTypeMaxTasks.getKey();
+                        int maxtasks = taskTypeMaxTasks.getValue();
+                        taskIds.addAll(broker.assignTasksToWorker(tasktype, maxtasks, tenant, workerId));
+
+                    }
+                    taskIds.forEach(manager::taskAssigned);
+
+                } catch (LogNotAvailableException error) {
+                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+                }
+                break;
+            default:
+                channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
+
         }
 
     }
@@ -201,7 +213,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         Map<String, Object> params = new HashMap<>();
         params.put("taskid", task.getTaskId());
         params.put("tasktype", task.getType());
-        params.putAll(task.getParameters());
+        params.put("parameter", task.getParameter());
         channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params), new SendResultCallback() {
 
             @Override

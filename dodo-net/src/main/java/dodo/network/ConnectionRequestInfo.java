@@ -35,8 +35,6 @@ public interface ConnectionRequestInfo {
 
     String getProcessId();
 
-    Map<String, Integer> getMaximumThreadPerTag();
-
     String getLocation();
 
 }

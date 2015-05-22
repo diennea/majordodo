@@ -7,7 +7,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Created by enrico.olivelli on 24/03/2015.
  */
-public class NettyBrokerLocator implements BrokerLocator  {
+public class NettyBrokerLocator implements BrokerLocator {
 
     private String host;
     private int port;
@@ -31,7 +31,7 @@ public class NettyBrokerLocator implements BrokerLocator  {
                 throw new BrokerNotAvailableException(e);
             }
 
-            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getMaximumThreadPerTag(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
+            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
             try {
                 Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
                 if (connectionResponse.type == Message.TYPE_ACK) {

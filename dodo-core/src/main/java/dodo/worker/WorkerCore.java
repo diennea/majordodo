@@ -51,12 +51,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
     private final String processId;
     private final String workerId;
     private final String location;
-    private final Map<String, Integer> maximumThreadPerTag;
-    private final Map<Long, Object> runningTasks = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> maximumThreadPerTaskType;
+    private final Map<Long, Integer> runningTasks = new ConcurrentHashMap<>();
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
     private volatile boolean stopped = false;
     private final int maxThreads;
+    private final int tenantId;
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
@@ -64,14 +65,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
     private static final class NotImplementedTaskExecutorFactory implements TaskExecutorFactory {
 
         @Override
-        public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
+        public TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {
             return new TaskExecutor();
         }
 
     };
     private TaskExecutorFactory executorFactory = new NotImplementedTaskExecutorFactory();
 
-    public Map<Long, Object> getRunningTasks() {
+    public Map<Long, Integer> getRunningTasks() {
         return runningTasks;
     }
 
@@ -88,12 +89,41 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         this.executorFactory = executorFactory;
     }
 
-    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<String, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener) {
+    private void requestNewTasks() {
+        Channel _channel = channel;
+        if (_channel != null) {
+            Map<Integer, Integer> availableSpace = new HashMap<>(maximumThreadPerTaskType);
+            runningTasks.values().forEach(tasktype -> {
+                Integer count = availableSpace.get(tasktype);
+                if (count != null && count > 1) {
+                    availableSpace.put(tasktype, count - 1);
+                } else {
+                    availableSpace.remove(tasktype);
+                }
+            });
+            System.out.println("availableSpace:" + availableSpace);
+            if (availableSpace.isEmpty()) {
+                return;
+            }
+            _channel.sendOneWayMessage(Message.WORKER_TASKS_REQUEST(processId, tenantId,availableSpace), new SendResultCallback() {
+
+                @Override
+                public void messageSent(Message originalMessage, Throwable error) {
+                    if (error != null) {
+                        error.printStackTrace();
+                    }
+                }
+            });
+        }
+    }
+
+    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<Integer, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener, int tenantId) {
         this.maxThreads = maxThreads;
         if (listener == null) {
             listener = new WorkerStatusListener() {
             };
         }
+        this.tenantId = tenantId;
         this.listener = listener;
         this.threadpool = Executors.newFixedThreadPool(maxThreads, new ThreadFactory() {
 
@@ -105,7 +135,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         this.processId = processId;
         this.workerId = workerId;
         this.location = location;
-        this.maximumThreadPerTag = maximumThreadPerTag;
+        this.maximumThreadPerTaskType = maximumThreadPerTag;
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
     }
@@ -134,16 +164,21 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
 
     private void startTask(Message message) {
         Long taskid = (Long) message.parameters.get("taskid");
+        int tasktype = (Integer) message.parameters.get("tasktype");
+        runningTasks.put(taskid, tasktype);
         ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, new ExecutorRunnable.TaskExecutionCallback() {
             @Override
-            public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, Map<String, Object> results, Throwable error) {
+            public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
                 switch (finalStatus) {
                     case TaskExecutorStatus.ERROR:
+                        runningTasks.remove(taskId);
                         channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
 
                             @Override
                             public void messageSent(Message originalMessage, Throwable error) {
-                                // swallow
+                                if (error != null) {
+                                    error.printStackTrace();
+                                }
                             }
                         });
                         break;
@@ -152,12 +187,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
                     case TaskExecutorStatus.NEEDS_RECOVERY:
                         throw new RuntimeException("not implemented");
                     case TaskExecutorStatus.FINISHED:
+                        runningTasks.remove(taskId);
                         channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, null), new SendResultCallback() {
 
                             @Override
                             public void messageSent(Message originalMessage, Throwable error
                             ) {
-                                // swallow
+                                if (error != null) {
+                                    error.printStackTrace();
+                                }
                             }
                         });
                         break;
@@ -176,7 +214,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         }
     }
 
-    TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
+    TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {
         return executorFactory.createTaskExecutor(taskType, parameters);
     }
 
@@ -198,11 +236,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
                 }
 
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(500);
                 } catch (InterruptedException exit) {
                     System.out.println("[WORKER] exit loop " + exit);
                     break;
                 }
+                requestNewTasks();
             }
 
             Channel _channel = channel;
@@ -259,8 +298,8 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         return location;
     }
 
-    public Map<String, Integer> getMaximumThreadPerTag() {
-        return maximumThreadPerTag;
+    public Map<Integer, Integer> getMaximumThreadPerTaskType() {
+        return maximumThreadPerTaskType;
     }
 
     public int getMaxThreads() {

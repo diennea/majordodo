@@ -46,7 +46,7 @@ public final class Message {
 
     public static Message ERROR(String workerProcessId, Throwable error) {
         Map<String, Object> params = new HashMap<>();
-        params.put("error", error+"");
+        params.put("error", error + "");
         StringWriter writer = new StringWriter();
         error.printStackTrace(new PrintWriter(writer));
         params.put("stackTrace", writer.toString());
@@ -57,17 +57,16 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, null);
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, Map<String, Integer> maximumThreadPerTag, String location, Set<Long> actualRunningTasks) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, Set<Long> actualRunningTasks) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
-        params.put("maximumThreadPerTag", maximumThreadPerTag);
         params.put("actualRunningTasks", actualRunningTasks);
         params.put("location", location);
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
-    public static Message TASK_FINISHED(String processId, long taskId, String finalStatus, Map<String, Object> results, Throwable error) {
+    public static Message TASK_FINISHED(String processId, long taskId, String finalStatus, String results, Throwable error) {
         Map<String, Object> params = new HashMap<>();
         params.put("taskid", taskId);
         params.put("processId", processId);
@@ -80,6 +79,15 @@ public final class Message {
             params.put("error", r.toString());
         }
         return new Message(processId, TYPE_TASK_FINISHED, params);
+    }
+
+    public static Message WORKER_TASKS_REQUEST(String processId, int tenant, Map<Integer, Integer> availableSpace) {
+        Map<String, Object> params = new HashMap<>();
+
+        params.put("processId", processId);
+        params.put("tenant", tenant);
+        params.put("availableSpace", availableSpace);
+        return new Message(processId, TYPE_WORKER_TASKS_REQUEST, params);
     }
 
     public final String workerProcessId;
@@ -104,6 +112,7 @@ public final class Message {
     public static final int TYPE_WORKER_SHUTDOWN = 5;
     public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
     public static final int TYPE_TASK_ASSIGNED = 7;
+    public static final int TYPE_WORKER_TASKS_REQUEST = 8;
 
     public static String typeToString(int type) {
         switch (type) {

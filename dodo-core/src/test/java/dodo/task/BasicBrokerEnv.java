@@ -21,8 +21,12 @@ package dodo.task;
 
 import dodo.client.ClientFacade;
 import dodo.clustering.MemoryCommitLog;
+import dodo.clustering.TasksHeap;
+import dodo.clustering.TenantMapperFunction;
 import dodo.network.BrokerLocator;
 import dodo.network.jvm.JVMBrokerLocator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -42,7 +46,7 @@ public abstract class BasicBrokerEnv {
 
 //    @Before
 //    public void setupLogger() throws Exception {
-//        Level level = Level.ALL;
+//        Level level = Level.SEVERE;
 //        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 //
 //            @Override
@@ -54,19 +58,7 @@ public abstract class BasicBrokerEnv {
 //        java.util.logging.LogManager.getLogManager().reset();
 //        ConsoleHandler ch = new ConsoleHandler();
 //        ch.setLevel(level);
-//        SimpleFormatter f = new SimpleFormatter() {
-//
-//            @Override
-//            public synchronized String format(LogRecord record) {
-//                if (record.getThrown() != null) {
-//                    return super.format(record);
-//                } else {
-//                    return record.getThreadID() + " - " + record.getLoggerName() + " - " + java.text.MessageFormat.format(record.getMessage(), record.getParameters()) + "\r\n";
-//                }
-//            }
-//
-//        };
-//
+//        SimpleFormatter f = new SimpleFormatter();
 //        ch.setFormatter(f);
 //        java.util.logging.Logger.getLogger("").setLevel(level);
 //        java.util.logging.Logger.getLogger("").addHandler(ch);
@@ -87,9 +79,18 @@ public abstract class BasicBrokerEnv {
         return new JVMBrokerLocator(broker);
     }
 
+    protected Map<String, Integer> tenantsMap = new HashMap<>();
+
     @Before
     public void startBroker() {
-        broker = new Broker(new MemoryCommitLog());
+        broker = new Broker(new MemoryCommitLog(), new TasksHeap(1000000, new TenantMapperFunction() {
+
+            @Override
+            public int getActualTenant(long taskid, String assignerData) {
+                return tenantsMap.getOrDefault(assignerData, 0);
+
+            }
+        }));
         broker.start();
     }
 

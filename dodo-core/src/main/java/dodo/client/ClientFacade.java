@@ -37,14 +37,15 @@ public class ClientFacade {
         this.broker = broker;
     }
 
-    public long submitTask(String taskType, String queueName, String queueTag, Map<String, Object> parameters) throws Exception {
-        return broker.addTask(queueName, taskType, queueTag, parameters);
+    public long submitTask(int taskType, String tenantInfo, String parameter) throws Exception {
+        return broker.addTask(taskType, tenantInfo, parameter);
     }
 
     public List<TaskStatusView> getAllTasks() {
         return broker.getBrokerStatus().getAllTasks();
     }
-    public List<WorkerStatusView> getAllWorkers(){
+
+    public List<WorkerStatusView> getAllWorkers() {
         return broker.getBrokerStatus().getAllWorkers();
     }
 

@@ -30,26 +30,45 @@ public class TaskStatusView {
 
     private long taskId;
     private int status;
-    private String queueName;
+    private String tenantInfo;
     private String workerId;
     private long createdTimestamp;
-    private Map<String, Object> parameters;
-    private Map<String, Object> results;
+    private String parameter;
+    private String result;
+    private int type;
 
-    public Map<String, Object> getParameters() {
-        return parameters;
+    public int getType() {
+        return type;
     }
 
-    public void setParameters(Map<String, Object> parameters) {
-        this.parameters = parameters;
+    public void setType(int type) {
+        this.type = type;
+    }
+    
+    
+
+    public long getTaskId() {
+        return taskId;
     }
 
-    public Map<String, Object> getResults() {
-        return results;
+    public void setTaskId(long taskId) {
+        this.taskId = taskId;
     }
 
-    public void setResults(Map<String, Object> results) {
-        this.results = results;
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public String getTenantInfo() {
+        return tenantInfo;
+    }
+
+    public void setTenantInfo(String tenantInfo) {
+        this.tenantInfo = tenantInfo;
     }
 
     public String getWorkerId() {
@@ -68,28 +87,20 @@ public class TaskStatusView {
         this.createdTimestamp = createdTimestamp;
     }
 
-    public long getTaskId() {
-        return taskId;
+    public String getParameter() {
+        return parameter;
     }
 
-    public void setTaskId(long taskId) {
-        this.taskId = taskId;
+    public void setParameter(String parameter) {
+        this.parameter = parameter;
     }
 
-    public int getStatus() {
-        return status;
+    public String getResult() {
+        return result;
     }
 
-    public void setStatus(int status) {
-        this.status = status;
-    }
-
-    public String getQueueName() {
-        return queueName;
-    }
-
-    public void setQueueName(String queueName) {
-        this.queueName = queueName;
+    public void setResult(String result) {
+        this.result = result;
     }
 
 }

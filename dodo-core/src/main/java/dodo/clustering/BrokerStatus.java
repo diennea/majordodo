@@ -43,7 +43,6 @@ public class BrokerStatus {
 
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
-    public final Map<String, TaskQueue> queues = new HashMap<>();
     private final Map<Long, Task> tasks = new HashMap<>();
     private final Map<String, WorkerStatus> workers = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
@@ -90,16 +89,13 @@ public class BrokerStatus {
         }
         TaskStatusView s = new TaskStatusView();
         s.setCreatedTimestamp(task.getCreatedTimestamp());
-        s.setQueueName(task.getQueueName());
+        s.setTenantInfo(task.getTenantInfo());
         s.setWorkerId(task.getWorkerId());
         s.setStatus(task.getStatus());
         s.setTaskId(task.getTaskId());
-        s.setParameters(task.getParameters()); // should be cloned
-        if (task.getResults() != null) {
-            s.setResults(task.getResults()); // should be cloned
-        } else {
-            s.setResults(new HashMap<>());
-        }
+        s.setParameter(task.getParameter());
+        s.setType(task.getType());
+        s.setResult(task.getResult()); // should be cloned
 
         return s;
     }
@@ -121,7 +117,7 @@ public class BrokerStatus {
                 s = "DISCONNECTED";
                 break;
             default:
-                s = "?"+k.getStatus();
+                s = "?" + k.getStatus();
         }
         res.setProcessId(k.getProcessId());
         res.setStatus(s);
@@ -162,11 +158,6 @@ public class BrokerStatus {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
-                    TaskQueue queue = queues.get(task.getQueueName());
-                    Task taskFromQueue = queue.removeNext(taskId);
-                    if (taskFromQueue != task) { // the object MUST be the same (reference comparison)
-                        throw new IllegalStateException();
-                    }
                     task.setStatus(Task.STATUS_RUNNING);
                     task.setWorkerId(workerId);
                     return new ModificationResult(num, -1);
@@ -182,7 +173,7 @@ public class BrokerStatus {
                         throw new IllegalStateException("bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
                     task.setStatus(Task.STATUS_FINISHED);
-                    task.setResults(edit.contextualValuescontextualValues);
+                    task.setResult(edit.result);
                     return new ModificationResult(num, -1);
                 }
                 case StatusEdit.ACTION_TYPE_ADD_TASK: {
@@ -190,21 +181,11 @@ public class BrokerStatus {
                     Task task = new Task();
                     task.setTaskId(newId);
                     task.setCreatedTimestamp(System.currentTimeMillis());
-                    task.setParameters(edit.contextualValuescontextualValues);
+                    task.setParameter(edit.parameter);
                     task.setType(edit.taskType);
-                    task.setQueueName(edit.queueName);
+                    task.setTenantInfo(edit.tenantInfo);
                     task.setStatus(Task.STATUS_WAITING);
-                    TaskQueue queue = queues.get(edit.queueName);
-                    if (queue == null) {
-                        String queueTag = edit.queueTag;
-                        if (queueTag == null) {
-                            queueTag = TaskQueue.DEFAULT_TAG;
-                        }
-                        queue = new TaskQueue(queueTag, edit.queueName);
-                        queues.put(edit.queueName, queue);
-                    }
                     tasks.put(newId, task);
-                    queue.addNewTask(task);
                     return new ModificationResult(num, newId);
                 }
                 case StatusEdit.ACTION_TYPE_WORKER_CONNECTED: {
@@ -241,25 +222,6 @@ public class BrokerStatus {
             lock.writeLock().unlock();
         }
 
-    }
-
-    public TaskQueue getTaskQueue(String qname) {
-        lock.readLock().lock();
-        try {
-            return queues.get(qname);
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    public List<TaskQueue> getTaskQueuesByTag(String tag) {
-        lock.readLock().lock();
-        try {
-            List<TaskQueue> candidates = queues.values().stream().filter(q -> q.getTag().equalsIgnoreCase(tag)).collect(Collectors.toList());
-            return candidates;
-        } finally {
-            lock.readLock().unlock();
-        }
     }
 
     public Task getTask(long taskId) {

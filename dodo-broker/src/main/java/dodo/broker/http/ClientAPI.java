@@ -59,20 +59,11 @@ public class ClientAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public ClientTask submitTask(Map<String, Object> data) {
         System.out.println("submitTask:" + data);
-        String type = (String) data.get("type");
-        String queueName = (String) data.get("queueName");
-        String tag = (String) data.get("tag");
-        if (type == null || type.isEmpty()) {
-            throw new WebApplicationException(Status.BAD_REQUEST);
-        }
-        Map<String, Object> parameters = null;
+        int type = Integer.parseInt(data.get("type") + "");
+        String tenant = (String) data.get("tenant");
+        String parameters = (String) data.get("parameter");
         try {
-            parameters = (Map< String, Object>) data.get("parameters");
-        } catch (Throwable t) {
-            throw new WebApplicationException(Status.BAD_REQUEST);
-        }
-        try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, queueName, queueName, parameters);
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters);
             return getTask(taskId);
         } catch (Exception err) {
             err.printStackTrace();
@@ -120,10 +111,10 @@ public class ClientAPI {
                 tt.setStatus("unknown(" + t.getStatus() + ")");
         }
         tt.setCreationTimestamp(t.getCreatedTimestamp());
-        tt.setQueueName(t.getQueueName());
+        tt.setType(t.getType());
         tt.setWorkerId(t.getWorkerId());
-        tt.setParameters(t.getParameters());
-        tt.setResults(t.getResults());
+        tt.setParameter(t.getParameter());
+        tt.setResult(t.getResult());
 
         return tt;
     }
