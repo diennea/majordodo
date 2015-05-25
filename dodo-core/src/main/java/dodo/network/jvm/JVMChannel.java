@@ -47,7 +47,6 @@ public class JVMChannel extends Channel {
     }
 
     private void receiveMessageFromPeer(Message message) {
-//        System.out.println("receiveMessageFromPeer:" + message);
         if (message.getReplyMessageId() != null) {
             handleReply(message);
         } else {

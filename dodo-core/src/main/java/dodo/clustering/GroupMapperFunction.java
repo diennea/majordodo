@@ -20,14 +20,14 @@
 package dodo.clustering;
 
 /**
- * Function which maps a task to a tenant. This funciton mu be very fast,
- * usually the implementation will be a HashMap lookup. This function must be
- * trehead safe must it should never impose any lock
+ * Function which maps a task to a group of user. This funciton must be very
+ * fast, usually the implementation will be a HashMap lookup. This function must
+ * be trehead safe must it should never impose any lock
  *
  * @author enrico.olivelli
  */
 @FunctionalInterface
-public interface TenantMapperFunction {
+public interface GroupMapperFunction {
 
-    public int getActualTenant(long taskid, String assignerData);
+    public int getGroup(long taskid, int taskType, String userid);
 }

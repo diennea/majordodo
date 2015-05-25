@@ -22,7 +22,7 @@ package dodo.task;
 import dodo.client.ClientFacade;
 import dodo.clustering.MemoryCommitLog;
 import dodo.clustering.TasksHeap;
-import dodo.clustering.TenantMapperFunction;
+import dodo.clustering.GroupMapperFunction;
 import dodo.network.BrokerLocator;
 import dodo.network.jvm.JVMBrokerLocator;
 import java.util.HashMap;
@@ -63,7 +63,6 @@ public abstract class BasicBrokerEnv {
 //        java.util.logging.Logger.getLogger("").setLevel(level);
 //        java.util.logging.Logger.getLogger("").addHandler(ch);
 //    }
-
     public BrokerLocator getBrokerLocator() {
         if (locator == null) {
             locator = createBrokerLocator();
@@ -79,15 +78,15 @@ public abstract class BasicBrokerEnv {
         return new JVMBrokerLocator(broker);
     }
 
-    protected Map<String, Integer> tenantsMap = new HashMap<>();
+    protected Map<String, Integer> groupsMap = new HashMap<>();
 
     @Before
     public void startBroker() {
-        broker = new Broker(new MemoryCommitLog(), new TasksHeap(1000000, new TenantMapperFunction() {
+        broker = new Broker(new MemoryCommitLog(), new TasksHeap(1000000, new GroupMapperFunction() {
 
             @Override
-            public int getActualTenant(long taskid, String assignerData) {
-                return tenantsMap.getOrDefault(assignerData, 0);
+            public int getGroup(long taskid, int tasktype, String userid) {
+                return groupsMap.getOrDefault(userid, 0);
 
             }
         }));

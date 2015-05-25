@@ -19,7 +19,14 @@
  */
 package dodo.clustering;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Heap of tasks to be executed. Tasks are not arranged in a queue but in an
@@ -41,9 +48,10 @@ public class TasksHeap {
     private int actualsize;
     private int fragmentation;
     private int maxFragmentation;
+    private int minValidPosition;
 
     private final int size;
-    private final TenantMapperFunction tenantAssigner;
+    private final GroupMapperFunction groupMapper;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public int getActualsize() {
@@ -58,52 +66,94 @@ public class TasksHeap {
         return size;
     }
 
-    public TasksHeap(int size, TenantMapperFunction tenantAssigner) {
+    public TasksHeap(int size, GroupMapperFunction tenantAssigner) {
         this.size = size;
-        this.tenantAssigner = tenantAssigner;
+        this.groupMapper = tenantAssigner;
         this.actuallist = new TaskEntry[size];
+        for (int i = 0; i < size; i++) {
+            this.actuallist[i] = new TaskEntry(0, 0, null);
+        }
         this.maxFragmentation = size / 4;
     }
 
-    public boolean insertTask(long taskid, int tasktype, String assignerData) {
+    public int getMaxFragmentation() {
+        return maxFragmentation;
+    }
+
+    public void setMaxFragmentation(int maxFragmentation) {
+        this.maxFragmentation = maxFragmentation;
+    }
+
+    public boolean insertTask(long taskid, int tasktype, String userid) {
         lock.writeLock().lock();
         try {
             if (actualsize == size) {
                 return false;
             }
-            this.actuallist[actualsize++] = new TaskEntry(taskid, tasktype, assignerData);
+            TaskEntry entry = this.actuallist[actualsize++];
+            entry.taskid = taskid;
+            entry.tasktype = tasktype;
+            entry.userid = userid;
             return true;
         } finally {
             lock.writeLock().unlock();
         }
     }
 
-    private static final class TaskEntry {
+    public static final class TaskEntry {
 
-        private final long taskid;
-        private final int tasktype;
-        private final String assignerData;
+        public long taskid;
+        public int tasktype;
+        public String userid;
 
-        TaskEntry(long taskid, int tasktype, String assignerData) {
+        TaskEntry(long taskid, int tasktype, String userid) {
             this.taskid = taskid;
             this.tasktype = tasktype;
-            this.assignerData = assignerData;
+            this.userid = userid;
+        }
+
+        @Override
+        public String toString() {
+            return "TaskEntry{" + "taskid=" + taskid + ", tasktype=" + tasktype + ", userid=" + userid + '}';
         }
 
     }
 
+    public void scan(Consumer<TaskEntry> consumer) {
+        Stream.of(actuallist).forEach(consumer);
+    }
+
     public void runCompaction() {
-        TaskEntry[] newlist = new TaskEntry[size];
-        int pos = 0;
         lock.writeLock().lock();
         try {
-            for (int i = 0; i < actualsize; i++) {
-                TaskEntry entry = actuallist[i];
-                if (entry != null) {
-                    newlist[pos++] = entry;
+            int[] nonemptypositions = new int[size];
+            int insertpos = 0;
+            int pos = 0;
+            for (TaskEntry entry : actuallist) {
+                if (entry.taskid > 0) {
+                    nonemptypositions[insertpos++] = pos + 1; // NOTE_A: 0 means "empty", so we are going to add "+1" to every position
                 }
+                pos++;
             }
-            actuallist = newlist;
+            int writepos = 0;
+            for (int nonemptyindex = 0; nonemptyindex < size; nonemptyindex++) {
+                int nextnotempty = nonemptypositions[nonemptyindex];
+                if (nextnotempty == 0) {
+                    break;
+                }
+                nextnotempty = nextnotempty - 1; // see NOTE_A
+                actuallist[writepos].taskid = actuallist[nextnotempty].taskid;
+                actuallist[writepos].tasktype = actuallist[nextnotempty].tasktype;
+                actuallist[writepos].userid = actuallist[nextnotempty].userid;
+                writepos++;
+            }
+            for (int j = writepos; j < size; j++) {
+                actuallist[j].taskid = 0;
+                actuallist[j].tasktype = 0;
+                actuallist[j].userid = null;
+            }
+
+            minValidPosition = 0;
             actualsize = pos;
             fragmentation = 0;
         } finally {
@@ -111,42 +161,52 @@ public class TasksHeap {
         }
     }
 
-    public long takeTask(int tenant, int tasktype) {
+    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {
         while (true) {
-            int pos = -1;
+            TasksChooser chooser = new TasksChooser(groups, availableSpace, max);
             lock.readLock().lock();
             try {
-                for (int i = 0; i < actualsize; i++) {
+                for (int i = minValidPosition; i < actualsize; i++) {
                     TaskEntry entry = this.actuallist[i];
-                    if (entry != null && entry.tasktype == tasktype) {
-                        if (tenantAssigner.getActualTenant(entry.taskid, entry.assignerData) == tenant) {
-                            pos = i;
+                    if (entry.taskid > 0) {
+                        int group = groupMapper.getGroup(entry.taskid, entry.tasktype, entry.userid);
+                        if (chooser.accept(i, entry, group)) {
                             break;
                         }
                     }
                 }
-                if (pos < 0) {
-                    return -1;
-                }
             } finally {
                 lock.readLock().unlock();
             }
+            List<TasksChooser.Entry> choosen = chooser.getChoosenTasks();
+            if (choosen.isEmpty()) {
+                return Collections.emptyList();
+            }
 
+            List<Long> result = new ArrayList<>();
             lock.writeLock().lock();
             try {
-                TaskEntry entry = this.actuallist[pos];
-                if (entry != null) {
-                    this.actuallist[pos] = null;
-                    this.fragmentation++;
-                    if (this.fragmentation > maxFragmentation) {
-                        runCompaction();
+                for (TasksChooser.Entry choosenentry : choosen) {
+                    int pos = choosenentry.position;
+                    TaskEntry entry = this.actuallist[pos];
+                    if (entry.taskid == choosenentry.taskid) {
+                        entry.taskid = 0;
+                        entry.tasktype = 0;
+                        entry.userid = null;
+                        this.fragmentation++;
+                        result.add(choosenentry.taskid);
+                        if (pos == minValidPosition) {
+                            minValidPosition++;
+                        }
                     }
-                    return entry.taskid;
                 }
-                // try again
+                if (this.fragmentation > maxFragmentation) {
+                    runCompaction();
+                }
             } finally {
                 lock.writeLock().unlock();
             }
+            return result;
         }
     }
 

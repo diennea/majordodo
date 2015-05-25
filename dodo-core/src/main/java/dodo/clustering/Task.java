@@ -35,6 +35,9 @@ public class Task {
     public static final int STATUS_NEEDS_RECOVERY = 3;
     public static final int STATUS_ERROR = 4;
 
+    public static final int GROUP_ANY = 0;
+    public static final int TASKTYPE_ANY = 0;
+
     public static int taskExecutorStatusToTaskStatus(String status) {
         switch (status) {
             case TaskExecutorStatus.ERROR:

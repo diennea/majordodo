@@ -1,9 +1,9 @@
 package dodo.broker;
 
 import dodo.broker.http.HttpAPI;
+import dodo.clustering.GroupMapperFunction;
 import dodo.clustering.MemoryCommitLog;
 import dodo.clustering.TasksHeap;
-import dodo.clustering.TenantMapperFunction;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.task.Broker;
 
@@ -13,11 +13,8 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.Properties;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -114,12 +111,12 @@ public class BrokerMain implements AutoCloseable {
         int taskheapsize = Integer.parseInt(configuration.getProperty("tasksheap.size", "1000000"));
         String assigner = configuration.getProperty("tasks.tenantmapper", "");
         System.out.println("Starting MajorDodo Broker");
-        TenantMapperFunction mapper;
+        GroupMapperFunction mapper;
         if (assigner.isEmpty()) {
-            mapper = new TenantMapperFunction() {
+            mapper = new GroupMapperFunction() {
 
                 @Override
-                public int getActualTenant(long taskid, String assignerData) {
+                public int getGroup(long taskid, int taskType, String assignerData) {
                     if (assignerData == null || assignerData.isEmpty()) {
                         return 0;
                     } else {
@@ -133,7 +130,7 @@ public class BrokerMain implements AutoCloseable {
 
             };
         } else {
-            mapper = (TenantMapperFunction) Class.forName(assigner).newInstance();
+            mapper = (GroupMapperFunction) Class.forName(assigner).newInstance();
             System.out.println("Teant Mapper:" + mapper);
         }
 

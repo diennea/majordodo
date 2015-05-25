@@ -22,6 +22,7 @@ package dodo.network;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -81,12 +82,13 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_TASKS_REQUEST(String processId, int tenant, Map<Integer, Integer> availableSpace) {
+    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Map<Integer, Integer> availableSpace, int max) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);
-        params.put("tenant", tenant);
+        params.put("groups", groups);
         params.put("availableSpace", availableSpace);
+        params.put("max", max);
         return new Message(processId, TYPE_WORKER_TASKS_REQUEST, params);
     }
 

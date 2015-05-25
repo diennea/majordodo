@@ -30,6 +30,7 @@ import dodo.scheduler.Workers;
 import dodo.worker.BrokerServerEndpoint;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -90,15 +91,11 @@ public class Broker {
         return started;
     }
 
-    public List<Long> assignTasksToWorker(int tasktype, int maxtasks, int tenant, String workerId) throws LogNotAvailableException {
-        List<Long> tasks = new ArrayList<>();
-        for (int i = 0; i < maxtasks; i++) {
-            long taskId = tasksHeap.takeTask(tenant, tasktype);
-            if (taskId > 0) {
-                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId);
-                this.brokerStatus.applyModification(edit);
-                tasks.add(taskId);
-            }
+    public List<Long> assignTasksToWorker(int max, Map<Integer, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
+        List<Long> tasks = tasksHeap.takeTasks(max, groups, availableSpace);
+        for (long taskId : tasks) {
+            StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId);
+            this.brokerStatus.applyModification(edit);
         }
         return tasks;
     }

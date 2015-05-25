@@ -1,11 +1,9 @@
 package dodo.worker;
 
-import dodo.clustering.MemoryCommitLog;
+import dodo.clustering.Task;
 import dodo.executors.TaskExecutorFactory;
 import dodo.network.BrokerLocator;
 import dodo.network.netty.NettyBrokerLocator;
-import dodo.network.netty.NettyChannelAcceptor;
-import dodo.task.Broker;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,7 +11,9 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -39,7 +39,7 @@ public class WorkerMain {
             int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
 
             String workerid = configuration.getProperty("worker.id", "localhost");
-            String tenantid = configuration.getProperty("worker.tenant", "0");
+            String groups = configuration.getProperty("worker.groups", Task.GROUP_ANY + "");
             int maxthreads = Integer.parseInt(configuration.getProperty("worker.maxthreads", "100"));
             String executorFactory = configuration.getProperty("worker.executorfactory", "dodo.worker.DefaultExecutorFactory");
             String processid = ManagementFactory.getRuntimeMXBean().getName();
@@ -67,12 +67,18 @@ public class WorkerMain {
                     System.out.println("connectionEvent:" + event);
                 }
             };
+            List<Integer> groupsList = new ArrayList<>();
+            for (String s : groups.split(",")) {
+                if (!s.trim().isEmpty()) {
+                    groupsList.add(Integer.parseInt(s));
+                }
+            }
             WorkerCore workerCore = new WorkerCore(maxthreads, processid, workerid,
-                    location, maximumThreadPerTaskType, brokerLocator, listener, Integer.parseInt(tenantid));
+                    location, maximumThreadPerTaskType, brokerLocator, listener, groupsList);
             System.out.println("worker.executorfactory=" + executorFactory);
             workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
             workerCore.start();
-            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", tenantid=" + tenantid);
+            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", tenantid=" + groups);
             System.out.println("WorkerID:" + workerid + ", processid:" + processid + " location:" + location);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Type ENTER to exit...");

@@ -168,20 +168,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
-            case Message.TYPE_WORKER_TASKS_REQUEST:                
+            case Message.TYPE_WORKER_TASKS_REQUEST:
                 Map<Integer, Integer> availableSpace = (Map<Integer, Integer>) message.parameters.get("availableSpace");
-                int tenant = (Integer) message.parameters.get("tenant");
-                System.out.println("TYPE_WORKER_TASKS_REQUEST:"+message.parameters);
+                List<Integer> groups = (List<Integer>) message.parameters.get("groups");
+                Integer max = (Integer) message.parameters.get("max");                
                 try {
-                    List<Long> taskIds = new ArrayList<>();
-                    for (Map.Entry<Integer, Integer> taskTypeMaxTasks : availableSpace.entrySet()) {
-                        int tasktype = taskTypeMaxTasks.getKey();
-                        int maxtasks = taskTypeMaxTasks.getValue();
-                        taskIds.addAll(broker.assignTasksToWorker(tasktype, maxtasks, tenant, workerId));
-
-                    }
+                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, workerId);
                     taskIds.forEach(manager::taskAssigned);
-
                 } catch (LogNotAvailableException error) {
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }

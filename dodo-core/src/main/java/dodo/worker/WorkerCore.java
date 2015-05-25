@@ -30,15 +30,15 @@ import dodo.network.Channel;
 import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.network.SendResultCallback;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Core of the worker inside the JVM
@@ -57,7 +57,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
     private final Thread coreThread;
     private volatile boolean stopped = false;
     private final int maxThreads;
-    private final int tenantId;
+    private final List<Integer> groups;
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
@@ -101,11 +101,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
                     availableSpace.remove(tasktype);
                 }
             });
-            System.out.println("availableSpace:" + availableSpace);
+
             if (availableSpace.isEmpty()) {
                 return;
             }
-            _channel.sendOneWayMessage(Message.WORKER_TASKS_REQUEST(processId, tenantId,availableSpace), new SendResultCallback() {
+            int maxnewthreads = maxThreads - runningTasks.size();            
+            _channel.sendOneWayMessage(Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads), new SendResultCallback() {
 
                 @Override
                 public void messageSent(Message originalMessage, Throwable error) {
@@ -117,13 +118,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         }
     }
 
-    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<Integer, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener, int tenantId) {
+    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<Integer, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener, List<Integer> groups) {
         this.maxThreads = maxThreads;
         if (listener == null) {
             listener = new WorkerStatusListener() {
             };
         }
-        this.tenantId = tenantId;
+        this.groups = groups;
         this.listener = listener;
         this.threadpool = Executors.newFixedThreadPool(maxThreads, new ThreadFactory() {
 

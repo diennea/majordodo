@@ -23,6 +23,7 @@ import dodo.executors.TaskExecutor;
 import dodo.worker.WorkerCore;
 import dodo.worker.WorkerStatusListener;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,12 +41,12 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
 
     private static final int TASKTYPE_MYTYPE = 987;
     private static final String tenantName = "queue1";
-    private static final int tenant = 867;
+    private static final int group = 12345;
 
     @Before
     public void before() throws Exception {
-        tenantsMap.clear();
-        tenantsMap.put(tenantName, tenant);
+        groupsMap.clear();
+        groupsMap.put(tenantName, group);
     }
 
     @Test
@@ -69,7 +70,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         };
         Map<Integer, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, Arrays.asList(group));
         core.start();
         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
@@ -122,7 +123,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         };
         Map<Integer, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, Arrays.asList(group));
 
         core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
@@ -180,7 +181,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         };
         Map<Integer, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, Arrays.asList(group));
 
         core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
@@ -234,7 +235,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         };
         Map<Integer, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
-        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, tenant);
+        WorkerCore core = new WorkerCore(10, "abc", "here", "localhost", tags, getBrokerLocator(), listener, Arrays.asList(group));
 
         core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
@@ -294,7 +295,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             };
             Map<Integer, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
-            WorkerCore core = new WorkerCore(10, workerProcessId, workerId, "localhost", tags, getBrokerLocator(), listener, tenant);
+            WorkerCore core = new WorkerCore(10, workerProcessId, workerId, "localhost", tags, getBrokerLocator(), listener, Arrays.asList(group));
             cores.add(core);
 
             core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {

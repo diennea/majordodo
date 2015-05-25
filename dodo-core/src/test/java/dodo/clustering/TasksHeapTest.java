@@ -19,46 +19,132 @@
  */
 package dodo.clustering;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class TasksHeapTest {
 
-    @Test
-    public void monoThreadTests() throws Exception {
-        TasksHeap instance = new TasksHeap(1000000, new TenantMapperFunction() {
+    private static final int TASKTYPE_MYTASK1 = 1234;
+    private static final int TASKTYPE_MYTASK2 = 1235;
+    private static final String USERID1 = "myuser1";
+    private static final String USERID2 = "myuser2";
+    private static final int GROUPID1 = 9713;
+    private static final int GROUPID2 = 972;
 
-            @Override
-            public int getActualTenant(long taskid, String assignerData) {
-                return 0;
+    private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
+
+        @Override
+        public int getGroup(long taskid, int tasktype, String assignerData) {
+            switch (assignerData) {
+                case USERID1:
+                    return GROUPID1;
+                case USERID2:
+                    return GROUPID2;
+                default:
+                    return -1;
             }
-        });
+        }
+    };
+
+    @Test
+    public void test1() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(Task.TASKTYPE_ANY, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), availableSpace);
+        assertEquals(1, taskids.size());
+        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+    }
+
+    @Test
+    public void test2() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), availableSpace);
+        assertEquals(1, taskids.size());
+        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+    }
+
+    @Test
+    public void test3() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(Task.TASKTYPE_ANY, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), availableSpace);
+        assertEquals(1, taskids.size());
+        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+    }
+
+    @Test
+    public void test4() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), availableSpace);
+        assertEquals(1, taskids.size());
+        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+    }
+
+    @Test
+    public void test5() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 1);
+        availableSpace.put(TASKTYPE_MYTASK2, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        long task1 = newTaskId.incrementAndGet();
+        long task2 = newTaskId.incrementAndGet();
+        instance.insertTask(task1, TASKTYPE_MYTASK1, USERID1);
+        instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
 
         {
-            long _start = System.currentTimeMillis();
-            for (int i = 0; i < 1000000; i++) {
-                instance.insertTask(i, 10, "15");
-            }
-            long _stop = System.currentTimeMillis();
-            System.out.println("Time: " + (_stop - _start) + " ms");
+            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), availableSpace);
+            assertEquals(2, taskids.size());
+            assertEquals(task1, taskids.get(0).longValue());
+            assertEquals(task2, taskids.get(1).longValue());
         }
 
-        ExecutorService threadPool = Executors.newFixedThreadPool(20);
-        CountDownLatch latch = new CountDownLatch(1000000);
+    }
+
+    @Test
+    public void test6() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< Integer, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 3);
+        availableSpace.put(TASKTYPE_MYTASK2, 1);
+        AtomicLong newTaskId = new AtomicLong(0);
+        long task1 = newTaskId.incrementAndGet();
+        long task2 = newTaskId.incrementAndGet();
+        long task3 = newTaskId.incrementAndGet();
+        instance.insertTask(task1, TASKTYPE_MYTASK1, USERID1);
+        instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
+        instance.insertTask(task3, TASKTYPE_MYTASK2, USERID1);
+
         {
-            long _start = System.currentTimeMillis();
-            for (int i = 0; i < 1000000; i++) {
-                threadPool.submit(() -> {
-                    instance.takeTask(15, 10);
-                    latch.countDown();
-                });
-            }
-            latch.await();
-            long _stop = System.currentTimeMillis();
-            System.out.println("Time: " + (_stop - _start) + " ms");
+            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), availableSpace);
+            assertEquals(2, taskids.size());
+            assertEquals(task1, taskids.get(0).longValue());
+            assertEquals(task2, taskids.get(1).longValue());
+        }
+
+        {
+            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), availableSpace);
+            assertEquals(1, taskids.size());
+            assertEquals(task3, taskids.get(0).longValue());
         }
 
     }

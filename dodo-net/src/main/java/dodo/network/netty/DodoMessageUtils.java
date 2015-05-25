@@ -22,8 +22,10 @@ package dodo.network.netty;
 import dodo.network.Message;
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -46,6 +48,7 @@ public class DodoMessageUtils {
     private static final byte OPCODE_LONG_VALUE = 9;
     private static final byte OPCODE_INT_VALUE = 10;
     private static final byte OPCODE_NULL_VALUE = 11;
+    private static final byte OPCODE_LIST_VALUE = 12;
 
     private static void writeUTF8String(ByteBuf buf, String s) {
         byte[] asarray = s.getBytes(StandardCharsets.UTF_8);
@@ -104,6 +107,14 @@ public class DodoMessageUtils {
             for (Object o2 : set) {
                 writeEncodedSimpleValue(encoded, o2);
             }
+        } else if (o instanceof List) {
+            List set = (List) o;
+            encoded.writeByte(OPCODE_LIST_VALUE);
+            encoded.writeInt(set.size());
+            for (Object o2 : set) {
+                writeEncodedSimpleValue(encoded, o2);
+            }
+
         } else if (o instanceof Map) {
             Map set = (Map) o;
             encoded.writeByte(OPCODE_MAP_VALUE);
@@ -139,6 +150,15 @@ public class DodoMessageUtils {
             case OPCODE_SET_VALUE: {
                 int len = encoded.readInt();
                 Set<Object> ret = new HashSet<>();
+                for (int i = 0; i < len; i++) {
+                    Object o = readEncodedSimpleValue(encoded);
+                    ret.add(o);
+                }
+                return ret;
+            }
+            case OPCODE_LIST_VALUE: {
+                int len = encoded.readInt();
+                List<Object> ret = new ArrayList<>(len);
                 for (int i = 0; i < len; i++) {
                     Object o = readEncodedSimpleValue(encoded);
                     ret.add(o);
