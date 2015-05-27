@@ -19,9 +19,11 @@
  */
 package dodo.clustering;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 /**
  * In memory commit log
@@ -30,13 +32,77 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class MemoryCommitLog extends StatusChangesLog {
 
-    private final AtomicLong sequenceNumber = new AtomicLong();
-    private final ExecutorService service = Executors.newCachedThreadPool();
+    private long sequenceNumber = 0;
+    private final List<MemoryLogLine> log = new ArrayList<>();
+
+    private final ReentrantLock lock = new ReentrantLock();
 
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit action) {
-        long newNumber = sequenceNumber.incrementAndGet();
-        return new LogSequenceNumber(1, newNumber);
+        lock.lock();
+        try {
+            long newNumber = ++sequenceNumber;
+            LogSequenceNumber snum = new LogSequenceNumber(1, newNumber);
+            log.add(new MemoryLogLine(snum, action));
+            return snum;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private List<MemoryLogLine> logatboot;
+    private BrokerStatusSnapshot snapshotatboot = new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
+
+    public MemoryCommitLog() {
+    }
+
+    public MemoryCommitLog(List<MemoryLogLine> logatboot, BrokerStatusSnapshot snapshotatboot) {
+        this.logatboot = logatboot;
+        this.snapshotatboot = snapshotatboot;
+    }
+
+    public static final class MemoryLogLine {
+
+        private final LogSequenceNumber logSequenceNumber;
+        private final StatusEdit edit;
+
+        public MemoryLogLine(LogSequenceNumber logSequenceNumber, StatusEdit edit) {
+            this.logSequenceNumber = logSequenceNumber;
+            this.edit = edit;
+        }
+
+    }
+
+    @Override
+    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+        if (logatboot != null) {
+            for (MemoryLogLine line : logatboot) {
+                if (line.logSequenceNumber.after(snapshotSequenceNumber)) {
+                    consumer.accept(line.logSequenceNumber, line.edit);
+                }
+            };
+        }
+        logatboot = null;
+    }
+
+    @Override
+    public void checkpointDone(LogSequenceNumber snapshotSequenceNumber) throws LogNotAvailableException {
+        lock.lock();
+        try {
+            for (Iterator<MemoryLogLine> it = log.iterator(); it.hasNext();) {
+                MemoryLogLine line = it.next();
+                if (snapshotSequenceNumber.after(line.logSequenceNumber)) {
+                    it.remove();
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
+        return snapshotatboot;
     }
 
 }

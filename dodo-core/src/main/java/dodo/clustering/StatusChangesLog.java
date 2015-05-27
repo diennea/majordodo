@@ -19,6 +19,8 @@
  */
 package dodo.clustering;
 
+import java.util.function.BiConsumer;
+
 /**
  * Log of mofications, this is the base of the replication system
  *
@@ -27,5 +29,11 @@ package dodo.clustering;
 public abstract class StatusChangesLog {
 
     public abstract LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException;
+
+    public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException;
+
+    public abstract void checkpointDone(LogSequenceNumber snapshotSequenceNumber) throws LogNotAvailableException;
+
+    public abstract BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException;
 
 }

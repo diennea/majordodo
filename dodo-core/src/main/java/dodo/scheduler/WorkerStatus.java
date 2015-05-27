@@ -19,11 +19,6 @@
  */
 package dodo.scheduler;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * Status of a worker
  *
@@ -40,8 +35,6 @@ public final class WorkerStatus {
     private String workerLocation;
     private String processId;
     private long lastConnectionTs;
-    private Map<String, Integer> maximumNumberOfTasks;
-    private final Map<String, AtomicInteger> actualNumberOfTasks = new HashMap<>();
 
     public long getLastConnectionTs() {
         return lastConnectionTs;
@@ -49,18 +42,6 @@ public final class WorkerStatus {
 
     public void setLastConnectionTs(long lastConnectionTs) {
         this.lastConnectionTs = lastConnectionTs;
-    }
-
-    public Map<String, AtomicInteger> getActualNumberOfTasks() {
-        return actualNumberOfTasks;
-    }
-
-    public Map<String, Integer> getMaximumNumberOfTasks() {
-        return maximumNumberOfTasks;
-    }
-
-    public void setMaximumNumberOfTasks(Map<String, Integer> maximumNumberOfTasks) {
-        this.maximumNumberOfTasks = maximumNumberOfTasks;
     }
 
     public WorkerStatus() {
@@ -82,7 +63,6 @@ public final class WorkerStatus {
         this.processId = processId;
     }
 
-    
     public String getWorkerLocation() {
         return workerLocation;
     }

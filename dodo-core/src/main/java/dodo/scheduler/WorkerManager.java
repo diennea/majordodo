@@ -127,6 +127,10 @@ public class WorkerManager {
         this.connection = connection;
     }
 
+    public void taskShouldBeRunning(long taskId) {
+        tasksRunningOnRemoteWorker.add(taskId);
+    }
+
     public void taskAssigned(long taskId) {
         taskToBeSubmittedToRemoteWorker.add(taskId);
     }

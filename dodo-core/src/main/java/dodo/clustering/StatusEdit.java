@@ -55,20 +55,18 @@ public final class StatusEdit {
     public int taskStatus;
     public long timestamp;
     public String parameter;
-    public String tenantInfo;
+    public String userid;
     public String workerId;
     public String workerLocation;
     public String workerProcessId;
-    public String result;
-    public Map<String, Integer> maximumNumberOfTasksPerTag;
+    public String result;    
     public Set<Long> actualRunningTasks;
 
     @Override
     public String toString() {
-        return "StatusEdit{" + "editType=" + editType + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", tenantInfo=" + tenantInfo + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", maximumNumberOfTasksPerTag=" + maximumNumberOfTasksPerTag + ", actualRunningTasks=" + actualRunningTasks + '}';
+        return "StatusEdit{" + "editType=" + editType + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", actualRunningTasks=" + actualRunningTasks + '}';
     }
 
-    
 
     public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
         StatusEdit action = new StatusEdit();
@@ -88,12 +86,13 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(int taskType, String taskParameter, String tenantInfo) {
+    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid) {
         StatusEdit action = new StatusEdit();
         action.editType = ACTION_TYPE_ADD_TASK;
         action.parameter = taskParameter;
         action.taskType = taskType;
-        action.tenantInfo = tenantInfo;
+        action.taskId = taskId;
+        action.userid = userid;
         return action;
     }
 

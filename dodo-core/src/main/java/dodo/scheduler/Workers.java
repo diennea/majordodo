@@ -19,11 +19,12 @@
  */
 package dodo.scheduler;
 
+import dodo.clustering.BrokerStatus;
+import dodo.clustering.Task;
 import dodo.task.Broker;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,25 +41,39 @@ public class Workers {
     private final Map<String, WorkerManager> nodeManagers = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Broker broker;
-    private final ExecutorService workersActivityThread;
+    private final Thread workersActivityThread;
     private volatile boolean stop;
 
     private final Object waitForEvent = new Object();
 
     public Workers(Broker broker) {
         this.broker = broker;
-        this.workersActivityThread = Executors.newFixedThreadPool(1, (r) -> {
-            return new Thread(r, "workers-life");
-        });
+        this.workersActivityThread = new Thread(new Life(), "workers-life");
     }
 
-    public void start() {
-        workersActivityThread.submit(new Life());
+    public void start(BrokerStatus statusAtBoot) {
+        Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
+        Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
+        for (WorkerStatus status : workersAtBoot) {
+            String workerId = status.getWorkerId();
+            WorkerManager manager = getWorkerManager(workerId);
+            LOGGER.log(Level.INFO, "Booting workerManager for workerId:" + status.getWorkerId());
+            for (Task task : tasksAtBoot) {
+                if (workerId.equals(task.getWorkerId())) {
+                    LOGGER.log(Level.INFO, "Booting workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId());
+                    manager.taskShouldBeRunning(task.getTaskId());
+                }
+            }
+        }
+        workersActivityThread.start();
     }
 
     public void stop() {
         stop = true;
-        workersActivityThread.shutdown();
+        try {
+            workersActivityThread.join();
+        } catch (InterruptedException exit) {
+        }
     }
 
     public void wakeUpOnTaskAssigned(String workerId, long taskId) {

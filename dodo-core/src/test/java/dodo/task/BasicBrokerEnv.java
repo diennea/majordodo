@@ -23,14 +23,11 @@ import dodo.client.ClientFacade;
 import dodo.clustering.MemoryCommitLog;
 import dodo.clustering.TasksHeap;
 import dodo.clustering.GroupMapperFunction;
+import dodo.clustering.StatusChangesLog;
 import dodo.network.BrokerLocator;
 import dodo.network.jvm.JVMBrokerLocator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
 import org.junit.After;
 import org.junit.Before;
 
@@ -78,18 +75,30 @@ public abstract class BasicBrokerEnv {
         return new JVMBrokerLocator(broker);
     }
 
-    protected Map<String, Integer> groupsMap = new HashMap<>();
+    protected StatusChangesLog createStatusChangesLog() {
+        return new MemoryCommitLog();
+    }
 
-    @Before
-    public void startBroker() {
-        broker = new Broker(new MemoryCommitLog(), new TasksHeap(1000000, new GroupMapperFunction() {
+    protected GroupMapperFunction createGroupMapperFunction() {
+        return new GroupMapperFunction() {
 
             @Override
             public int getGroup(long taskid, int tasktype, String userid) {
                 return groupsMap.getOrDefault(userid, 0);
 
             }
-        }));
+        };
+    }
+
+    protected int getTasksHeapsSize() {
+        return 1000;
+    }
+
+    protected Map<String, Integer> groupsMap = new HashMap<>();
+
+    @Before
+    public void startBroker() {
+        broker = new Broker(createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
         broker.start();
     }
 

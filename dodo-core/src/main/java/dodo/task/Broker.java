@@ -35,14 +35,12 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * Global statu s of the organizer
+ * Global status of the broker
  *
  * @author enrico.olivelli
  */
 public class Broker {
-
-    private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
-
+    
     private final StatusChangesLog log;
     private final Workers workers;
     public final TasksHeap tasksHeap;
@@ -73,8 +71,8 @@ public class Broker {
     }
 
     public void start() {
-        this.brokerStatus.reload();
-        this.workers.start();
+        this.brokerStatus.recover();
+        this.workers.start(brokerStatus);
         started = true;
     }
 
@@ -109,8 +107,9 @@ public class Broker {
             int taskType,
             String tenantInfo,
             String parameter) throws LogNotAvailableException {
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskType, parameter, tenantInfo);
-        long taskId = this.brokerStatus.applyModification(addTask).newTaskId;
+        long taskId = brokerStatus.nextTaskId();
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, tenantInfo);
+        this.brokerStatus.applyModification(addTask);
         this.tasksHeap.insertTask(taskId, taskType, tenantInfo);
         return taskId;
     }

@@ -30,12 +30,18 @@ public class TaskStatusView {
 
     private long taskId;
     private int status;
-    private String tenantInfo;
+    private String userid;
     private String workerId;
     private long createdTimestamp;
     private String parameter;
     private String result;
-    private int type;
+    private int type;    
+
+    @Override
+    public String toString() {
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + userid + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + parameter + ", result=" + result + ", type=" + type + '}';
+    }
+    
 
     public int getType() {
         return type;
@@ -63,12 +69,12 @@ public class TaskStatusView {
         this.status = status;
     }
 
-    public String getTenantInfo() {
-        return tenantInfo;
+    public String getUserid() {
+        return userid;
     }
 
-    public void setTenantInfo(String tenantInfo) {
-        this.tenantInfo = tenantInfo;
+    public void setUserid(String userid) {
+        this.userid = userid;
     }
 
     public String getWorkerId() {

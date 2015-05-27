@@ -124,7 +124,6 @@ public class ClientAPI {
         res.setId(t.getId());
         res.setLocation(t.getLocation());
         res.setProcessId(t.getProcessId());
-        res.setRunningTasks(t.getRunningTasks());
         res.setStatus(t.getStatus());
         return res;
     }

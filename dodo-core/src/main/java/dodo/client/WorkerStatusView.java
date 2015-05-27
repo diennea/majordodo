@@ -30,8 +30,16 @@ public class WorkerStatusView {
     private String processId;
     private String status;
     private String location;
-    private int runningTasks;
+    private long lastConnectionTs;
 
+    @Override
+    public String toString() {
+        return "WorkerStatusView{" + "id=" + id + ", processId=" + processId + ", status=" + status + ", location=" + location + ", lastConnectionTs=" + lastConnectionTs + '}';
+    }
+
+    
+
+    
     public String getId() {
         return id;
     }
@@ -64,12 +72,12 @@ public class WorkerStatusView {
         this.location = location;
     }
 
-    public int getRunningTasks() {
-        return runningTasks;
+    public long getLastConnectionTs() {
+        return lastConnectionTs;
     }
 
-    public void setRunningTasks(int runningTasks) {
-        this.runningTasks = runningTasks;
+    public void setLastConnectionTs(long lastConnectionTs) {
+        this.lastConnectionTs = lastConnectionTs;
     }
 
 }

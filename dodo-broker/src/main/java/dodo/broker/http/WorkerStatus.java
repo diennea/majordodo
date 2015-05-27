@@ -7,14 +7,15 @@ package dodo.broker.http;
 
 /**
  * Status of a worker, to be reported to clients
+ *
  * @author enrico
  */
 public class WorkerStatus {
+
     private String id;
     private String processId;
     private String status;
     private String location;
-    private int runningTasks;
 
     public String getId() {
         return id;
@@ -48,12 +49,4 @@ public class WorkerStatus {
         this.location = location;
     }
 
-    public int getRunningTasks() {
-        return runningTasks;
-    }
-
-    public void setRunningTasks(int runningTasks) {
-        this.runningTasks = runningTasks;
-    }
-    
 }

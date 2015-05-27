@@ -23,14 +23,15 @@ import dodo.scheduler.WorkerStatus;
 import dodo.client.TaskStatusView;
 import dodo.client.WorkerStatusView;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.LongUnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a
@@ -44,8 +45,10 @@ public class BrokerStatus {
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
     private final Map<Long, Task> tasks = new HashMap<>();
+    private final AtomicLong nextTaskId = new AtomicLong(0);
     private final Map<String, WorkerStatus> workers = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
+    private long maxTaskId = -1;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final StatusChangesLog log;
 
@@ -89,7 +92,7 @@ public class BrokerStatus {
         }
         TaskStatusView s = new TaskStatusView();
         s.setCreatedTimestamp(task.getCreatedTimestamp());
-        s.setTenantInfo(task.getTenantInfo());
+        s.setUserid(task.getTenantInfo());
         s.setWorkerId(task.getWorkerId());
         s.setStatus(task.getStatus());
         s.setTaskId(task.getTaskId());
@@ -104,7 +107,7 @@ public class BrokerStatus {
         WorkerStatusView res = new WorkerStatusView();
         res.setId(k.getWorkerId());
         res.setLocation(k.getWorkerLocation());
-        res.setRunningTasks(k.getActualNumberOfTasks().values().stream().mapToInt(i -> i.get()).sum());
+        res.setLastConnectionTs(k.getLastConnectionTs());
         String s;
         switch (k.getStatus()) {
             case WorkerStatus.STATUS_CONNECTED:
@@ -122,6 +125,18 @@ public class BrokerStatus {
         res.setProcessId(k.getProcessId());
         res.setStatus(s);
         return res;
+    }
+
+    public Collection<WorkerStatus> getWorkersAtBoot() {
+        return workers.values();
+    }
+
+    public Collection<Task> getTasksAtBoot() {
+        return tasks.values();
+    }
+
+    public long nextTaskId() {
+        return nextTaskId.incrementAndGet();
     }
 
     public static final class ModificationResult {
@@ -170,23 +185,25 @@ public class BrokerStatus {
                         throw new IllegalStateException();
                     }
                     if (!task.getWorkerId().equals(workerId)) {
-                        throw new IllegalStateException("bad workerid " + workerId + ", expected " + task.getWorkerId());
+                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
                     task.setStatus(Task.STATUS_FINISHED);
                     task.setResult(edit.result);
                     return new ModificationResult(num, -1);
                 }
                 case StatusEdit.ACTION_TYPE_ADD_TASK: {
-                    long newId = newTaskId.incrementAndGet();
                     Task task = new Task();
-                    task.setTaskId(newId);
+                    task.setTaskId(edit.taskId);
+                    if (maxTaskId < edit.taskId) {
+                        maxTaskId = edit.taskId;
+                    }
                     task.setCreatedTimestamp(System.currentTimeMillis());
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType);
-                    task.setTenantInfo(edit.tenantInfo);
+                    task.setTenantInfo(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
-                    tasks.put(newId, task);
-                    return new ModificationResult(num, newId);
+                    tasks.put(edit.taskId, task);
+                    return new ModificationResult(num, edit.taskId);
                 }
                 case StatusEdit.ACTION_TYPE_WORKER_CONNECTED: {
                     WorkerStatus node = workers.get(edit.workerId);
@@ -199,7 +216,6 @@ public class BrokerStatus {
                     node.setStatus(WorkerStatus.STATUS_CONNECTED);
                     node.setWorkerLocation(edit.workerLocation);
                     node.setProcessId(edit.workerProcessId);
-                    node.setMaximumNumberOfTasks(edit.maximumNumberOfTasksPerTag);
                     node.setLastConnectionTs(edit.timestamp);
                     return new ModificationResult(num, -1);
                 }
@@ -213,11 +229,19 @@ public class BrokerStatus {
 
     }
 
-    public void reload() {
+    public void recover() {
 
         lock.writeLock().lock();
         try {
-            // TODO
+            // TODO: maxTaskId must be saved on snapshots, because tasks will be removed and we do not want to reuse taskids
+            BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
+            log.recovery(snapshot.getActualLogSequenceNumber(),
+                    (logSeqNumber, edit) -> {
+                        applyEdit(logSeqNumber, edit);
+                    });
+            newTaskId.set(maxTaskId + 1);
+        } catch (LogNotAvailableException err) {
+            throw new RuntimeException(err);
         } finally {
             lock.writeLock().unlock();
         }

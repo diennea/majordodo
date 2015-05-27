@@ -29,9 +29,20 @@ public final class LogSequenceNumber {
     public final long ledgerId;
     public final long sequenceNumber;
 
+    @Override
+    public String toString() {
+        return ledgerId + "," + sequenceNumber;
+    }
+
     public LogSequenceNumber(long ledgerId, long sequenceNumber) {
         this.ledgerId = ledgerId;
         this.sequenceNumber = sequenceNumber;
+    }
+
+    boolean after(LogSequenceNumber snapshotSequenceNumber) {
+        // '>=' because we can be in the same ledger, and '>' because we must be 'after'
+        return this.ledgerId >= snapshotSequenceNumber.ledgerId
+                && this.sequenceNumber > snapshotSequenceNumber.sequenceNumber;
     }
 
 }
