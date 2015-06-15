@@ -92,7 +92,7 @@ public class BrokerStatus {
         }
         TaskStatusView s = new TaskStatusView();
         s.setCreatedTimestamp(task.getCreatedTimestamp());
-        s.setUserid(task.getTenantInfo());
+        s.setUserid(task.getUserId());
         s.setWorkerId(task.getWorkerId());
         s.setStatus(task.getStatus());
         s.setTaskId(task.getTaskId());
@@ -200,7 +200,7 @@ public class BrokerStatus {
                     task.setCreatedTimestamp(System.currentTimeMillis());
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType);
-                    task.setTenantInfo(edit.userid);
+                    task.setUserId(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
                     tasks.put(edit.taskId, task);
                     return new ModificationResult(num, edit.taskId);

@@ -86,12 +86,12 @@ public class MemoryCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public void checkpointDone(LogSequenceNumber snapshotSequenceNumber) throws LogNotAvailableException {
+    public void checkpointDone(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
         lock.lock();
         try {
             for (Iterator<MemoryLogLine> it = log.iterator(); it.hasNext();) {
                 MemoryLogLine line = it.next();
-                if (snapshotSequenceNumber.after(line.logSequenceNumber)) {
+                if (snapshotData.actualLogSequenceNumber.after(line.logSequenceNumber)) {
                     it.remove();
                 }
             }

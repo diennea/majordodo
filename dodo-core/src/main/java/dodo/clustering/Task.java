@@ -53,7 +53,7 @@ public class Task {
 
     @Override
     public String toString() {
-        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + ", taskId=" + taskId + ", tenantInfo=" + tenantInfo + ", workerId=" + workerId + '}';
+        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + ", taskId=" + taskId + ", tenantInfo=" + userId + ", workerId=" + workerId + '}';
     }
 
     private int type;
@@ -62,7 +62,7 @@ public class Task {
     private long createdTimestamp;
     private int status;
     private long taskId;
-    private String tenantInfo;
+    private String userId;
     private String workerId;
 
     public String getWorkerId() {
@@ -73,12 +73,12 @@ public class Task {
         this.workerId = workerId;
     }
 
-    public String getTenantInfo() {
-        return tenantInfo;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setTenantInfo(String tenantInfo) {
-        this.tenantInfo = tenantInfo;
+    public void setUserId(String tenantInfo) {
+        this.userId = tenantInfo;
     }
 
     public long getTaskId() {

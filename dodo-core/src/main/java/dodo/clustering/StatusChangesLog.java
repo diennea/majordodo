@@ -32,7 +32,7 @@ public abstract class StatusChangesLog {
 
     public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException;
 
-    public abstract void checkpointDone(LogSequenceNumber snapshotSequenceNumber) throws LogNotAvailableException;
+    public abstract void checkpointDone(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException;
 
     public abstract BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException;
 
