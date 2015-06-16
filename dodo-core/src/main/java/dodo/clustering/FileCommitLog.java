@@ -19,16 +19,25 @@
  */
 package dodo.clustering;
 
+import dodo.scheduler.WorkerStatus;
+import java.io.DataInput;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -43,6 +52,120 @@ public class FileCommitLog extends StatusChangesLog {
     Path snapshotsDirectory;
     Path logDirectory;
 
+    long currentLedgerId = 0;
+    long currentSequenceNumber = 0;
+
+    CommitFileWriter writer;
+
+    private final ReentrantLock writeLock = new ReentrantLock();
+
+    private final static byte ENTRY_START = 13;
+    private final static byte ENTRY_END = 25;
+
+    private class CommitFileWriter implements AutoCloseable {
+
+        DataOutputStream out;
+
+        private CommitFileWriter(long ledgerId) throws IOException {
+            Path filename = logDirectory.resolve(String.format("%020d", ledgerId));
+            // in case of IOException the stream is not opened, not need to close it
+            this.out = new DataOutputStream(Files.newOutputStream(filename));
+        }
+
+        public void writeEntry(long seqnumber, StatusEdit edit) throws IOException {
+            byte[] serialize = edit.serialize();
+            this.out.writeByte(ENTRY_START);
+            this.out.writeLong(seqnumber);
+            this.out.writeInt(serialize.length);
+            this.out.write(serialize);
+            this.out.writeByte(ENTRY_END);
+        }
+
+        public void flush() throws LogNotAvailableException {
+            // TODO: FD.synch ??
+            try {
+                this.out.flush();
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+
+        public void close() throws LogNotAvailableException {
+            try {
+                out.close();
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+    }
+
+    private static final class StatusEditWithSequenceNumber {
+
+        LogSequenceNumber logSequenceNumber;
+        StatusEdit statusEdit;
+
+        public StatusEditWithSequenceNumber(LogSequenceNumber logSequenceNumber, StatusEdit statusEdit) {
+            this.logSequenceNumber = logSequenceNumber;
+            this.statusEdit = statusEdit;
+        }
+
+    }
+
+    private class CommitFileReader implements AutoCloseable {
+
+        DataInputStream in;
+        long ledgerId;
+
+        private CommitFileReader(long ledgerId) throws IOException {
+            this.ledgerId = ledgerId;
+            Path filename = logDirectory.resolve(String.format("%020d", ledgerId));
+            // in case of IOException the stream is not opened, not need to close it
+            this.in = new DataInputStream(Files.newInputStream(filename, StandardOpenOption.READ));
+        }
+
+        public StatusEditWithSequenceNumber nextEntry() throws IOException {
+            byte entryStart;
+            try {
+                entryStart = in.readByte();
+            } catch (EOFException okEnd) {
+                return null;
+            }
+            if (entryStart != ENTRY_START) {
+                throw new IOException("corrupted stream");
+            }
+            long seqNumber = this.in.readLong();
+            int len = this.in.readInt();
+            byte[] data = new byte[len];
+            int rr = this.in.read(data);
+            if (rr != data.length) {
+                throw new IOException("corrupted read");
+            }
+            int entryEnd = this.in.readByte();
+            if (entryEnd != ENTRY_END) {
+                throw new IOException("corrupted stream");
+            }
+            StatusEdit edit = StatusEdit.read(data);
+            return new StatusEditWithSequenceNumber(new LogSequenceNumber(ledgerId, seqNumber), edit);
+        }
+
+        public void close() throws IOException {
+            in.close();
+        }
+    }
+
+    private void openNewLedger() throws LogNotAvailableException {
+        writeLock.lock();
+        try {
+            currentLedgerId++;
+            currentSequenceNumber = 0;
+            writer = new CommitFileWriter(currentLedgerId);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
     public FileCommitLog(Path snapshotsDirectory, Path logDirectory) {
         this.snapshotsDirectory = snapshotsDirectory;
         this.logDirectory = logDirectory;
@@ -50,58 +173,98 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        writeLock.lock();
+        try {
+            long newSequenceNumber = ++currentSequenceNumber;
+            writer.writeEntry(newSequenceNumber, edit);
+            return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
+            List<Path> names = new ArrayList<>();
+            for (Path path : stream) {
+                names.add(path);
+            }
+            names.sort(Comparator.comparing(Path::toString));
+            for (Path p : names) {
+                System.out.println("[RECOVERY] logfile is " + p.toAbsolutePath());
+                long ledgerId = Long.parseLong(p.getFileName().toString());
+                try (CommitFileReader reader = new CommitFileReader(ledgerId)) {
+                    StatusEditWithSequenceNumber n = reader.nextEntry();
+                    while (n != null) {
+
+                        if (n.logSequenceNumber.after(snapshotSequenceNumber)) {
+                            System.out.println("FOUND ENTRY " + n.logSequenceNumber + ", " + n.statusEdit);
+                            consumer.accept(n.logSequenceNumber, n.statusEdit);
+                        } else {
+                            System.out.println("SKIP ENTRY " + n.logSequenceNumber + ", " + n.statusEdit);
+                        }
+                        n = reader.nextEntry();
+                    }
+                }
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        openNewLedger();
     }
 
     @Override
-    public void checkpointDone(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
-        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
-        String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
-        Path snapshotfilename = snapshotsDirectory.resolve(filename + ".json");
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> snapshotdata = new HashMap<>();
-        snapshotdata.put("ledgerid", actualLogSequenceNumber.ledgerId);
-        snapshotdata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
-        snapshotdata.put("maxTaskId", snapshotData.maxTaskId);
-        List<Map<String, Object>> tasksStatus = new ArrayList<>();
-        snapshotdata.put("tasks", tasksStatus);
+    public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
+        writeLock.lock();
+        try {
+            LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
+            String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
+            Path snapshotfilename = snapshotsDirectory.resolve(filename + ".json");
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> snapshotdata = new HashMap<>();
+            snapshotdata.put("ledgerid", actualLogSequenceNumber.ledgerId);
+            snapshotdata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
+            snapshotdata.put("maxTaskId", snapshotData.maxTaskId);
+            List<Map<String, Object>> tasksStatus = new ArrayList<>();
+            snapshotdata.put("tasks", tasksStatus);
 
-        List<Map<String, Object>> workersStatus = new ArrayList<>();
-        snapshotdata.put("workers", workersStatus);
-        snapshotData.getWorkers().forEach(worker -> {
-            Map<String, Object> workerData = new HashMap<>();
-            workerData.put("workerId", worker.getWorkerId());
-            workerData.put("location", worker.getWorkerLocation());
-            workerData.put("processId", worker.getProcessId());
-            workerData.put("lastConnectionTs", worker.getLastConnectionTs());
-            workerData.put("status", worker.getStatus());
-            workersStatus.add(workerData);
-        });
+            List<Map<String, Object>> workersStatus = new ArrayList<>();
+            snapshotdata.put("workers", workersStatus);
+            snapshotData.getWorkers().forEach(worker -> {
+                Map<String, Object> workerData = new HashMap<>();
+                workerData.put("workerId", worker.getWorkerId());
+                workerData.put("location", worker.getWorkerLocation());
+                workerData.put("processId", worker.getProcessId());
+                workerData.put("lastConnectionTs", worker.getLastConnectionTs());
+                workerData.put("status", worker.getStatus());
+                workersStatus.add(workerData);
+            });
 
-        snapshotData.getTasks().forEach(
-                task -> {
-                    Map<String, Object> taskData = new HashMap<>();
-                    taskData.put("id", task.getTaskId());
-                    taskData.put("status", task.getStatus());
-                    taskData.put("parameter", task.getParameter());
-                    taskData.put("result", task.getResult());
-                    taskData.put("userId", task.getUserId());
-                    taskData.put("createdTimestamp", task.getCreatedTimestamp());
-                    taskData.put("type", task.getType());
-                    taskData.put("workerId", task.getWorkerId());
-                    tasksStatus.add(taskData);
-                }
-        );
+            snapshotData.getTasks().forEach(
+                    task -> {
+                        Map<String, Object> taskData = new HashMap<>();
+                        taskData.put("id", task.getTaskId());
+                        taskData.put("status", task.getStatus());
+                        taskData.put("parameter", task.getParameter());
+                        taskData.put("result", task.getResult());
+                        taskData.put("userId", task.getUserId());
+                        taskData.put("createdTimestamp", task.getCreatedTimestamp());
+                        taskData.put("type", task.getType());
+                        taskData.put("workerId", task.getWorkerId());
+                        tasksStatus.add(taskData);
+                    }
+            );
 
-        try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-            mapper.writeValue(out, snapshotData);
-        } catch (IOException err) {
-            throw new LogNotAvailableException(err);
+            try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
+                mapper.writeValue(out, snapshotData);
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
+        } finally {
+            writeLock.unlock();
         }
 
     }
@@ -139,61 +302,60 @@ public class FileCommitLog extends StatusChangesLog {
         }
         if (snapshotfilename == null) {
             System.out.println("No snapshot available Starting with a brand new status");
-            return new BrokerStatusSnapshot(1, new LogSequenceNumber(0, 0));
+            currentLedgerId = 0;
+            return new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
             try (InputStream in = Files.newInputStream(snapshotfilename)) {
+
                 snapshotdata = mapper.readValue(in, Map.class);
                 long ledgerId = Long.parseLong(snapshotdata.get("ledgerid") + "");
                 long sequenceNumber = Long.parseLong(snapshotdata.get("sequenceNumber") + "");
+                currentLedgerId = ledgerId;
+
                 long maxTaskId = Long.parseLong(snapshotdata.get("maxTaskId") + "");
+                BrokerStatusSnapshot result = new BrokerStatusSnapshot(maxTaskId, new LogSequenceNumber(ledgerId, sequenceNumber));
+                List<Map<String, Object>> tasksStatus = (List<Map<String, Object>>) snapshotdata.get("tasks");
+                if (tasksStatus != null) {
+                    tasksStatus.forEach(taskData -> {
+                        Task task = new Task();
+                        task.setTaskId(Long.parseLong(taskData.get("id") + ""));
+                        task.setStatus(Integer.parseInt(taskData.get("status") + ""));
+                        task.setParameter((String) taskData.get("parameter"));
+                        task.setResult((String) taskData.get("result"));
+                        task.setUserId((String) taskData.get("result"));
+                        task.setCreatedTimestamp(Long.parseLong(taskData.get("createdTimestamp") + ""));
+                        task.setType(Integer.parseInt(taskData.get("type") + ""));
+                        task.setWorkerId((String) taskData.get("workerId"));
+                        result.getTasks().add(task);
+                    });
+                }
+                List<Map<String, Object>> workersStatus = (List<Map<String, Object>>) snapshotdata.get("tasks");
+                if (workersStatus != null) {
+                    workersStatus.forEach(w -> {
+                        WorkerStatus workerStatus = new WorkerStatus();
+                        workerStatus.setWorkerId((String) w.get("workerId"));
+                        workerStatus.setWorkerLocation((String) w.get("location"));
+                        workerStatus.setProcessId((String) w.get("processId"));
+                        workerStatus.setLastConnectionTs(Long.parseLong(w.get("lastConnectionTs") + ""));
+                        workerStatus.setStatus(Integer.parseInt(w.get("status") + ""));
+                        result.getWorkers().add(workerStatus);
+                    });
+                }
+
+                return result;
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
-            throw new RuntimeException();
         }
-//
-//        Map<String, Object> snapshotdata = new HashMap<>();
-//        snapshotdata.put("ledgerid", actualLogSequenceNumber.ledgerId);
-//        snapshotdata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
-//        snapshotdata.put("maxTaskId", snapshotData.maxTaskId);
-//        List<Map<String, Object>> tasksStatus = new ArrayList<>();
-//        snapshotdata.put("tasks", tasksStatus);
-//
-//        List<Map<String, Object>> workersStatus = new ArrayList<>();
-//        snapshotdata.put("workers", workersStatus);
-//        snapshotData.getWorkers().forEach(worker -> {
-//            Map<String, Object> workerData = new HashMap<>();
-//            workerData.put("workerId", worker.getWorkerId());
-//            workerData.put("location", worker.getWorkerLocation());
-//            workerData.put("processId", worker.getProcessId());
-//            workerData.put("lastConnectionTs", worker.getLastConnectionTs());
-//            workerData.put("status", worker.getStatus());
-//            workersStatus.add(workerData);
-//        });
-//
-//        snapshotData.getTasks().forEach(
-//                task -> {
-//                    Map<String, Object> taskData = new HashMap<>();
-//                    taskData.put("id", task.getTaskId());
-//                    taskData.put("status", task.getStatus());
-//                    taskData.put("parameter", task.getParameter());
-//                    taskData.put("result", task.getResult());
-//                    taskData.put("userId", task.getUserId());
-//                    taskData.put("createdTimestamp", task.getCreatedTimestamp());
-//                    taskData.put("type", task.getType());
-//                    taskData.put("workerId", task.getWorkerId());
-//                    tasksStatus.add(taskData);
-//                }
-//        );
-//
-//        try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-//            mapper.writeValue(out, snapshotData);
-//        } catch (IOException err) {
-//            throw new LogNotAvailableException(err);
-//        }
+    }
 
+    @Override
+    public void close() throws LogNotAvailableException {
+        if (writer != null) {
+            writer.close();
+        }
     }
 
 }

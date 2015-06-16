@@ -1,0 +1,77 @@
+/*
+ Licensed to Diennea S.r.l. under one
+ or more contributor license agreements. See the NOTICE file
+ distributed with this work for additional information
+ regarding copyright ownership. Diennea S.r.l. licenses this file
+ to you under the Apache License, Version 2.0 (the
+ "License"); you may not use this file except in compliance
+ with the License.  You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing,
+ software distributed under the License is distributed on an
+ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ KIND, either express or implied.  See the License for the
+ specific language governing permissions and limitations
+ under the License.
+
+ */
+package dodo.task;
+
+import dodo.clustering.BrokerStatusSnapshot;
+import dodo.clustering.FileCommitLog;
+import dodo.clustering.LogSequenceNumber;
+import dodo.clustering.StatusEdit;
+import dodo.clustering.Task;
+import java.util.HashSet;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+/**
+ * Simple tests for FileCommit Log
+ *
+ * @author enrico.olivelli
+ */
+public class FileCommitLogSimpleTest {
+
+    @Rule
+    public TemporaryFolder folderSnapshots = new TemporaryFolder();
+    @Rule
+    public TemporaryFolder folderLogs = new TemporaryFolder();
+
+    @Test
+    public void test() throws Exception {
+        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath());) {
+            BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
+            log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
+                fail();
+            });
+            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, 0);
+            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, 0);
+            assertTrue(snapshot.getTasks().isEmpty());
+            StatusEdit edit1 = StatusEdit.ADD_TASK(1, 123, "param1", "myuser");
+            StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
+            StatusEdit edit3 = StatusEdit.ASSIGN_TASK_TO_WORKER(1, "worker1");
+            StatusEdit edit4 = StatusEdit.TASK_FINISHED(1, "node1", Task.STATUS_FINISHED, "theresult");
+            LogSequenceNumber logStatusEdit1 = log.logStatusEdit(edit1);
+            LogSequenceNumber logStatusEdit2 = log.logStatusEdit(edit2);
+            LogSequenceNumber logStatusEdit3 = log.logStatusEdit(edit3);
+            LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
+        }
+        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath());) {
+            BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
+            System.out.println("snapshot:" + snapshot);
+            log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
+                System.out.println("entry:" + a + ", " + b);
+            });
+
+        }
+
+    }
+
+}
