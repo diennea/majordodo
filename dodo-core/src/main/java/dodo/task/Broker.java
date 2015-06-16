@@ -98,6 +98,10 @@ public class Broker {
         return tasks;
     }
 
+    void checkpoint() throws LogNotAvailableException {
+        this.brokerStatus.checkpoint();
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(StatusEdit action, ActionResult result);

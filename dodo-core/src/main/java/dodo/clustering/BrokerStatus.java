@@ -139,6 +139,20 @@ public class BrokerStatus {
         return nextTaskId.incrementAndGet();
     }
 
+    public void checkpoint() throws LogNotAvailableException {
+        lock.writeLock().lock();
+        try {
+            BrokerStatusSnapshot snapshot = createSnapshot();
+            this.log.checkpoint(snapshot);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private BrokerStatusSnapshot createSnapshot() {
+        throw new RuntimeException();
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;

@@ -169,6 +169,7 @@ public class FileCommitLog extends StatusChangesLog {
     public FileCommitLog(Path snapshotsDirectory, Path logDirectory) {
         this.snapshotsDirectory = snapshotsDirectory;
         this.logDirectory = logDirectory;
+        System.out.println("[FILECOMMITLOG] at "+snapshotsDirectory.toAbsolutePath()+", "+logDirectory.toAbsolutePath());
     }
 
     @Override
