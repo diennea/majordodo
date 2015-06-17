@@ -32,6 +32,8 @@ import dodo.worker.BrokerServerEndpoint;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Global status of the broker
@@ -39,6 +41,8 @@ import java.util.Set;
  * @author enrico.olivelli
  */
 public class Broker implements AutoCloseable {
+
+    private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
 
     private final Workers workers;
     public final TasksHeap tasksHeap;
@@ -105,7 +109,7 @@ public class Broker implements AutoCloseable {
         for (long taskId : tasks) {
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
-                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts()+1);
+                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
                 this.brokerStatus.applyModification(edit);
             }
         }
@@ -123,18 +127,42 @@ public class Broker implements AutoCloseable {
 
     public long addTask(
             int taskType,
-            String tenantInfo,
+            String userId,
             String parameter) throws LogNotAvailableException {
         long taskId = brokerStatus.nextTaskId();
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, tenantInfo);
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId);
         this.brokerStatus.applyModification(addTask);
-        this.tasksHeap.insertTask(taskId, taskType, tenantInfo);
+        this.tasksHeap.insertTask(taskId, taskType, userId);
         return taskId;
     }
 
     public void taskFinished(String workerId, long taskId, int finalstatus, String result) throws LogNotAvailableException {
-        StatusEdit edit = StatusEdit.TASK_FINISHED(taskId, workerId, finalstatus, result);
+        Task task = this.brokerStatus.getTask(taskId);
+        if (task == null) {
+            LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
+            return;
+        }
+        if (finalstatus == Task.STATUS_FINISHED) {
+            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, finalstatus, result);
+            this.brokerStatus.applyModification(edit);
+            return;
+        }
+        int maxAttepts = task.getMaxattempts();
+        int attempt = task.getAttempts();
+        if (maxAttepts > 0 && attempt >= maxAttepts) {
+            // too many attempts
+            LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
+            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+            this.brokerStatus.applyModification(edit);
+            return;
+        }
+
+        // submit for new execution
+        LOGGER.log(Level.INFO, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
+        StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
         this.brokerStatus.applyModification(edit);
+        this.tasksHeap.insertTask(taskId, task.getType(), task.getUserId());
+
     }
 
     public void workerConnected(String workerId, String processId, String nodeLocation, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {

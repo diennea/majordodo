@@ -39,7 +39,7 @@ public final class StatusEdit {
     public static final short TYPE_ADD_TASK = 1;
     public static final short TYPE_WORKER_CONNECTED = 2;
     public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
-    public static final short TYPE_TASK_FINISHED = 4;
+    public static final short TYPE_TASK_STATUS_CHANGE = 4;
 
     public static String typeToString(short type) {
         switch (type) {
@@ -49,7 +49,7 @@ public final class StatusEdit {
                 return "WORKER_CONNECTED";
             case TYPE_ASSIGN_TASK_TO_WORKER:
                 return "ASSIGN_TASK_TO_WORKER";
-            case TYPE_TASK_FINISHED:
+            case TYPE_TASK_STATUS_CHANGE:
                 return "TASK_FINISHED";
             default:
                 return "?" + type;
@@ -84,9 +84,9 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit TASK_FINISHED(long taskId, String workerId, int finalStatus, String result) {
+    public static final StatusEdit TASK_STATUS_CHANGE(long taskId, String workerId, int finalStatus, String result) {
         StatusEdit action = new StatusEdit();
-        action.editType = TYPE_TASK_FINISHED;
+        action.editType = TYPE_TASK_STATUS_CHANGE;
         action.workerId = workerId;
         action.taskId = taskId;
         action.taskStatus = finalStatus;
@@ -143,7 +143,7 @@ public final class StatusEdit {
                     doo.writeLong(taskId);
                     doo.writeInt(attempt);
                     break;
-                case TYPE_TASK_FINISHED:
+                case TYPE_TASK_STATUS_CHANGE:
                     doo.writeLong(taskId);
                     doo.writeInt(taskStatus);
                     doo.writeUTF(workerId);
@@ -192,7 +192,7 @@ public final class StatusEdit {
                 res.taskId = doo.readLong();
                 res.attempt = doo.readInt();
                 break;
-            case TYPE_TASK_FINISHED:
+            case TYPE_TASK_STATUS_CHANGE:
                 res.taskId = doo.readLong();
                 res.taskStatus = doo.readInt();
                 res.workerId = doo.readUTF();

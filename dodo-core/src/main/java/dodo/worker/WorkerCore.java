@@ -62,6 +62,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
 
+    public void die() {
+        System.out.println("Die!");
+        this.stop();
+    }
+
     private static final class NotImplementedTaskExecutorFactory implements TaskExecutorFactory {
 
         @Override

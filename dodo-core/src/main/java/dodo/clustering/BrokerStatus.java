@@ -221,7 +221,7 @@ public class BrokerStatus {
                     task.setAttempts(edit.attempt);
                     return new ModificationResult(num, -1);
                 }
-                case StatusEdit.TYPE_TASK_FINISHED: {
+                case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);

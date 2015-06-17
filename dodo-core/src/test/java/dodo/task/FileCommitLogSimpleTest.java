@@ -62,7 +62,7 @@ public class FileCommitLogSimpleTest {
             StatusEdit edit1 = StatusEdit.ADD_TASK(1, 123, "param1", "myuser");
             StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
             StatusEdit edit3 = StatusEdit.ASSIGN_TASK_TO_WORKER(1, "worker1",1);
-            StatusEdit edit4 = StatusEdit.TASK_FINISHED(1, "node1", Task.STATUS_FINISHED, "theresult");
+            StatusEdit edit4 = StatusEdit.TASK_STATUS_CHANGE(1, "node1", Task.STATUS_FINISHED, "theresult");
             LogSequenceNumber logStatusEdit1 = log.logStatusEdit(edit1);
             LogSequenceNumber logStatusEdit2 = log.logStatusEdit(edit2);
             LogSequenceNumber logStatusEdit3 = log.logStatusEdit(edit3);
@@ -86,7 +86,7 @@ public class FileCommitLogSimpleTest {
             assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
             assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);
             assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
-            assertEquals(StatusEdit.TYPE_TASK_FINISHED, edits.get(3).editType);
+            assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(3).editType);
 
         }
 
