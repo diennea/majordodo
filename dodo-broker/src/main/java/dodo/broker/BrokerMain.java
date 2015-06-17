@@ -1,8 +1,10 @@
 package dodo.broker;
 
 import dodo.broker.http.HttpAPI;
+import dodo.clustering.FileCommitLog;
 import dodo.clustering.GroupMapperFunction;
 import dodo.clustering.MemoryCommitLog;
+import dodo.clustering.StatusChangesLog;
 import dodo.clustering.TasksHeap;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.task.Broker;
@@ -12,6 +14,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
+import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -109,7 +112,7 @@ public class BrokerMain implements AutoCloseable {
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
         int taskheapsize = Integer.parseInt(configuration.getProperty("tasksheap.size", "1000000"));
-        String assigner = configuration.getProperty("tasks.tenantmapper", "");
+        String assigner = configuration.getProperty("tasks.groupmapper", "");
         System.out.println("Starting MajorDodo Broker");
         GroupMapperFunction mapper;
         if (assigner.isEmpty()) {
@@ -131,9 +134,23 @@ public class BrokerMain implements AutoCloseable {
             };
         } else {
             mapper = (GroupMapperFunction) Class.forName(assigner).newInstance();
-            System.out.println("Teant Mapper:" + mapper);
+            System.out.println("GroupMapperFunction Mapper:" + mapper);
         }
 
+        String logtype = configuration.getProperty("logtype", "file");
+        StatusChangesLog log;
+        switch (logtype) {
+            case "file":
+                String logsdir = configuration.getProperty("logs.dir", "txlog");
+                String snapdir = configuration.getProperty("data.dir", "data");
+                log = new FileCommitLog(Paths.get(snapdir), Paths.get(logsdir));
+                break;
+            case "mem":
+                log = new MemoryCommitLog();
+                break;
+            default:
+                throw new RuntimeException("bad value for logtype property, only valid values are file|mem");
+        }
         broker = new Broker(new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
 
         broker.start();
