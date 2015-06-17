@@ -64,6 +64,33 @@ public class Task {
     private long taskId;
     private String userId;
     private String workerId;
+    private int maxattempts;
+    private int attempts;
+    private long executionDeadline;
+
+    public int getMaxattempts() {
+        return maxattempts;
+    }
+
+    public void setMaxattempts(int maxattempts) {
+        this.maxattempts = maxattempts;
+    }
+
+    public int getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(int attempts) {
+        this.attempts = attempts;
+    }
+
+    public long getExecutionDeadline() {
+        return executionDeadline;
+    }
+
+    public void setExecutionDeadline(long executionDeadline) {
+        this.executionDeadline = executionDeadline;
+    }
 
     public String getWorkerId() {
         return workerId;
@@ -139,6 +166,9 @@ public class Task {
         copy.workerId = this.workerId;
         copy.userId = this.userId;
         copy.type = this.type;
+        copy.attempts = this.attempts;
+        copy.maxattempts = this.maxattempts;
+        copy.executionDeadline = this.executionDeadline;
         return copy;
     }
 

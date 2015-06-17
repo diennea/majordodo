@@ -163,46 +163,48 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         disconnect();
     }
 
+    ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
+        @Override
+        public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
+            switch (finalStatus) {
+                case TaskExecutorStatus.ERROR:
+                    runningTasks.remove(taskId);
+                    channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
+
+                        @Override
+                        public void messageSent(Message originalMessage, Throwable error) {
+                            if (error != null) {
+                                error.printStackTrace();
+                            }
+                        }
+                    });
+                    break;
+                case TaskExecutorStatus.RUNNING:
+                    break;
+                case TaskExecutorStatus.NEEDS_RECOVERY:
+                    throw new RuntimeException("not implemented");
+                case TaskExecutorStatus.FINISHED:
+                    runningTasks.remove(taskId);
+                    channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, null), new SendResultCallback() {
+
+                        @Override
+                        public void messageSent(Message originalMessage, Throwable error
+                        ) {
+                            if (error != null) {
+                                error.printStackTrace();
+                            }
+                        }
+                    });
+                    break;
+            }
+        }
+    };
+
     private void startTask(Message message) {
         Long taskid = (Long) message.parameters.get("taskid");
         int tasktype = (Integer) message.parameters.get("tasktype");
         runningTasks.put(taskid, tasktype);
-        ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, new ExecutorRunnable.TaskExecutionCallback() {
-            @Override
-            public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
-                switch (finalStatus) {
-                    case TaskExecutorStatus.ERROR:
-                        runningTasks.remove(taskId);
-                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
-
-                            @Override
-                            public void messageSent(Message originalMessage, Throwable error) {
-                                if (error != null) {
-                                    error.printStackTrace();
-                                }
-                            }
-                        });
-                        break;
-                    case TaskExecutorStatus.RUNNING:
-                        break;
-                    case TaskExecutorStatus.NEEDS_RECOVERY:
-                        throw new RuntimeException("not implemented");
-                    case TaskExecutorStatus.FINISHED:
-                        runningTasks.remove(taskId);
-                        channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, null), new SendResultCallback() {
-
-                            @Override
-                            public void messageSent(Message originalMessage, Throwable error
-                            ) {
-                                if (error != null) {
-                                    error.printStackTrace();
-                                }
-                            }
-                        });
-                        break;
-                }
-            }
-        });
+        ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, executionCallback);
         threadpool.submit(runnable);
     }
 

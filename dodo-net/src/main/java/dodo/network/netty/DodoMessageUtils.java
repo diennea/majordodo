@@ -79,10 +79,8 @@ public class DodoMessageUtils {
             encoded.writeByte(OPCODE_PARAMETERS);
             encoded.writeInt(m.parameters.size());
             for (Map.Entry<String, Object> p : m.parameters.entrySet()) {
-                if (p.getKey() != null && p.getValue() != null) {
-                    writeEncodedSimpleValue(encoded, p.getKey());
-                    writeEncodedSimpleValue(encoded, p.getValue());
-                }
+                writeEncodedSimpleValue(encoded, p.getKey());
+                writeEncodedSimpleValue(encoded, p.getValue());
             }
         }
 

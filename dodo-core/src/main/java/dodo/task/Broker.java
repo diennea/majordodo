@@ -103,8 +103,11 @@ public class Broker implements AutoCloseable {
     public List<Long> assignTasksToWorker(int max, Map<Integer, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
         List<Long> tasks = tasksHeap.takeTasks(max, groups, availableSpace);
         for (long taskId : tasks) {
-            StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId);
-            this.brokerStatus.applyModification(edit);
+            Task task = this.brokerStatus.getTask(taskId);
+            if (task != null) {
+                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts()+1);
+                this.brokerStatus.applyModification(edit);
+            }
         }
         return tasks;
     }

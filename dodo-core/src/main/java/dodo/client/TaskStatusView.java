@@ -42,6 +42,33 @@ public class TaskStatusView {
         return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + userid + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + parameter + ", result=" + result + ", type=" + type + '}';
     }
     
+    private int maxattempts;
+    private int attempts;
+    private long executionDeadline;
+
+    public int getMaxattempts() {
+        return maxattempts;
+    }
+
+    public void setMaxattempts(int maxattempts) {
+        this.maxattempts = maxattempts;
+    }
+
+    public int getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(int attempts) {
+        this.attempts = attempts;
+    }
+
+    public long getExecutionDeadline() {
+        return executionDeadline;
+    }
+
+    public void setExecutionDeadline(long executionDeadline) {
+        this.executionDeadline = executionDeadline;
+    }
 
     public int getType() {
         return type;

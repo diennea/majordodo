@@ -41,6 +41,18 @@ public class DodoMessageUtilsTest {
         pp.put("1", 1);
         pp.put("2", 2L);
         pp.put("3", "3");
+        Map<String, Object> pp_map = new HashMap<>();
+        pp.put("pp_map", pp_map);
+        pp_map.put("m1", 1);
+        pp_map.put("m2", 2L);
+        pp_map.put("m3", "3");
+
+        Set<Object> pp_set = new HashSet<>();
+        pp.put("pp_set", pp_set);
+        pp_set.add(1);
+        pp_set.add(2L);
+        pp_set.add("3");
+
         Set<Object> runningTasks = new HashSet<>();
         runningTasks.add(null);
         runningTasks.add(Integer.valueOf(1));
@@ -58,6 +70,7 @@ public class DodoMessageUtilsTest {
         m.messageId = "c";
         DodoMessageUtils.encodeMessage(encoded, m);
         Message read = DodoMessageUtils.decodeMessage(encoded);
+        System.out.println("read.parameters:"+read.parameters);
         assertEquals(read.messageId, m.messageId);
         assertEquals(read.replyMessageId, m.replyMessageId);
         assertEquals(read.workerProcessId, m.workerProcessId);
@@ -67,6 +80,8 @@ public class DodoMessageUtilsTest {
         assertEquals(read.parameters.get("3"), m.parameters.get("3"));
         assertEquals(read.parameters.get("4"), m.parameters.get("4"));
         assertEquals(read.parameters.get("5"), m.parameters.get("5"));
+        assertEquals(read.parameters.get("pp_map"), m.parameters.get("pp_map"));
+        assertEquals(read.parameters.get("pp_set"), m.parameters.get("pp_set"));
     }
 
 }

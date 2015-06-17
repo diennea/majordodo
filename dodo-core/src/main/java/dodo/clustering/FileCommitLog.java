@@ -196,8 +196,8 @@ public class FileCommitLog extends StatusChangesLog {
         // no lock is needed, we are at boot time
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
             List<Path> names = new ArrayList<>();
-            for (Path path : stream) {                
-                if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {                    
+            for (Path path : stream) {
+                if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
                     names.add(path);
                 }
             }
@@ -265,6 +265,10 @@ public class FileCommitLog extends StatusChangesLog {
                         Map<String, Object> taskData = new HashMap<>();
                         taskData.put("id", task.getTaskId());
                         taskData.put("status", task.getStatus());
+                        taskData.put("maxattempts", task.getMaxattempts());
+                        taskData.put("attempts", task.getAttempts());
+                        taskData.put("executionDeadline", task.getExecutionDeadline());
+
                         taskData.put("parameter", task.getParameter());
                         taskData.put("result", task.getResult());
                         taskData.put("userId", task.getUserId());
@@ -341,10 +345,13 @@ public class FileCommitLog extends StatusChangesLog {
                         Task task = new Task();
                         task.setTaskId(Long.parseLong(taskData.get("id") + ""));
                         task.setStatus(Integer.parseInt(taskData.get("status") + ""));
+                        task.setMaxattempts(Integer.parseInt(taskData.get("maxattempts") + ""));
+                        task.setAttempts(Integer.parseInt(taskData.get("attempts") + ""));
                         task.setParameter((String) taskData.get("parameter"));
                         task.setResult((String) taskData.get("result"));
-                        task.setUserId((String) taskData.get("result"));
+                        task.setUserId((String) taskData.get("userId"));
                         task.setCreatedTimestamp(Long.parseLong(taskData.get("createdTimestamp") + ""));
+                        task.setExecutionDeadline(Long.parseLong(taskData.get("executionDeadline") + ""));
                         task.setType(Integer.parseInt(taskData.get("type") + ""));
                         task.setWorkerId((String) taskData.get("workerId"));
                         result.getTasks().add(task);

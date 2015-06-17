@@ -171,7 +171,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             case Message.TYPE_WORKER_TASKS_REQUEST:
                 Map<Integer, Integer> availableSpace = (Map<Integer, Integer>) message.parameters.get("availableSpace");
                 List<Integer> groups = (List<Integer>) message.parameters.get("groups");
-                Integer max = (Integer) message.parameters.get("max");                
+                Integer max = (Integer) message.parameters.get("max");
                 try {
                     List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, workerId);
                     taskIds.forEach(manager::taskAssigned);
@@ -207,6 +207,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         params.put("taskid", task.getTaskId());
         params.put("tasktype", task.getType());
         params.put("parameter", task.getParameter());
+        params.put("attempt", task.getAttempts());
         channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params), new SendResultCallback() {
 
             @Override

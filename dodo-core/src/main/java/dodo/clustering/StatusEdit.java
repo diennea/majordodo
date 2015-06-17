@@ -60,6 +60,7 @@ public final class StatusEdit {
     public int taskType;
     public long taskId;
     public int taskStatus;
+    public int attempt;
     public long timestamp;
     public String parameter;
     public String userid;
@@ -74,11 +75,12 @@ public final class StatusEdit {
         return "StatusEdit{" + "editType=" + typeToString(editType) + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", actualRunningTasks=" + actualRunningTasks + '}';
     }
 
-    public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
+    public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId, int attempt) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ASSIGN_TASK_TO_WORKER;
         action.workerId = nodeId;
         action.taskId = taskId;
+        action.attempt = attempt;
         return action;
     }
 
@@ -139,6 +141,7 @@ public final class StatusEdit {
                 case TYPE_ASSIGN_TASK_TO_WORKER:
                     doo.writeUTF(workerId);
                     doo.writeLong(taskId);
+                    doo.writeInt(attempt);
                     break;
                 case TYPE_TASK_FINISHED:
                     doo.writeLong(taskId);
@@ -181,12 +184,13 @@ public final class StatusEdit {
                 res.actualRunningTasks = new HashSet<>();
                 String rt = doo.readUTF();
 
-                Stream.of(rt.split(",")).filter(s->!s.isEmpty()).map(s -> Long.parseLong(s)).forEach(res.actualRunningTasks::add);
+                Stream.of(rt.split(",")).filter(s -> !s.isEmpty()).map(s -> Long.parseLong(s)).forEach(res.actualRunningTasks::add);
 
                 break;
             case TYPE_ASSIGN_TASK_TO_WORKER:
                 res.workerId = doo.readUTF();
                 res.taskId = doo.readLong();
+                res.attempt = doo.readInt();
                 break;
             case TYPE_TASK_FINISHED:
                 res.taskId = doo.readLong();

@@ -100,8 +100,10 @@ public class BrokerStatus {
         s.setTaskId(task.getTaskId());
         s.setParameter(task.getParameter());
         s.setType(task.getType());
-        s.setResult(task.getResult()); // should be cloned
-
+        s.setResult(task.getResult());
+        s.setAttempts(task.getAttempts());
+        s.setMaxattempts(task.getMaxattempts());
+        s.setExecutionDeadline(task.getExecutionDeadline());
         return s;
     }
 
@@ -216,6 +218,7 @@ public class BrokerStatus {
                     Task task = tasks.get(taskId);
                     task.setStatus(Task.STATUS_RUNNING);
                     task.setWorkerId(workerId);
+                    task.setAttempts(edit.attempt);
                     return new ModificationResult(num, -1);
                 }
                 case StatusEdit.TYPE_TASK_FINISHED: {
@@ -228,7 +231,7 @@ public class BrokerStatus {
                     if (!task.getWorkerId().equals(workerId)) {
                         throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
-                    task.setStatus(Task.STATUS_FINISHED);
+                    task.setStatus(edit.taskStatus);
                     task.setResult(edit.result);
                     return new ModificationResult(num, -1);
                 }
