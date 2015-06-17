@@ -19,12 +19,17 @@
  */
 package dodo.task;
 
+import com.sun.javafx.scene.control.skin.VirtualFlow;
 import dodo.clustering.BrokerStatusSnapshot;
 import dodo.clustering.FileCommitLog;
 import dodo.clustering.LogSequenceNumber;
 import dodo.clustering.StatusEdit;
 import dodo.clustering.Task;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -66,9 +71,22 @@ public class FileCommitLogSimpleTest {
         try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath());) {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             System.out.println("snapshot:" + snapshot);
+            // no snapshot was taken...
+            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, 0);
+            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, 0);
+            List<StatusEdit> edits = new ArrayList<>();
+            AtomicLong last = new AtomicLong(-1);
             log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                 System.out.println("entry:" + a + ", " + b);
+                assertEquals(1, a.ledgerId);
+                assertTrue(a.sequenceNumber > last.get());
+                edits.add(b);
+                last.set(a.sequenceNumber);
             });
+            assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
+            assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);
+            assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
+            assertEquals(StatusEdit.TYPE_TASK_FINISHED, edits.get(3).editType);
 
         }
 

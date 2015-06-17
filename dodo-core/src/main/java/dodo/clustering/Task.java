@@ -129,4 +129,17 @@ public class Task {
         this.status = status;
     }
 
+    Task cloneForSnapshot() {
+        Task copy = new Task();
+        copy.createdTimestamp = this.createdTimestamp;
+        copy.parameter = this.parameter;
+        copy.result = this.result;
+        copy.status = this.status;
+        copy.taskId = this.taskId;
+        copy.workerId = this.workerId;
+        copy.userId = this.userId;
+        copy.type = this.type;
+        return copy;
+    }
+
 }

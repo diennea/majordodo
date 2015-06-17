@@ -27,9 +27,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.LongUnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,6 +51,8 @@ public class BrokerStatus {
     private long maxTaskId = -1;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final StatusChangesLog log;
+    private LogSequenceNumber lastLogSequenceNumber;
+    private final AtomicInteger checkpointsCount = new AtomicInteger();
 
     public WorkerStatus getWorkerStatus(String workerId) {
         return workers.get(workerId);
@@ -139,18 +141,41 @@ public class BrokerStatus {
         return nextTaskId.incrementAndGet();
     }
 
+    public int getCheckpointsCount() {
+        return checkpointsCount.get();
+    }
+
     public void checkpoint() throws LogNotAvailableException {
-        lock.writeLock().lock();
+        checkpointsCount.incrementAndGet();
+        LOGGER.info("checkpoint");
+        BrokerStatusSnapshot snapshot;
+        lock.readLock().lock();
         try {
-            BrokerStatusSnapshot snapshot = createSnapshot();
-            this.log.checkpoint(snapshot);
+            snapshot = createSnapshot();
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
+        this.log.checkpoint(snapshot);
     }
 
     private BrokerStatusSnapshot createSnapshot() {
-        throw new RuntimeException();
+        BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, lastLogSequenceNumber);
+        for (Task task : tasks.values()) {
+            snap.tasks.add(task.cloneForSnapshot());
+        }
+        for (WorkerStatus status : workers.values()) {
+            snap.workers.add(status.cloneForSnapshot());
+        }
+        return snap;
+    }
+
+    public void close() {
+        try {
+            this.log.close();
+        } catch (LogNotAvailableException sorry) {
+            LOGGER.log(Level.SEVERE, "Error while closing transaction log", sorry);
+        }
+
     }
 
     public static final class ModificationResult {
@@ -166,7 +191,8 @@ public class BrokerStatus {
     }
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
-        LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?
+        LOGGER.log(Level.SEVERE, "applyModification {0}", edit);
+        LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
         return applyEdit(num, edit);
     }
 
@@ -182,6 +208,7 @@ public class BrokerStatus {
 
         lock.writeLock().lock();
         try {
+            lastLogSequenceNumber = num;
             switch (edit.editType) {
                 case StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER: {
                     long taskId = edit.taskId;
@@ -205,7 +232,7 @@ public class BrokerStatus {
                     task.setResult(edit.result);
                     return new ModificationResult(num, -1);
                 }
-                case StatusEdit.ACTION_TYPE_ADD_TASK: {
+                case StatusEdit.TYPE_ADD_TASK: {
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
                     if (maxTaskId < edit.taskId) {
@@ -219,7 +246,7 @@ public class BrokerStatus {
                     tasks.put(edit.taskId, task);
                     return new ModificationResult(num, edit.taskId);
                 }
-                case StatusEdit.ACTION_TYPE_WORKER_CONNECTED: {
+                case StatusEdit.TYPE_WORKER_CONNECTED: {
                     WorkerStatus node = workers.get(edit.workerId);
                     if (node == null) {
                         node = new WorkerStatus();
@@ -247,8 +274,15 @@ public class BrokerStatus {
 
         lock.writeLock().lock();
         try {
-            // TODO: maxTaskId must be saved on snapshots, because tasks will be removed and we do not want to reuse taskids
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
+            this.maxTaskId = snapshot.getMaxTaskId();
+            this.newTaskId.set(maxTaskId + 1);
+            for (Task task : snapshot.getTasks()) {
+                this.tasks.put(task.getTaskId(), task);
+            }
+            for (WorkerStatus worker : snapshot.getWorkers()) {
+                this.workers.put(worker.getWorkerId(), worker);
+            }
             log.recovery(snapshot.getActualLogSequenceNumber(),
                     (logSeqNumber, edit) -> {
                         applyEdit(logSeqNumber, edit);

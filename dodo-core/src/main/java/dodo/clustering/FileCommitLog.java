@@ -20,7 +20,6 @@
 package dodo.clustering;
 
 import dodo.scheduler.WorkerStatus;
-import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -36,9 +35,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -49,6 +49,8 @@ import org.codehaus.jackson.map.ObjectMapper;
  */
 public class FileCommitLog extends StatusChangesLog {
 
+    private static final Logger LOGGER = Logger.getLogger(FileCommitLog.class.getName());
+
     Path snapshotsDirectory;
     Path logDirectory;
 
@@ -58,6 +60,7 @@ public class FileCommitLog extends StatusChangesLog {
     CommitFileWriter writer;
 
     private final ReentrantLock writeLock = new ReentrantLock();
+    private final ReentrantLock snapshotLock = new ReentrantLock();
 
     private final static byte ENTRY_START = 13;
     private final static byte ENTRY_END = 25;
@@ -67,8 +70,9 @@ public class FileCommitLog extends StatusChangesLog {
         DataOutputStream out;
 
         private CommitFileWriter(long ledgerId) throws IOException {
-            Path filename = logDirectory.resolve(String.format("%020d", ledgerId));
+            Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION);
             // in case of IOException the stream is not opened, not need to close it
+            LOGGER.log(Level.INFO, "starting new file {0} ", filename);
             this.out = new DataOutputStream(Files.newOutputStream(filename));
         }
 
@@ -118,7 +122,7 @@ public class FileCommitLog extends StatusChangesLog {
 
         private CommitFileReader(long ledgerId) throws IOException {
             this.ledgerId = ledgerId;
-            Path filename = logDirectory.resolve(String.format("%020d", ledgerId));
+            Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION);
             // in case of IOException the stream is not opened, not need to close it
             this.in = new DataInputStream(Files.newInputStream(filename, StandardOpenOption.READ));
         }
@@ -169,7 +173,7 @@ public class FileCommitLog extends StatusChangesLog {
     public FileCommitLog(Path snapshotsDirectory, Path logDirectory) {
         this.snapshotsDirectory = snapshotsDirectory;
         this.logDirectory = logDirectory;
-        System.out.println("[FILECOMMITLOG] at "+snapshotsDirectory.toAbsolutePath()+", "+logDirectory.toAbsolutePath());
+        LOGGER.log(Level.INFO, "snapshotdirectory:{0}, logdirectory:{1}", new Object[]{snapshotsDirectory.toAbsolutePath(), logDirectory.toAbsolutePath()});
     }
 
     @Override
@@ -188,52 +192,64 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+        LOGGER.log(Level.INFO, "recovery, snapshotSequenceNumber: {0}", snapshotSequenceNumber);
+        // no lock is needed, we are at boot time
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
             List<Path> names = new ArrayList<>();
-            for (Path path : stream) {
-                names.add(path);
+            for (Path path : stream) {                
+                if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {                    
+                    names.add(path);
+                }
             }
             names.sort(Comparator.comparing(Path::toString));
             for (Path p : names) {
-                System.out.println("[RECOVERY] logfile is " + p.toAbsolutePath());
-                long ledgerId = Long.parseLong(p.getFileName().toString());
+                LOGGER.log(Level.INFO, "logfile is {0}", p.toAbsolutePath());
+                String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
+                long ledgerId = Long.parseLong(name);
+                if (ledgerId > currentLedgerId) {
+                    currentLedgerId = ledgerId;
+                }
                 try (CommitFileReader reader = new CommitFileReader(ledgerId)) {
                     StatusEditWithSequenceNumber n = reader.nextEntry();
                     while (n != null) {
 
                         if (n.logSequenceNumber.after(snapshotSequenceNumber)) {
-                            System.out.println("FOUND ENTRY " + n.logSequenceNumber + ", " + n.statusEdit);
+                            LOGGER.log(Level.INFO, "RECOVER ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
                             consumer.accept(n.logSequenceNumber, n.statusEdit);
                         } else {
-                            System.out.println("SKIP ENTRY " + n.logSequenceNumber + ", " + n.statusEdit);
+                            LOGGER.log(Level.INFO, "SKIP ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
                         }
                         n = reader.nextEntry();
                     }
                 }
             }
+            LOGGER.log(Level.INFO, "Max ledgerId is ", new Object[]{currentLedgerId});
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
         openNewLedger();
     }
+    private static final String LOGFILEEXTENSION = ".txlog";
 
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
-        writeLock.lock();
+
+        snapshotLock.lock();
         try {
             LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
             String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
-            Path snapshotfilename = snapshotsDirectory.resolve(filename + ".json");
+            Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
+            LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> snapshotdata = new HashMap<>();
-            snapshotdata.put("ledgerid", actualLogSequenceNumber.ledgerId);
-            snapshotdata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
-            snapshotdata.put("maxTaskId", snapshotData.maxTaskId);
+            Map<String, Object> filedata = new HashMap<>();
+            filedata.put("ledgerid", actualLogSequenceNumber.ledgerId);
+            filedata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
+            filedata.put("maxTaskId", snapshotData.maxTaskId);
             List<Map<String, Object>> tasksStatus = new ArrayList<>();
-            snapshotdata.put("tasks", tasksStatus);
+            filedata.put("tasks", tasksStatus);
 
             List<Map<String, Object>> workersStatus = new ArrayList<>();
-            snapshotdata.put("workers", workersStatus);
+            filedata.put("workers", workersStatus);
             snapshotData.getWorkers().forEach(worker -> {
                 Map<String, Object> workerData = new HashMap<>();
                 workerData.put("workerId", worker.getWorkerId());
@@ -260,15 +276,16 @@ public class FileCommitLog extends StatusChangesLog {
             );
 
             try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-                mapper.writeValue(out, snapshotData);
+                mapper.writeValue(out, filedata);
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
         } finally {
-            writeLock.unlock();
+            snapshotLock.unlock();
         }
 
     }
+    private static final String SNAPSHOTFILEXTENSION = ".snap.json";
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
@@ -278,10 +295,10 @@ public class FileCommitLog extends StatusChangesLog {
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(logDirectory)) {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
-                if (filename.endsWith(".json")) {
+                if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     System.out.println("Processing snapshot file: " + path);
                     try {
-                        filename = filename.substring(0, filename.length() - 5);
+                        filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
 
                         int pos = filename.indexOf('_');
                         if (pos > 0) {
@@ -295,6 +312,7 @@ public class FileCommitLog extends StatusChangesLog {
                         }
                     } catch (NumberFormatException invalidName) {
                         System.out.println("Error:" + invalidName);
+                        invalidName.printStackTrace();
                     }
                 }
             }
@@ -332,7 +350,7 @@ public class FileCommitLog extends StatusChangesLog {
                         result.getTasks().add(task);
                     });
                 }
-                List<Map<String, Object>> workersStatus = (List<Map<String, Object>>) snapshotdata.get("tasks");
+                List<Map<String, Object>> workersStatus = (List<Map<String, Object>>) snapshotdata.get("workers");
                 if (workersStatus != null) {
                     workersStatus.forEach(w -> {
                         WorkerStatus workerStatus = new WorkerStatus();

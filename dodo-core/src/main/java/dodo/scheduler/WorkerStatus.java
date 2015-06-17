@@ -79,4 +79,14 @@ public final class WorkerStatus {
         this.status = status;
     }
 
+    public WorkerStatus cloneForSnapshot() {
+        WorkerStatus copy = new WorkerStatus();
+        copy.lastConnectionTs = this.lastConnectionTs;
+        copy.processId = this.processId;
+        copy.status = this.status;
+        copy.workerId = this.workerId;
+        copy.workerLocation = this.workerLocation;
+        return copy;
+    }
+
 }

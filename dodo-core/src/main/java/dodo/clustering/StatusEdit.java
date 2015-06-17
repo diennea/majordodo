@@ -36,16 +36,16 @@ import java.util.stream.Stream;
  */
 public final class StatusEdit {
 
-    public static final short ACTION_TYPE_ADD_TASK = 1;
-    public static final short ACTION_TYPE_WORKER_CONNECTED = 2;
+    public static final short TYPE_ADD_TASK = 1;
+    public static final short TYPE_WORKER_CONNECTED = 2;
     public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
     public static final short TYPE_TASK_FINISHED = 4;
 
     public static String typeToString(short type) {
         switch (type) {
-            case ACTION_TYPE_ADD_TASK:
+            case TYPE_ADD_TASK:
                 return "ADD_TASK";
-            case ACTION_TYPE_WORKER_CONNECTED:
+            case TYPE_WORKER_CONNECTED:
                 return "WORKER_CONNECTED";
             case TYPE_ASSIGN_TASK_TO_WORKER:
                 return "ASSIGN_TASK_TO_WORKER";
@@ -71,7 +71,7 @@ public final class StatusEdit {
 
     @Override
     public String toString() {
-        return "StatusEdit{" + "editType=" + editType + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", actualRunningTasks=" + actualRunningTasks + '}';
+        return "StatusEdit{" + "editType=" + typeToString(editType) + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", actualRunningTasks=" + actualRunningTasks + '}';
     }
 
     public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId) {
@@ -94,7 +94,7 @@ public final class StatusEdit {
 
     public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid) {
         StatusEdit action = new StatusEdit();
-        action.editType = ACTION_TYPE_ADD_TASK;
+        action.editType = TYPE_ADD_TASK;
         action.parameter = taskParameter;
         action.taskType = taskType;
         action.taskId = taskId;
@@ -104,7 +104,7 @@ public final class StatusEdit {
 
     public static final StatusEdit WORKER_CONNECTED(String workerId, String processid, String nodeLocation, Set<Long> actualRunningTasks, long timestamp) {
         StatusEdit action = new StatusEdit();
-        action.editType = ACTION_TYPE_WORKER_CONNECTED;
+        action.editType = TYPE_WORKER_CONNECTED;
         action.timestamp = timestamp;
         action.workerId = workerId;
         action.workerLocation = nodeLocation;
@@ -119,7 +119,7 @@ public final class StatusEdit {
             DataOutputStream doo = new DataOutputStream(out);
             doo.writeShort(this.editType);
             switch (this.editType) {
-                case ACTION_TYPE_ADD_TASK:
+                case TYPE_ADD_TASK:
                     doo.writeLong(taskId);
                     doo.writeUTF(userid);
                     doo.writeInt(taskType);
@@ -129,7 +129,7 @@ public final class StatusEdit {
                         doo.writeUTF("");
                     }
                     break;
-                case ACTION_TYPE_WORKER_CONNECTED:
+                case TYPE_WORKER_CONNECTED:
                     doo.writeUTF(workerId);
                     doo.writeUTF(workerLocation);
                     doo.writeUTF(workerProcessId);
@@ -167,13 +167,13 @@ public final class StatusEdit {
         DataInputStream doo = new DataInputStream(in);
         res.editType = doo.readShort();
         switch (res.editType) {
-            case ACTION_TYPE_ADD_TASK:
+            case TYPE_ADD_TASK:
                 res.taskId = doo.readLong();
                 res.userid = doo.readUTF();
                 res.taskStatus = doo.readInt();
                 res.parameter = doo.readUTF();
                 break;
-            case ACTION_TYPE_WORKER_CONNECTED:
+            case TYPE_WORKER_CONNECTED:
                 res.workerId = doo.readUTF();
                 res.workerLocation = doo.readUTF();
                 res.workerProcessId = doo.readUTF();

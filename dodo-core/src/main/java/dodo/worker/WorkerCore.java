@@ -45,7 +45,7 @@ import java.util.concurrent.ThreadFactory;
  *
  * @author enrico.olivelli
  */
-public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
+public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, AutoCloseable {
 
     private final ExecutorService threadpool;
     private final String processId;
@@ -105,7 +105,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
             if (availableSpace.isEmpty()) {
                 return;
             }
-            int maxnewthreads = maxThreads - runningTasks.size();            
+            int maxnewthreads = maxThreads - runningTasks.size();
             _channel.sendOneWayMessage(Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads), new SendResultCallback() {
 
                 @Override
@@ -213,6 +213,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo {
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+    }
+
+    @Override
+    public void close() {
+        stop();
     }
 
     TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {

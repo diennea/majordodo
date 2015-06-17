@@ -72,7 +72,7 @@ public final class Message {
         params.put("taskid", taskId);
         params.put("processId", processId);
         params.put("status", finalStatus);
-        params.put("results", results);
+        params.put("result", results);
         if (error != null) {
             StringWriter r = new StringWriter();
             PrintWriter t = new PrintWriter(r);

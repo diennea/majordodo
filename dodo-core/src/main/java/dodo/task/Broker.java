@@ -25,23 +25,21 @@ import dodo.clustering.ActionResult;
 import dodo.clustering.BrokerStatus;
 import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.StatusChangesLog;
+import dodo.clustering.Task;
 import dodo.clustering.TasksHeap;
 import dodo.scheduler.Workers;
 import dodo.worker.BrokerServerEndpoint;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 
 /**
  * Global status of the broker
  *
  * @author enrico.olivelli
  */
-public class Broker {
-    
-    private final StatusChangesLog log;
+public class Broker implements AutoCloseable {
+
     private final Workers workers;
     public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
@@ -62,7 +60,6 @@ public class Broker {
     }
 
     public Broker(StatusChangesLog log, TasksHeap tasksHeap) {
-        this.log = log;
         this.workers = new Workers(this);
         this.acceptor = new BrokerServerEndpoint(this);
         this.client = new ClientFacade(this);
@@ -72,13 +69,27 @@ public class Broker {
 
     public void start() {
         this.brokerStatus.recover();
+        for (Task task : this.brokerStatus.getTasksAtBoot()) {
+            switch (task.getStatus()) {
+                case Task.STATUS_NEEDS_RECOVERY:
+                case Task.STATUS_WAITING:
+                    tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                    break;
+            }
+        }
         this.workers.start(brokerStatus);
         started = true;
     }
 
     public void stop() {
         this.workers.stop();
+        this.brokerStatus.close();
         started = false;
+    }
+
+    @Override
+    public void close() {
+
     }
 
     public BrokerServerEndpoint getAcceptor() {

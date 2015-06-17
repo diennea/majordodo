@@ -26,8 +26,18 @@ import dodo.clustering.GroupMapperFunction;
 import dodo.clustering.StatusChangesLog;
 import dodo.network.BrokerLocator;
 import dodo.network.jvm.JVMBrokerLocator;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 import org.junit.After;
 import org.junit.Before;
 
@@ -40,26 +50,67 @@ public abstract class BasicBrokerEnv {
 
     protected Broker broker;
     private BrokerLocator locator;
+    protected Path workDir;
 
-//    @Before
-//    public void setupLogger() throws Exception {
-//        Level level = Level.SEVERE;
-//        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-//
-//            @Override
-//            public void uncaughtException(Thread t, Throwable e) {
-//                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-//                e.printStackTrace();
-//            }
-//        });
-//        java.util.logging.LogManager.getLogManager().reset();
-//        ConsoleHandler ch = new ConsoleHandler();
-//        ch.setLevel(level);
-//        SimpleFormatter f = new SimpleFormatter();
-//        ch.setFormatter(f);
-//        java.util.logging.Logger.getLogger("").setLevel(level);
-//        java.util.logging.Logger.getLogger("").addHandler(ch);
-//    }
+    private void setupWorkdir() throws Exception {
+
+        Path mavenTargetDir = Paths.get("target").toAbsolutePath();
+        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
+        System.out.println("SETUPWORKDIR:" + workDir);
+    }
+
+//    @After
+    public void deleteWorkdir() throws Exception {
+        if (workDir != null) {
+            Files.walkFileTree(workDir, new FileVisitor<Path>() {
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                    return FileVisitResult.CONTINUE;
+                }
+
+            });
+        }
+
+    }
+
+    @Before
+    public void setupLogger() throws Exception {
+        Level level = Level.SEVERE;
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
+                e.printStackTrace();
+            }
+        });
+        java.util.logging.LogManager.getLogManager().reset();
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(level);
+        SimpleFormatter f = new SimpleFormatter();
+        ch.setFormatter(f);
+        java.util.logging.Logger.getLogger("").setLevel(level);
+        java.util.logging.Logger.getLogger("").addHandler(ch);
+    }
+
     public BrokerLocator getBrokerLocator() {
         if (locator == null) {
             locator = createBrokerLocator();
@@ -97,7 +148,8 @@ public abstract class BasicBrokerEnv {
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
     @Before
-    public void startBroker() {
+    public void startBroker() throws Exception {
+        setupWorkdir();
         broker = new Broker(createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
         broker.start();
     }
