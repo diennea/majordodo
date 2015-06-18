@@ -9,8 +9,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-
-    <artifactId>dodo-broker</artifactId>
+    <name>Majordodo Services</name>
+    <artifactId>dodo-services</artifactId>
     <build>
         <plugins>
             <plugin>
