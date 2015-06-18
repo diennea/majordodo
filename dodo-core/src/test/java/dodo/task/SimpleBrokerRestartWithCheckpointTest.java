@@ -28,6 +28,7 @@ import dodo.executors.TaskExecutor;
 import dodo.network.netty.NettyBrokerLocator;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.worker.WorkerCore;
+import dodo.worker.WorkerCoreConfiguration;
 import dodo.worker.WorkerStatusListener;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -146,7 +147,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         String taskParams = "param";
 
         // start a broker and do some work
-        try (Broker broker = new Broker(new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.start();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -171,7 +172,11 @@ public class SimpleBrokerRestartWithCheckpointTest {
                     Map<Integer, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
-                    try (WorkerCore core = new WorkerCore(10, workerId, "here", "localhost", tags, locator, listener, Arrays.asList(group));) {
+                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setWorkerId(workerId);
+                    config.setMaximumThreadByTaskType(tags);
+                    config.setGroups(Arrays.asList(group));
+                    try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
                         core.start();
                         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
                         core.setExecutorFactory(
@@ -187,7 +192,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams);
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -205,13 +210,13 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
                     // do a checkpoint
                     broker.checkpoint();
-                    assertEquals(1,broker.getBrokerStatus().getCheckpointsCount());
+                    assertEquals(1, broker.getBrokerStatus().getCheckpointsCount());
                 }
             }
         }
 
         // start another broker
-        try (Broker broker = new Broker(new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.start();
             // ask for task status and worker status
             TaskStatusView task = broker.getClient().getTask(taskId);

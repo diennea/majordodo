@@ -40,6 +40,8 @@ public final class StatusEdit {
     public static final short TYPE_WORKER_CONNECTED = 2;
     public static final short TYPE_ASSIGN_TASK_TO_WORKER = 3;
     public static final short TYPE_TASK_STATUS_CHANGE = 4;
+    public static final short TYPE_WORKER_DISCONNECTED = 5;
+    public static final short TYPE_WORKER_DIED = 6;
 
     public static String typeToString(short type) {
         switch (type) {
@@ -51,6 +53,10 @@ public final class StatusEdit {
                 return "ASSIGN_TASK_TO_WORKER";
             case TYPE_TASK_STATUS_CHANGE:
                 return "TASK_FINISHED";
+            case TYPE_WORKER_DISCONNECTED:
+                return "TYPE_WORKER_DISCONNECTED";
+            case TYPE_WORKER_DIED:
+                return "TYPE_WORKER_DIED";
             default:
                 return "?" + type;
         }
@@ -61,6 +67,7 @@ public final class StatusEdit {
     public long taskId;
     public int taskStatus;
     public int attempt;
+    public int maxattempts;
     public long timestamp;
     public String parameter;
     public String userid;
@@ -94,13 +101,14 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid) {
+    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
         action.parameter = taskParameter;
         action.taskType = taskType;
         action.taskId = taskId;
         action.userid = userid;
+        action.maxattempts = maxattempts;
         return action;
     }
 
@@ -115,6 +123,22 @@ public final class StatusEdit {
         return action;
     }
 
+    public static final StatusEdit WORKER_DISCONNECTED(String workerId, long timestamp) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_WORKER_DISCONNECTED;
+        action.timestamp = timestamp;
+        action.workerId = workerId;
+        return action;
+    }
+
+    public static final StatusEdit WORKER_DIED(String workerId, long timestamp) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_WORKER_DIED;
+        action.timestamp = timestamp;
+        action.workerId = workerId;
+        return action;
+    }
+
     byte[] serialize() {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -124,7 +148,9 @@ public final class StatusEdit {
                 case TYPE_ADD_TASK:
                     doo.writeLong(taskId);
                     doo.writeUTF(userid);
+                    doo.writeInt(taskStatus);
                     doo.writeInt(taskType);
+                    doo.writeInt(maxattempts);
                     if (parameter != null) {
                         doo.writeUTF(parameter);
                     } else {
@@ -138,6 +164,12 @@ public final class StatusEdit {
                     doo.writeLong(timestamp);
                     doo.writeUTF(actualRunningTasks.stream().map(l -> l.toString()).collect(Collectors.joining(",")));
                     break;
+                case TYPE_WORKER_DIED:
+                case TYPE_WORKER_DISCONNECTED:
+                    doo.writeUTF(workerId);
+                    doo.writeLong(timestamp);
+                    break;
+
                 case TYPE_ASSIGN_TASK_TO_WORKER:
                     doo.writeUTF(workerId);
                     doo.writeLong(taskId);
@@ -174,7 +206,14 @@ public final class StatusEdit {
                 res.taskId = doo.readLong();
                 res.userid = doo.readUTF();
                 res.taskStatus = doo.readInt();
+                res.taskType = doo.readInt();
+                res.maxattempts = doo.readInt();
                 res.parameter = doo.readUTF();
+                break;
+            case TYPE_WORKER_DIED:
+            case TYPE_WORKER_DISCONNECTED:
+                res.workerId = doo.readUTF();
+                res.timestamp = doo.readLong();
                 break;
             case TYPE_WORKER_CONNECTED:
                 res.workerId = doo.readUTF();

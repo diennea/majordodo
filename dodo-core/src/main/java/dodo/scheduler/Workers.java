@@ -70,9 +70,11 @@ public class Workers {
 
     public void stop() {
         stop = true;
+        wakeUp();
         try {
             workersActivityThread.join();
         } catch (InterruptedException exit) {
+            exit.printStackTrace();
         }
     }
 

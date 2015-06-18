@@ -17,40 +17,28 @@
  under the License.
 
  */
-package dodo.client;
+package dodo.worker;
 
-import dodo.clustering.Task;
-import dodo.task.Broker;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Client API
+ * Notification for the finish of a task. Notifications MUST be enqueued in case
+ * of the broker is done
  *
  * @author enrico.olivelli
  */
-public class ClientFacade {
+public class FinishedTaskNotification {
 
-    private Broker broker;
+    public final long taskId;
+    public final String finalStatus;
+    public final String results;
+    public final Throwable error;
 
-    public ClientFacade(Broker broker) {
-        this.broker = broker;
-    }
-
-    public long submitTask(int taskType, String userId, String parameter, int maxattemps) throws Exception {
-        return broker.addTask(taskType, userId, parameter, maxattemps);
-    }
-
-    public List<TaskStatusView> getAllTasks() {
-        return broker.getBrokerStatus().getAllTasks();
-    }
-
-    public List<WorkerStatusView> getAllWorkers() {
-        return broker.getBrokerStatus().getAllWorkers();
-    }
-
-    public TaskStatusView getTask(long taskid) {
-        return broker.getBrokerStatus().getTaskStatus(taskid);
+    public FinishedTaskNotification(long taskId, String finalStatus, String results, Throwable error) {
+        this.taskId = taskId;
+        this.finalStatus = finalStatus;
+        this.results = results;
+        this.error = error;
     }
 
 }

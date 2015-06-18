@@ -20,6 +20,7 @@
 package dodo.scheduler;
 
 import dodo.callbacks.SimpleCallback;
+import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.Task;
 import dodo.task.Broker;
 import dodo.worker.BrokerSideConnection;
@@ -42,77 +43,76 @@ public class WorkerManager {
     private final String workerId;
     private final Broker broker;
     private BrokerSideConnection connection;
-    private long lastWakeup = System.currentTimeMillis();
+    private final int maxWorkerIdleTime;
+    private long lastActivity = System.currentTimeMillis();
 
     public WorkerManager(String workerId, Broker broker) {
         this.workerId = workerId;
         this.broker = broker;
+        this.maxWorkerIdleTime = broker.getConfiguration().getMaxWorkerIdleTime();
     }
 
     public Broker getBroker() {
         return broker;
     }
 
-    private static final long MAX_IDLE_TIME = 1000 * 60; // TODO: configuration
-
     public void wakeUp() {
-        long now = System.currentTimeMillis();
-        long _lastWakeUpDelta = now - lastWakeup;
-        lastWakeup = now;
-        if (connection == null) {
-            LOGGER.log(Level.FINE, "wakeup {0} -> no connection", workerId);
-            WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
-            if (status == null) {
-                // ???
-                return;
-            }
-            if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
-                status.setStatus(WorkerStatus.STATUS_DISCONNECTED);
-                LOGGER.log(Level.FINE, "wakeup {0} -> no connection -> setting STATUS_DISCONNECTED", workerId);
-            }
-            if (_lastWakeUpDelta > MAX_IDLE_TIME) {
-                status.setStatus(WorkerStatus.STATUS_DEAD);
-                connection.workerDied();
-                connection = null;
-                LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
-            }
+        WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
+        if (status == null) {
+            // ???
             return;
         }
-        LOGGER.log(Level.FINE, "wakeup {0} ", workerId);
-        long delta = System.currentTimeMillis() - connection.getLastReceivedMessageTs();
-        if (delta > MAX_IDLE_TIME) {
-            LOGGER.log(Level.FINE, "worker {0} is no more alive, receovery needed", workerId);
-            WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
-            status.setStatus(WorkerStatus.STATUS_DEAD);
-            connection.workerDied();
-            LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (no message received)", workerId);
-            connection = null;
+        if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
+            return;
         }
-
-        if (connection != null) {
-            Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
-            if (taskToBeSubmitted != null) {
-                LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
-                Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
-                if (task == null) {
-                    // task disappeared ?
-                    LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
+        long now = System.currentTimeMillis();
+        if (connection == null) {
+            LOGGER.log(Level.FINE, "wakeup {0} -> no connection", workerId);
+            try {
+                if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
+                    LOGGER.log(Level.FINE, "wakeup {0} -> no connection -> setting STATUS_DISCONNECTED", workerId);
+                    broker.declareWorkerDisconnected(workerId, now);
                 } else {
-                    if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
-                        connection.sendTaskAssigned(task, new SimpleCallback<Void>() {
+                    long delta = now - lastActivity;
+                    if (delta > maxWorkerIdleTime) {
+                        LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
+                        broker.declareWorkerDead(workerId, now);
 
-                            @Override
-                            public void onResult(Void result, Throwable error) {
+                        for (long taskId : tasksRunningOnRemoteWorker) {
+                            LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for task {1}", new Object[]{workerId, taskId});
+                            broker.taskNeedsRecoveryDueToWorkerDeath(taskId, workerId);
+                        }
+                    }
+                }
+            } catch (LogNotAvailableException err) {
+                LOGGER.log(Level.SEVERE, "wakeup " + workerId + " -> worker lifecycle error", err);
+            }
+        } else {
+            if (lastActivity < connection.getLastReceivedMessageTs()) {
+                lastActivity = connection.getLastReceivedMessageTs();
+            }
+            LOGGER.log(Level.FINE, "wakeup {0}, lastActivity {1} ", new Object[]{workerId, new java.util.Date(lastActivity)});
+            if (connection != null) {
+                Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
+                if (taskToBeSubmitted != null) {
+                    LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
+                    Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
+                    if (task == null) {
+                        // task disappeared ?
+                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
+                    } else {
+                        if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
+                            connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
                                 if (error != null) {
                                     // the write failed
                                     taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
                                 } else {
                                     tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
                                 }
-                            }
-                        });
-                    } else {
-                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                            });
+                        } else {
+                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                        }
                     }
                 }
             }
@@ -124,6 +124,7 @@ public class WorkerManager {
 
     public void activateConnection(BrokerSideConnection connection) {
         LOGGER.log(Level.INFO, "activateConnection {0}", connection);
+        lastActivity = System.currentTimeMillis();
         this.connection = connection;
     }
 

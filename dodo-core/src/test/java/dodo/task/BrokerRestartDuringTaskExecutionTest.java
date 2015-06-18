@@ -57,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class RestartBrokerAndStartWorkerTest {
+public class BrokerRestartDuringTaskExecutionTest {
 
     protected Path workDir;
 
@@ -95,7 +95,7 @@ public class RestartBrokerAndStartWorkerTest {
 
     @Before
     public void setupLogger() throws Exception {
-        Level level = Level.INFO;
+        Level level = Level.SEVERE;
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
             @Override
@@ -137,7 +137,7 @@ public class RestartBrokerAndStartWorkerTest {
     }
 
     @Test
-    public void snapshotTest() throws Exception {
+    public void taskRecoveryTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -146,93 +146,83 @@ public class RestartBrokerAndStartWorkerTest {
         String workerId = "abc";
         String taskParams = "param";
 
-        // start a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
-            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
-        }
+        CountDownLatch taskStartedLatch = new CountDownLatch(1);
+        CountDownLatch taskFinishedLatch = new CountDownLatch(1);
 
-        // start another broker,
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+        CountDownLatch newBrokerStartedLatch = new CountDownLatch(1);
 
-            // ask for task status and worker status
-            {
-                TaskStatusView task = broker.getClient().getTask(taskId);
-                assertNotNull(task);
-                assertEquals(taskParams, task.getParameter());
-                assertEquals(Task.STATUS_WAITING, task.getStatus());
-            }
+        String host = "localhost";
+        int port = 7000;
 
-            try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
-                server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+        // start a worker, the broker is not started
+        try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port)) {
+            Map<Integer, Integer> tags = new HashMap<>();
+            tags.put(TASKTYPE_MYTYPE, 1);
 
-                    CountDownLatch connectedLatch = new CountDownLatch(1);
-                    CountDownLatch disconnectedLatch = new CountDownLatch(1);
-                    CountDownLatch allTaskExecuted = new CountDownLatch(1);
-                    WorkerStatusListener listener = new WorkerStatusListener() {
-
-                        @Override
-                        public void connectionEvent(String event, WorkerCore core) {
-                            if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
-                                connectedLatch.countDown();
-                            }
-                            if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
-                                disconnectedLatch.countDown();
+            WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+            config.setWorkerId(workerId);
+            config.setMaximumThreadByTaskType(tags);
+            config.setGroups(Arrays.asList(group));
+            config.setTasksRequestTimeout(1000);
+            try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
+                core.start();
+                core.setExecutorFactory(
+                        (int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
+                                System.out.println("executeTask: " + parameters);
+                                taskStartedLatch.countDown();
+                                newBrokerStartedLatch.await(10, TimeUnit.SECONDS);
+                                taskFinishedLatch.countDown();
+                                return "theresult";
                             }
                         }
+                );
 
-                    };
-                    Map<Integer, Integer> tags = new HashMap<>();
-                    tags.put(TASKTYPE_MYTYPE, 1);
+                // start a broker and submit some work
+                BrokerConfiguration brokerConfig = new BrokerConfiguration();
+                brokerConfig.setMaxWorkerIdleTime(5000);
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+                    broker.start();
+                    taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0);
+                    try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
+                        server.setHost(host);
+                        server.setPort(port);
+                        server.start();
 
-                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
-                    config.setWorkerId(workerId);
-                    config.setMaximumThreadByTaskType(tags);
-                    config.setGroups(Arrays.asList(group));
+                        // wait the worker to start execution
+                        taskStartedLatch.await(10, TimeUnit.SECONDS);
+                    }
+                    // now the broker will die
+                }
 
-                    try (WorkerCore core = new WorkerCore(config, "here", locator, listener);) {
-                        core.start();
-                        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
-                        core.setExecutorFactory(
-                                (int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                // restart the broker
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+                    broker.start();
+                    try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
+                        server.setHost(host);
+                        server.setPort(port);
+                        server.start();
+                        newBrokerStartedLatch.countDown();
+                        // wait the worker to finish execution
+                        taskFinishedLatch.await(10, TimeUnit.SECONDS);
 
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
-
-                                        allTaskExecuted.countDown();
-                                        return "theresult";
-                                    }
-
-                                }
-                        );
-
-                        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
-
-                        boolean okFinishedForBroker = false;
+                        boolean ok = false;
                         for (int i = 0; i < 100; i++) {
-                            TaskStatusView task = broker.getClient().getTask(taskId);
+                            Task task = broker.getBrokerStatus().getTask(taskId);
                             if (task.getStatus() == Task.STATUS_FINISHED) {
-                                okFinishedForBroker = true;
+                                ok = true;
                                 break;
                             }
                             Thread.sleep(1000);
                         }
-                        assertTrue(okFinishedForBroker);
+                        assertTrue(ok);
                     }
-                    assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
                 }
-            }
-            {
-                TaskStatusView task = broker.getClient().getTask(taskId);
-                assertNotNull(task);
-                assertEquals(taskParams, task.getParameter());
-                assertEquals("theresult", task.getResult());
-                assertEquals(Task.STATUS_FINISHED, task.getStatus());
-            }
 
+            }
         }
-    }
 
+    }
 }

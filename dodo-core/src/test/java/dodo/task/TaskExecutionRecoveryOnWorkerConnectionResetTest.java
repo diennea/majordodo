@@ -57,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class TaskExecutionRecoveryOnWorkerRestartTest {
+public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
 
     protected Path workDir;
 
@@ -146,6 +146,22 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         String workerId = "abc";
         String taskParams = "param";
 
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+
         // start a broker and do some work
         BrokerConfiguration brokerConfig = new BrokerConfiguration();
         brokerConfig.setMaxWorkerIdleTime(5000);
@@ -156,7 +172,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
 
-                // start a worker, it will die
+                // start a worker, connection will be dropped during the execution of the task
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<Integer, Integer> tags = new HashMap<>();
@@ -167,7 +183,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                     config.setMaximumThreadByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     config.setTasksRequestTimeout(1000);
-                    try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
+                    try (WorkerCore core = new WorkerCore(config, "process1", locator, listener);) {
                         core.start();
                         core.setExecutorFactory(
                                 (int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
@@ -175,11 +191,8 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
                                         taskStartedLatch.countDown();
                                         System.out.println("executeTask: " + parameters);
-                                        Integer attempt = (Integer) parameters.get("attempt");
-                                        if (attempt == null || attempt == 1) {
-                                            core.die();
-                                            return null;
-                                        }
+                                        core.disconnect();
+                                        disconnectedLatch.await(10000, TimeUnit.MILLISECONDS);
                                         return "theresult";
                                     }
 
@@ -187,69 +200,25 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                         );
 
                         assertTrue(taskStartedLatch.await(30, TimeUnit.SECONDS));
+
+                        boolean ok = false;
+                        for (int i = 0; i < 100; i++) {
+                            Task task = broker.getBrokerStatus().getTask(taskId);
+                            System.out.println("task2:" + task);
+                            if (task.getStatus() == Task.STATUS_FINISHED) {
+                                ok = true;
+                                assertEquals("theresult", task.getResult());
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(ok);
                     }
-                }
 
-                boolean ok = false;
-                for (int i = 0; i < 100; i++) {
-                    Task task = broker.getBrokerStatus().getTask(taskId);
-                    System.out.println("task:" + task);
-                    if (task.getStatus() == Task.STATUS_WAITING) {
-                        ok = true;
-                        break;
-                    }
-                    Thread.sleep(1000);
-                }
-                assertTrue(ok);
-
-                // boot the worker again
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
-                    CountDownLatch taskStartedLatch = new CountDownLatch(1);
-                    Map<Integer, Integer> tags = new HashMap<>();
-                    tags.put(TASKTYPE_MYTYPE, 1);
-
-                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
-                    config.setWorkerId(workerId);
-                    config.setMaximumThreadByTaskType(tags);
-                    config.setGroups(Arrays.asList(group));
-                    try (WorkerCore core = new WorkerCore(config, "process2", locator, null);) {
-                        core.start();
-                        core.setExecutorFactory(
-                                (int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        taskStartedLatch.countDown();
-                                        System.out.println("executeTask2: " + parameters + " ,taskStartedLatch:" + taskStartedLatch.getCount());
-                                        Integer attempt = (Integer) parameters.get("attempt");
-                                        if (attempt == null || attempt == 1) {
-                                            throw new RuntimeException("impossible!");
-                                        }
-                                        return "theresult";
-                                    }
-
-                                }
-                        );
-                        assertTrue(taskStartedLatch.await(10, TimeUnit.SECONDS));
-                    }
                 }
 
             }
-
-            boolean ok = false;
-            for (int i = 0; i < 100; i++) {
-                Task task = broker.getBrokerStatus().getTask(taskId);
-                System.out.println("task2:" + task);
-                if (task.getStatus() == Task.STATUS_FINISHED) {
-                    ok = true;
-                    assertEquals("theresult", task.getResult());
-                    break;
-                }
-                Thread.sleep(1000);
-            }
-            assertTrue(ok);
 
         }
-
     }
-
 }

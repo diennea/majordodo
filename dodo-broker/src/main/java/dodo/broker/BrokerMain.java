@@ -8,6 +8,7 @@ import dodo.clustering.StatusChangesLog;
 import dodo.clustering.TasksHeap;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.task.Broker;
+import dodo.task.BrokerConfiguration;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -151,7 +152,8 @@ public class BrokerMain implements AutoCloseable {
             default:
                 throw new RuntimeException("bad value for logtype property, only valid values are file|mem");
         }
-        broker = new Broker(new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
+        BrokerConfiguration config = new BrokerConfiguration();
+        broker = new Broker(config, new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
 
         broker.start();
 

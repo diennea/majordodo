@@ -41,6 +41,7 @@ public class WorkerMain {
             String workerid = configuration.getProperty("worker.id", "localhost");
             String groups = configuration.getProperty("worker.groups", Task.GROUP_ANY + "");
             int maxthreads = Integer.parseInt(configuration.getProperty("worker.maxthreads", "100"));
+            int tasksRequestTimeout = Integer.parseInt(configuration.getProperty("worker.tasksrequesttimeout", "60000"));
             String executorFactory = configuration.getProperty("worker.executorfactory", "dodo.worker.DefaultExecutorFactory");
             String processid = ManagementFactory.getRuntimeMXBean().getName();
             String location = InetAddress.getLocalHost().getCanonicalHostName();
@@ -73,8 +74,15 @@ public class WorkerMain {
                     groupsList.add(Integer.parseInt(s));
                 }
             }
-            WorkerCore workerCore = new WorkerCore(maxthreads, processid, workerid,
-                    location, maximumThreadPerTaskType, brokerLocator, listener, groupsList);
+            WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+            config.setMaxThreads(maxthreads);
+            config.setWorkerId(workerid);
+            config.setMaximumThreadByTaskType(maximumThreadPerTaskType);
+            config.setGroups(groupsList);
+            config.setLocation(location);
+            config.setTasksRequestTimeout(tasksRequestTimeout);
+
+            WorkerCore workerCore = new WorkerCore(config, processid, brokerLocator, listener);
             System.out.println("worker.executorfactory=" + executorFactory);
             workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
             workerCore.start();

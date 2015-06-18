@@ -150,7 +150,7 @@ public abstract class BasicBrokerEnv {
     @Before
     public void startBroker() throws Exception {
         setupWorkdir();
-        broker = new Broker(createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
+        broker = new Broker(new BrokerConfiguration(),createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
         broker.start();
     }
 

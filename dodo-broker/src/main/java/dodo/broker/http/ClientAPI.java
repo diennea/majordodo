@@ -62,8 +62,13 @@ public class ClientAPI {
         int type = Integer.parseInt(data.get("type") + "");
         String tenant = (String) data.get("tenant");
         String parameters = (String) data.get("parameter");
+        String _maxattempts = (String) data.get("maxattempts");
+        int maxattempts = 1;
+        if (_maxattempts != null) {
+            maxattempts = Integer.parseInt(_maxattempts);
+        }
         try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters);
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts);
             return getTask(taskId);
         } catch (Exception err) {
             err.printStackTrace();

@@ -17,40 +17,28 @@
  under the License.
 
  */
-package dodo.client;
-
-import dodo.clustering.Task;
-import dodo.task.Broker;
-import java.util.List;
-import java.util.Map;
+package dodo.task;
 
 /**
- * Client API
+ * Broker configuration
  *
  * @author enrico.olivelli
  */
-public class ClientFacade {
+public class BrokerConfiguration {
 
-    private Broker broker;
+    private int maxWorkerIdleTime = 30000;
 
-    public ClientFacade(Broker broker) {
-        this.broker = broker;
+    /**
+     * Maximum time to wait for a worker to demonstrate its liveness
+     *
+     * @return
+     */
+    public int getMaxWorkerIdleTime() {
+        return maxWorkerIdleTime;
     }
 
-    public long submitTask(int taskType, String userId, String parameter, int maxattemps) throws Exception {
-        return broker.addTask(taskType, userId, parameter, maxattemps);
-    }
-
-    public List<TaskStatusView> getAllTasks() {
-        return broker.getBrokerStatus().getAllTasks();
-    }
-
-    public List<WorkerStatusView> getAllWorkers() {
-        return broker.getBrokerStatus().getAllWorkers();
-    }
-
-    public TaskStatusView getTask(long taskid) {
-        return broker.getBrokerStatus().getTaskStatus(taskid);
+    public void setMaxWorkerIdleTime(int maxWorkerIdleTime) {
+        this.maxWorkerIdleTime = maxWorkerIdleTime;
     }
 
 }

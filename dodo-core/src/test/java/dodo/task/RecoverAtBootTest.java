@@ -55,17 +55,19 @@ public class RecoverAtBootTest extends BasicBrokerEnv {
     static final long sequenceNumber4 = 829;
     static final long sequenceNumber5 = 830;
     static final long sequenceNumber6 = 831;
+    static final long sequenceNumber7 = 832;
 
     @Override
     protected StatusChangesLog createStatusChangesLog() {
 
         return new MemoryCommitLog(Arrays.asList(
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber1), StatusEdit.ADD_TASK(taskId1, taskType1, "param", userid1)),
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber2), StatusEdit.ADD_TASK(taskId2, taskType2, "param", userid1)),
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber3), StatusEdit.ADD_TASK(taskId3, taskType2, "param", userid1)),
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber4), StatusEdit.WORKER_CONNECTED(worker1, worker1processid, "localhost", new HashSet<>(), System.currentTimeMillis())),
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber5), StatusEdit.ASSIGN_TASK_TO_WORKER(taskId4, worker1, 1)),
-                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber6), StatusEdit.TASK_STATUS_CHANGE(taskId4, worker1, Task.STATUS_FINISHED, "ok!"))
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber1), StatusEdit.ADD_TASK(taskId1, taskType1, "param", userid1,0)),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber2), StatusEdit.ADD_TASK(taskId2, taskType2, "param", userid1,0)),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber3), StatusEdit.ADD_TASK(taskId3, taskType2, "param", userid1,0)),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber4), StatusEdit.ADD_TASK(taskId4, taskType2, "param", userid1,0)),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber5), StatusEdit.WORKER_CONNECTED(worker1, worker1processid, "localhost", new HashSet<>(), System.currentTimeMillis())),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber6), StatusEdit.ASSIGN_TASK_TO_WORKER(taskId4, worker1, 1)),
+                new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber7), StatusEdit.TASK_STATUS_CHANGE(taskId4, worker1, Task.STATUS_FINISHED, "ok!"))
         ), new BrokerStatusSnapshot(taskId4, new LogSequenceNumber(0, sequenceNumber_snapshot)));
     }
 

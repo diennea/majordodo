@@ -161,8 +161,8 @@ public class TasksHeap {
         }
     }
 
-    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {
-        while (true) {
+    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {        
+        while (true) {            
             TasksChooser chooser = new TasksChooser(groups, availableSpace, max);
             lock.readLock().lock();
             try {

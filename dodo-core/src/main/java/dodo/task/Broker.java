@@ -50,6 +50,11 @@ public class Broker implements AutoCloseable {
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
+    private final BrokerConfiguration configuration;
+
+    public BrokerConfiguration getConfiguration() {
+        return configuration;
+    }
 
     public ClientFacade getClient() {
         return client;
@@ -63,7 +68,8 @@ public class Broker implements AutoCloseable {
         return brokerStatus;
     }
 
-    public Broker(StatusChangesLog log, TasksHeap tasksHeap) {
+    public Broker(BrokerConfiguration configuration, StatusChangesLog log, TasksHeap tasksHeap) {
+        this.configuration = configuration;
         this.workers = new Workers(this);
         this.acceptor = new BrokerServerEndpoint(this);
         this.client = new ClientFacade(this);
@@ -75,8 +81,8 @@ public class Broker implements AutoCloseable {
         this.brokerStatus.recover();
         for (Task task : this.brokerStatus.getTasksAtBoot()) {
             switch (task.getStatus()) {
-                case Task.STATUS_NEEDS_RECOVERY:
                 case Task.STATUS_WAITING:
+                    System.out.println("TASK " + task.getTaskId() + " " + task.getType() + ", needs recovery");
                     tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                     break;
             }
@@ -128,12 +134,17 @@ public class Broker implements AutoCloseable {
     public long addTask(
             int taskType,
             String userId,
-            String parameter) throws LogNotAvailableException {
+            String parameter,
+            int maxattempts) throws LogNotAvailableException {
         long taskId = brokerStatus.nextTaskId();
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId);
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts);
         this.brokerStatus.applyModification(addTask);
         this.tasksHeap.insertTask(taskId, taskType, userId);
         return taskId;
+    }
+
+    public void taskNeedsRecoveryDueToWorkerDeath(long taskId, String workerId) throws LogNotAvailableException {
+        taskFinished(workerId, taskId, Task.STATUS_ERROR, "worker " + workerId + " died");
     }
 
     public void taskFinished(String workerId, long taskId, int finalstatus, String result) throws LogNotAvailableException {
@@ -167,6 +178,16 @@ public class Broker implements AutoCloseable {
 
     public void workerConnected(String workerId, String processId, String nodeLocation, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
         StatusEdit edit = StatusEdit.WORKER_CONNECTED(workerId, processId, nodeLocation, actualRunningTasks, timestamp);
+        this.brokerStatus.applyModification(edit);
+    }
+
+    public void declareWorkerDisconnected(String workerId, long timestamp) throws LogNotAvailableException {
+        StatusEdit edit = StatusEdit.WORKER_DISCONNECTED(workerId, timestamp);
+        this.brokerStatus.applyModification(edit);
+    }
+
+    public void declareWorkerDead(String workerId, long timestamp) throws LogNotAvailableException {
+        StatusEdit edit = StatusEdit.WORKER_DIED(workerId, timestamp);
         this.brokerStatus.applyModification(edit);
     }
 

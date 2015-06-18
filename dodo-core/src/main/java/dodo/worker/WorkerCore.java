@@ -30,15 +30,17 @@ import dodo.network.Channel;
 import dodo.network.ChannelEventListener;
 import dodo.network.Message;
 import dodo.network.SendResultCallback;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Core of the worker inside the JVM
@@ -61,9 +63,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
+    private final int tasksRequestTimeout;
 
     public void die() {
         System.out.println("Die!");
+        if (coreThread != null) {
+            coreThread.interrupt();
+        }
         this.stop();
     }
 
@@ -111,25 +117,32 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 return;
             }
             int maxnewthreads = maxThreads - runningTasks.size();
-            _channel.sendOneWayMessage(Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads), new SendResultCallback() {
-
-                @Override
-                public void messageSent(Message originalMessage, Throwable error) {
-                    if (error != null) {
-                        error.printStackTrace();
-                    }
+            try {
+                _channel.sendMessageWithReply(
+                        Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads),
+                        tasksRequestTimeout
+                );
+            } catch (InterruptedException | TimeoutException err) {
+                if (!stopped) {
+                    err.printStackTrace();
                 }
-            });
+                return;
+            }
         }
     }
 
-    public WorkerCore(int maxThreads, String processId, String workerId, String location, Map<Integer, Integer> maximumThreadPerTag, BrokerLocator brokerLocator, WorkerStatusListener listener, List<Integer> groups) {
-        this.maxThreads = maxThreads;
+    public WorkerCore(
+            WorkerCoreConfiguration config,
+            String processId,
+            BrokerLocator brokerLocator,
+            WorkerStatusListener listener) {
+        this.tasksRequestTimeout = config.getTasksRequestTimeout();
+        this.maxThreads = config.getMaxThreads();
         if (listener == null) {
             listener = new WorkerStatusListener() {
             };
         }
-        this.groups = groups;
+        this.groups = config.getGroups();
         this.listener = listener;
         this.threadpool = Executors.newFixedThreadPool(maxThreads, new ThreadFactory() {
 
@@ -139,9 +152,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
         });
         this.processId = processId;
-        this.workerId = workerId;
-        this.location = location;
-        this.maximumThreadPerTaskType = maximumThreadPerTag;
+        this.workerId = config.getWorkerId();
+        this.location = config.getWorkerId();
+        this.maximumThreadPerTaskType = config.getMaximumThreadByTaskType();
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
     }
@@ -168,42 +181,46 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         disconnect();
     }
 
+    BlockingQueue<FinishedTaskNotification> pendingFinishedTaskNotifications = new LinkedBlockingQueue<>();
+
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
         public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
             switch (finalStatus) {
                 case TaskExecutorStatus.ERROR:
+                case TaskExecutorStatus.FINISHED:
                     runningTasks.remove(taskId);
-                    channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
-
-                        @Override
-                        public void messageSent(Message originalMessage, Throwable error) {
-                            if (error != null) {
-                                error.printStackTrace();
-                            }
-                        }
-                    });
+                    notifyTaskFinished(taskId, finalStatus, results, error);
                     break;
                 case TaskExecutorStatus.RUNNING:
                     break;
-                case TaskExecutorStatus.NEEDS_RECOVERY:
-                    throw new RuntimeException("not implemented");
-                case TaskExecutorStatus.FINISHED:
-                    runningTasks.remove(taskId);
-                    channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, null), new SendResultCallback() {
-
-                        @Override
-                        public void messageSent(Message originalMessage, Throwable error
-                        ) {
-                            if (error != null) {
-                                error.printStackTrace();
-                            }
-                        }
-                    });
-                    break;
             }
         }
+
     };
+
+    private void notifyTaskFinished(long taskId, String finalStatus, String results, Throwable error) {
+        if (error != null) {
+            error.printStackTrace();
+        }
+        System.out.println("notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error);
+        Channel _channel = channel;
+        if (_channel != null) {
+            _channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
+
+                @Override
+                public void messageSent(Message originalMessage, Throwable sendingerror) {
+                    if (sendingerror != null) {
+                        System.out.println("enqueing notification of task finish, due to broker connection failure");
+                        pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
+                    }
+                }
+            });
+        } else {
+            System.out.println("enqueing notification of task finish, due to broker connection failure");
+            pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
+        }
+    }
 
     private void startTask(Message message) {
         Long taskid = (Long) message.parameters.get("taskid");
@@ -254,6 +271,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     System.out.println("[WORKER] exit loop " + exit);
                     break;
                 }
+
+                FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
+                if (notification != null) {
+                    notifyTaskFinished(notification.taskId, notification.finalStatus, notification.results, notification.error);
+                }
+
                 requestNewTasks();
             }
 
@@ -287,7 +310,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         listener.connectionEvent("connected", this);
     }
 
-    private void disconnect() {
+    public void disconnect() {
         if (channel != null) {
             try {
                 channel.close();

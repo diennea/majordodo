@@ -36,15 +36,16 @@ public class TaskStatusView {
     private String parameter;
     private String result;
     private int type;    
+    private int attempts;    
+    private int maxattempts;       
+    private long executionDeadline;
 
     @Override
     public String toString() {
-        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + userid + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + parameter + ", result=" + result + ", type=" + type + '}';
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + userid + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + parameter + ", result=" + result + ", type=" + type + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
     }
     
-    private int maxattempts;
-    private int attempts;
-    private long executionDeadline;
+    
 
     public int getMaxattempts() {
         return maxattempts;

@@ -206,7 +206,7 @@ public class BrokerStatus {
      * @param edit
      */
     private ModificationResult applyEdit(LogSequenceNumber num, StatusEdit edit) {
-        LOGGER.log(Level.FINE, "applyEdit {0}", edit);
+        LOGGER.log(Level.SEVERE, "applyEdit {0}", edit);
 
         lock.writeLock().lock();
         try {
@@ -246,6 +246,7 @@ public class BrokerStatus {
                     task.setType(edit.taskType);
                     task.setUserId(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
+                    task.setMaxattempts(edit.maxattempts);
                     tasks.put(edit.taskId, task);
                     return new ModificationResult(num, edit.taskId);
                 }
@@ -261,6 +262,26 @@ public class BrokerStatus {
                     node.setWorkerLocation(edit.workerLocation);
                     node.setProcessId(edit.workerProcessId);
                     node.setLastConnectionTs(edit.timestamp);
+                    return new ModificationResult(num, -1);
+                }
+                case StatusEdit.TYPE_WORKER_DISCONNECTED: {
+                    WorkerStatus node = workers.get(edit.workerId);
+                    if (node == null) {
+                        node = new WorkerStatus();
+                        node.setWorkerId(edit.workerId);
+                        workers.put(edit.workerId, node);
+                    }
+                    node.setStatus(WorkerStatus.STATUS_DISCONNECTED);
+                    return new ModificationResult(num, -1);
+                }
+                case StatusEdit.TYPE_WORKER_DIED: {
+                    WorkerStatus node = workers.get(edit.workerId);
+                    if (node == null) {
+                        node = new WorkerStatus();
+                        node.setWorkerId(edit.workerId);
+                        workers.put(edit.workerId, node);
+                    }
+                    node.setStatus(WorkerStatus.STATUS_DEAD);
                     return new ModificationResult(num, -1);
                 }
                 default:

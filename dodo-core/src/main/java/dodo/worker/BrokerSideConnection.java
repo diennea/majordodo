@@ -175,6 +175,8 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 try {
                     List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, workerId);
                     taskIds.forEach(manager::taskAssigned);
+                    // worker will wait for an ack before requesting new tasks again
+                    channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                 } catch (LogNotAvailableException error) {
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
