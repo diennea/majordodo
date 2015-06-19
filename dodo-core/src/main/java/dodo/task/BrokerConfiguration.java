@@ -29,7 +29,8 @@ public class BrokerConfiguration {
     private int maxWorkerIdleTime = 30000;
 
     /**
-     * Maximum time to wait for a worker to demonstrate its liveness
+     * Maximum time to wait for a worker to demonstrate its liveness. defaults
+     * to 30 seconds
      *
      * @return
      */
@@ -44,7 +45,7 @@ public class BrokerConfiguration {
     private int checkpointTime = 1000 * 60 * 60;
 
     /**
-     * Maximum time to wait for a checkpoint
+     * Maximum time to wait for a checkpoint. Defaults to 1 hour
      *
      * @return
      */
@@ -55,5 +56,37 @@ public class BrokerConfiguration {
     public void setCheckpointTime(int checkpointTime) {
         this.checkpointTime = checkpointTime;
     }
+
+    private int finishedTasksRetention = 1000 * 60 * 60;
+
+    
+    /**
+     * Retention for finished tasks. Defaults to one hour
+     *
+     * @return
+     */
+    public int getFinishedTasksRetention() {
+        return finishedTasksRetention;
+    }
+
+    public void setFinishedTasksRetention(int finishedTasksRetention) {
+        this.finishedTasksRetention = finishedTasksRetention;
+    }
+    
+    private int finishedTasksPurgeSchedulerPeriod = 1000 * 60 * 15;
+    
+    /**
+     * Period for finished task purge scheduler. Defaults to 15 minutes
+     * @return 
+     */
+    public int getFinishedTasksPurgeSchedulerPeriod() {
+        return finishedTasksPurgeSchedulerPeriod;
+    }
+
+    public void setFinishedTasksPurgeSchedulerPeriod(int finishedTasksPurgeSchedulerPeriod) {
+        this.finishedTasksPurgeSchedulerPeriod = finishedTasksPurgeSchedulerPeriod;
+    }
+    
+    
 
 }

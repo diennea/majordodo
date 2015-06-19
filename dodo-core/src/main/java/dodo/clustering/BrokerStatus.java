@@ -25,6 +25,7 @@ import dodo.client.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -178,6 +179,30 @@ public class BrokerStatus {
             LOGGER.log(Level.SEVERE, "Error while closing transaction log", sorry);
         }
 
+    }
+
+    public void purgeFinishedTasks(int finishedTasksRetention) {
+        long deadline = System.currentTimeMillis() - finishedTasksRetention;
+        this.lock.writeLock().lock();
+        try {
+            // tasks are only purged from memry, not from logs
+            // in case of broker restart it may re-appear
+            for (Iterator<Map.Entry<Long, Task>> it = tasks.entrySet().iterator(); it.hasNext();) {
+                Map.Entry<Long, Task> taskEntry = it.next();
+                Task t = taskEntry.getValue();
+                switch (t.getStatus()) {
+                    case Task.STATUS_ERROR:
+                    case Task.STATUS_FINISHED:
+                        if (t.getCreatedTimestamp() < deadline) {
+                            LOGGER.log(Level.INFO, "purging finished task {0}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp())});
+                            it.remove();
+                        }
+                        break;
+                }
+            }
+        } finally {
+            this.lock.writeLock().unlock();
+        }
     }
 
     public static final class ModificationResult {

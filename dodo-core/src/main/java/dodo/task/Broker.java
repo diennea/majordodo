@@ -52,6 +52,7 @@ public class Broker implements AutoCloseable {
     private volatile boolean started;
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
+    private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
 
     public BrokerConfiguration getConfiguration() {
         return configuration;
@@ -77,6 +78,7 @@ public class Broker implements AutoCloseable {
         this.brokerStatus = new BrokerStatus(log);
         this.tasksHeap = tasksHeap;
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
+        this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
     }
 
     public void start() {
@@ -91,9 +93,11 @@ public class Broker implements AutoCloseable {
         this.workers.start(brokerStatus);
         started = true;
         this.checkpointScheduler.start();
+        this.finishedTaskCollectorScheduler.start();
     }
 
     public void stop() {
+        this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
@@ -102,7 +106,7 @@ public class Broker implements AutoCloseable {
 
     @Override
     public void close() {
-
+        stop();
     }
 
     public BrokerServerEndpoint getAcceptor() {
@@ -127,6 +131,10 @@ public class Broker implements AutoCloseable {
 
     void checkpoint() throws LogNotAvailableException {
         this.brokerStatus.checkpoint();
+    }
+
+    void purgeFinishedTasks() {
+        this.brokerStatus.purgeFinishedTasks(configuration.getFinishedTasksRetention());
     }
 
     public static interface ActionCallback {
