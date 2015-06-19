@@ -41,4 +41,19 @@ public class BrokerConfiguration {
         this.maxWorkerIdleTime = maxWorkerIdleTime;
     }
 
+    private int checkpointTime = 1000 * 60 * 60;
+
+    /**
+     * Maximum time to wait for a checkpoint
+     *
+     * @return
+     */
+    public int getCheckpointTime() {
+        return checkpointTime;
+    }
+
+    public void setCheckpointTime(int checkpointTime) {
+        this.checkpointTime = checkpointTime;
+    }
+
 }

@@ -51,6 +51,7 @@ public class Broker implements AutoCloseable {
     private final ClientFacade client;
     private volatile boolean started;
     private final BrokerConfiguration configuration;
+    private final CheckpointScheduler checkpointScheduler;
 
     public BrokerConfiguration getConfiguration() {
         return configuration;
@@ -75,6 +76,7 @@ public class Broker implements AutoCloseable {
         this.client = new ClientFacade(this);
         this.brokerStatus = new BrokerStatus(log);
         this.tasksHeap = tasksHeap;
+        this.checkpointScheduler = new CheckpointScheduler(configuration, this);
     }
 
     public void start() {
@@ -82,16 +84,17 @@ public class Broker implements AutoCloseable {
         for (Task task : this.brokerStatus.getTasksAtBoot()) {
             switch (task.getStatus()) {
                 case Task.STATUS_WAITING:
-                    System.out.println("TASK " + task.getTaskId() + " " + task.getType() + ", needs recovery");
                     tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                     break;
             }
         }
         this.workers.start(brokerStatus);
         started = true;
+        this.checkpointScheduler.start();
     }
 
     public void stop() {
+        this.checkpointScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
         started = false;
