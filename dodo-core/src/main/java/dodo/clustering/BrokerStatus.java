@@ -180,7 +180,7 @@ public class BrokerStatus {
         }
 
     }
-
+    
     public void purgeFinishedTasks(int finishedTasksRetention) {
         long deadline = System.currentTimeMillis() - finishedTasksRetention;
         this.lock.writeLock().lock();

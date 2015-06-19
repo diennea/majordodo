@@ -91,7 +91,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0);
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -106,7 +106,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0);
             todo.add(taskId);
         }
 
@@ -168,7 +168,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0);
             todo.add(taskId);
         }
 
@@ -226,7 +226,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0);
             todo.add(taskId);
         }
 
@@ -283,7 +283,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 100; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0);
             todo.add(taskId);
         }
 

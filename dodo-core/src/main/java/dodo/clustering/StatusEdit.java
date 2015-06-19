@@ -69,6 +69,7 @@ public final class StatusEdit {
     public int attempt;
     public int maxattempts;
     public long timestamp;
+    public long executionDeadline;
     public String parameter;
     public String userid;
     public String workerId;
@@ -101,7 +102,7 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts) {
+    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts, long executionDeadline) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
         action.parameter = taskParameter;
@@ -109,6 +110,7 @@ public final class StatusEdit {
         action.taskId = taskId;
         action.userid = userid;
         action.maxattempts = maxattempts;
+        action.executionDeadline = executionDeadline;
         return action;
     }
 
@@ -151,6 +153,7 @@ public final class StatusEdit {
                     doo.writeInt(taskStatus);
                     doo.writeInt(taskType);
                     doo.writeInt(maxattempts);
+                    doo.writeLong(executionDeadline);
                     if (parameter != null) {
                         doo.writeUTF(parameter);
                     } else {
@@ -208,6 +211,7 @@ public final class StatusEdit {
                 res.taskStatus = doo.readInt();
                 res.taskType = doo.readInt();
                 res.maxattempts = doo.readInt();
+                res.executionDeadline = doo.readLong();
                 res.parameter = doo.readUTF();
                 break;
             case TYPE_WORKER_DIED:

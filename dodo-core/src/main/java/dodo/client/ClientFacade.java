@@ -37,8 +37,8 @@ public class ClientFacade {
         this.broker = broker;
     }
 
-    public long submitTask(int taskType, String userId, String parameter, int maxattemps) throws Exception {
-        return broker.addTask(taskType, userId, parameter, maxattemps);
+    public long submitTask(int taskType, String userId, String parameter, int maxattemps, long deadline) throws Exception {
+        return broker.addTask(taskType, userId, parameter, maxattemps, deadline);
     }
 
     public List<TaskStatusView> getAllTasks() {

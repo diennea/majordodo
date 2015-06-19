@@ -29,6 +29,7 @@ import dodo.clustering.Task;
 import dodo.clustering.TasksHeap;
 import dodo.scheduler.Workers;
 import dodo.worker.BrokerServerEndpoint;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,12 +120,28 @@ public class Broker implements AutoCloseable {
 
     public List<Long> assignTasksToWorker(int max, Map<Integer, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
         List<Long> tasks = tasksHeap.takeTasks(max, groups, availableSpace);
+        long now = System.currentTimeMillis();
+        Set<Long> expired = null;
         for (long taskId : tasks) {
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
-                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
-                this.brokerStatus.applyModification(edit);
+                long deadline = task.getExecutionDeadline();
+                if (deadline > 0 && deadline < now) {
+                    if (expired == null) {
+                        expired = new HashSet<>();
+                    }
+                    expired.add(taskId);
+                    LOGGER.log(Level.INFO, "task {0} deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
+                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
+                    this.brokerStatus.applyModification(edit);
+                } else {
+                    StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
+                    this.brokerStatus.applyModification(edit);
+                }
             }
+        }
+        if (expired != null) {
+            tasks.removeAll(expired);
         }
         return tasks;
     }
@@ -146,9 +163,10 @@ public class Broker implements AutoCloseable {
             int taskType,
             String userId,
             String parameter,
-            int maxattempts) throws LogNotAvailableException {
+            int maxattempts,
+            long deadline) throws LogNotAvailableException {
         long taskId = brokerStatus.nextTaskId();
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts);
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline);
         this.brokerStatus.applyModification(addTask);
         this.tasksHeap.insertTask(taskId, taskType, userId);
         return taskId;
@@ -174,6 +192,14 @@ public class Broker implements AutoCloseable {
         if (maxAttepts > 0 && attempt >= maxAttepts) {
             // too many attempts
             LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
+            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+            this.brokerStatus.applyModification(edit);
+            return;
+        }
+        long deadline = task.getExecutionDeadline();
+        if (deadline > 0 && deadline < System.currentTimeMillis()) {
+            // deadline expired
+            LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
             StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
             this.brokerStatus.applyModification(edit);
             return;

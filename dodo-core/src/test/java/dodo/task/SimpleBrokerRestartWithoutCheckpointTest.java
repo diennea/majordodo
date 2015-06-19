@@ -192,7 +192,7 @@ public class SimpleBrokerRestartWithoutCheckpointTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0);
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0);
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;

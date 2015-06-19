@@ -57,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class SimpleBrokerRestartWithCheckpointTest {
+public class TaskDeadlineTest {
 
     protected Path workDir;
 
@@ -137,7 +137,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
     }
 
     @Test
-    public void snapshotTest() throws Exception {
+    public void deadlineTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -184,21 +184,21 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
+                                        System.out.println("executeTask: " + parameters);
 
-                                        allTaskExecuted.countDown();
-                                        return "theresult";
+                                        throw new Exception("not to be executed");
+
                                     }
 
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0);
-                        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60);
 
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
-                            if (task.getStatus() == Task.STATUS_FINISHED) {
+                            if (task.getStatus() == Task.STATUS_ERROR && "deadline_expired".equals(task.getResult())) {
                                 okFinishedForBroker = true;
                                 break;
                             }
@@ -215,16 +215,6 @@ public class SimpleBrokerRestartWithCheckpointTest {
             }
         }
 
-        // start another broker
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
-            // ask for task status and worker status
-            TaskStatusView task = broker.getClient().getTask(taskId);
-            assertNotNull(task);
-            assertEquals(taskParams, task.getParameter());
-            assertEquals("theresult", task.getResult());
-            assertEquals(Task.STATUS_FINISHED, task.getStatus());
-        }
     }
 
 }
