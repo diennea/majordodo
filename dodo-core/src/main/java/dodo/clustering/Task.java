@@ -32,7 +32,6 @@ public class Task {
     public static final int STATUS_WAITING = 0;
     public static final int STATUS_RUNNING = 1;
     public static final int STATUS_FINISHED = 2;
-    public static final int STATUS_NEEDS_RECOVERY = 3;
     public static final int STATUS_ERROR = 4;
 
     public static final int GROUP_ANY = 0;
@@ -44,8 +43,6 @@ public class Task {
                 return STATUS_ERROR;
             case TaskExecutorStatus.FINISHED:
                 return STATUS_FINISHED;
-            case TaskExecutorStatus.NEEDS_RECOVERY:
-                return STATUS_NEEDS_RECOVERY;
             default:
                 throw new IllegalArgumentException(status + "");
         }

@@ -150,8 +150,18 @@ public class Broker implements AutoCloseable {
         this.brokerStatus.checkpoint();
     }
 
-    void purgeFinishedTasks() {
-        this.brokerStatus.purgeFinishedTasks(configuration.getFinishedTasksRetention());
+    void purgeTasks() {
+        List<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
+
+        expired.stream().forEach((taskId) -> {
+            try {
+                StatusEdit addTask = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
+                this.brokerStatus.applyModification(addTask);
+                this.tasksHeap.removeExpiredTask(taskId);
+            } catch (LogNotAvailableException logNotAvailableException) {
+                LOGGER.log(Level.SEVERE, "error while expiring task " + taskId, logNotAvailableException);
+            }
+        });
     }
 
     public static interface ActionCallback {
@@ -182,34 +192,44 @@ public class Broker implements AutoCloseable {
             LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
             return;
         }
-        if (finalstatus == Task.STATUS_FINISHED) {
-            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, finalstatus, result);
-            this.brokerStatus.applyModification(edit);
-            return;
-        }
-        int maxAttepts = task.getMaxattempts();
-        int attempt = task.getAttempts();
-        if (maxAttepts > 0 && attempt >= maxAttepts) {
-            // too many attempts
-            LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
-            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
-            this.brokerStatus.applyModification(edit);
-            return;
-        }
-        long deadline = task.getExecutionDeadline();
-        if (deadline > 0 && deadline < System.currentTimeMillis()) {
-            // deadline expired
-            LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
-            StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
-            this.brokerStatus.applyModification(edit);
-            return;
-        }
+        switch (finalstatus) {
+            case Task.STATUS_FINISHED: {
+                StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, finalstatus, result);
+                this.brokerStatus.applyModification(edit);
+                return;
+            }
+            case Task.STATUS_ERROR: {
+                int maxAttepts = task.getMaxattempts();
+                int attempt = task.getAttempts();
+                if (maxAttepts > 0 && attempt >= maxAttepts) {
+                    // too many attempts
+                    LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
+                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+                    this.brokerStatus.applyModification(edit);
+                    return;
+                }
+                long deadline = task.getExecutionDeadline();
+                if (deadline > 0 && deadline < System.currentTimeMillis()) {
+                    // deadline expired
+                    LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
+                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+                    this.brokerStatus.applyModification(edit);
+                    return;
+                }
 
-        // submit for new execution
-        LOGGER.log(Level.INFO, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
-        StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
-        this.brokerStatus.applyModification(edit);
-        this.tasksHeap.insertTask(taskId, task.getType(), task.getUserId());
+                // submit for new execution
+                LOGGER.log(Level.INFO, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
+                StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
+                this.brokerStatus.applyModification(edit);
+                this.tasksHeap.insertTask(taskId, task.getType(), task.getUserId());
+                return;
+            }
+            case Task.STATUS_WAITING:
+            case Task.STATUS_RUNNING:
+                // impossible
+                throw new IllegalStateException("bad finalstatus:" + finalstatus);
+
+        }
 
     }
 

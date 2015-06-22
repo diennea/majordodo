@@ -59,7 +59,6 @@ public class BrokerConfiguration {
 
     private int finishedTasksRetention = 1000 * 60 * 60;
 
-    
     /**
      * Retention for finished tasks. Defaults to one hour
      *
@@ -72,12 +71,13 @@ public class BrokerConfiguration {
     public void setFinishedTasksRetention(int finishedTasksRetention) {
         this.finishedTasksRetention = finishedTasksRetention;
     }
-    
+
     private int finishedTasksPurgeSchedulerPeriod = 1000 * 60 * 15;
-    
+
     /**
      * Period for finished task purge scheduler. Defaults to 15 minutes
-     * @return 
+     *
+     * @return
      */
     public int getFinishedTasksPurgeSchedulerPeriod() {
         return finishedTasksPurgeSchedulerPeriod;
@@ -86,7 +86,21 @@ public class BrokerConfiguration {
     public void setFinishedTasksPurgeSchedulerPeriod(int finishedTasksPurgeSchedulerPeriod) {
         this.finishedTasksPurgeSchedulerPeriod = finishedTasksPurgeSchedulerPeriod;
     }
-    
-    
+
+    private int maxExpiredTasksPerCycle = 1000;
+
+    /**
+     * Maximum number of tasks to expire per period
+     *
+     * @return
+     * @see #finishedTasksPurgeSchedulerPeriod
+     */
+    public int getMaxExpiredTasksPerCycle() {
+        return maxExpiredTasksPerCycle;
+    }
+
+    public void setMaxExpiredTasksPerCycle(int maxExpiredTasksPerCycle) {
+        this.maxExpiredTasksPerCycle = maxExpiredTasksPerCycle;
+    }
 
 }

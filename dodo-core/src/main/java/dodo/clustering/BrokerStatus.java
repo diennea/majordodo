@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -180,9 +181,13 @@ public class BrokerStatus {
         }
 
     }
-    
-    public void purgeFinishedTasks(int finishedTasksRetention) {
-        long deadline = System.currentTimeMillis() - finishedTasksRetention;
+
+    public List<Long> purgeFinishedTasksAndSignalExpiredTasks(int finishedTasksRetention, int maxExpiredPerCycle) {
+        long now = System.currentTimeMillis();
+        long finished_deadline = now - finishedTasksRetention;
+
+        List<Long> expired = new ArrayList<>();
+        int expiredcount = 0;
         this.lock.writeLock().lock();
         try {
             // tasks are only purged from memry, not from logs
@@ -191,9 +196,19 @@ public class BrokerStatus {
                 Map.Entry<Long, Task> taskEntry = it.next();
                 Task t = taskEntry.getValue();
                 switch (t.getStatus()) {
+                    case Task.STATUS_WAITING:
+                        if (expiredcount < maxExpiredPerCycle) {
+                            long taskdeadline = t.getExecutionDeadline();
+                            if (taskdeadline > 0 && taskdeadline < now) {
+                                expired.add(t.getTaskId());
+                                expiredcount++;
+                                LOGGER.log(Level.INFO, "task {0}, created at {1}, expired, deadline {2}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), new java.util.Date(taskdeadline)});
+                            }
+                        }
+                        break;
                     case Task.STATUS_ERROR:
                     case Task.STATUS_FINISHED:
-                        if (t.getCreatedTimestamp() < deadline) {
+                        if (t.getCreatedTimestamp() < finished_deadline) {
                             LOGGER.log(Level.INFO, "purging finished task {0}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp())});
                             it.remove();
                         }
@@ -203,6 +218,7 @@ public class BrokerStatus {
         } finally {
             this.lock.writeLock().unlock();
         }
+        return expired;
     }
 
     public static final class ModificationResult {
@@ -253,7 +269,7 @@ public class BrokerStatus {
                     if (task == null) {
                         throw new IllegalStateException();
                     }
-                    if (!task.getWorkerId().equals(workerId)) {
+                    if (workerId != null && !task.getWorkerId().equals(workerId)) {
                         throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
                     task.setStatus(edit.taskStatus);
@@ -272,6 +288,7 @@ public class BrokerStatus {
                     task.setUserId(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
+                    task.setExecutionDeadline(edit.executionDeadline);
                     tasks.put(edit.taskId, task);
                     return new ModificationResult(num, edit.taskId);
                 }

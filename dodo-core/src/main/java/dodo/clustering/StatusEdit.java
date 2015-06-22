@@ -181,7 +181,11 @@ public final class StatusEdit {
                 case TYPE_TASK_STATUS_CHANGE:
                     doo.writeLong(taskId);
                     doo.writeInt(taskStatus);
-                    doo.writeUTF(workerId);
+                    if (workerId != null) {
+                        doo.writeUTF(workerId);
+                    } else {
+                        doo.writeUTF("");
+                    }
                     if (result != null) {
                         doo.writeUTF(result);
                     } else {

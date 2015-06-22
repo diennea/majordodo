@@ -57,7 +57,7 @@ public class FinishedTaskCollectorScheduler {
 
         @Override
         public void run() {
-            broker.purgeFinishedTasks();
+            broker.purgeTasks();
         }
 
     }

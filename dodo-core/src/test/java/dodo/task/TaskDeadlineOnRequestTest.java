@@ -57,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class TaskDeadlineTest {
+public class TaskDeadlineOnRequestTest {
 
     protected Path workDir;
 
@@ -137,7 +137,7 @@ public class TaskDeadlineTest {
     }
 
     @Test
-    public void deadlineTest() throws Exception {
+    public void deadlineOnRequestTaskTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -152,12 +152,9 @@ public class TaskDeadlineTest {
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
-
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
-                    CountDownLatch allTaskExecuted = new CountDownLatch(1);
                     WorkerStatusListener listener = new WorkerStatusListener() {
-
                         @Override
                         public void connectionEvent(String event, WorkerCore core) {
                             if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
@@ -207,10 +204,6 @@ public class TaskDeadlineTest {
                         assertTrue(okFinishedForBroker);
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
-
-                    // do a checkpoint
-                    broker.checkpoint();
-                    assertEquals(1, broker.getBrokerStatus().getCheckpointsCount());
                 }
             }
         }

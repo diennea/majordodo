@@ -84,6 +84,23 @@ public class TasksHeap {
         this.maxFragmentation = maxFragmentation;
     }
 
+    public void removeExpiredTask(long taskid) {
+        lock.writeLock().lock();
+        try {
+            for (TaskEntry entry : actuallist) {
+                if (entry.taskid == taskid) {
+                    entry.taskid = 0;
+                    entry.tasktype = 0;
+                    entry.userid = null;
+                    // task can be listed only once
+                    break;
+                }
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public boolean insertTask(long taskid, int tasktype, String userid) {
         lock.writeLock().lock();
         try {
@@ -161,8 +178,8 @@ public class TasksHeap {
         }
     }
 
-    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {        
-        while (true) {            
+    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {
+        while (true) {
             TasksChooser chooser = new TasksChooser(groups, availableSpace, max);
             lock.readLock().lock();
             try {

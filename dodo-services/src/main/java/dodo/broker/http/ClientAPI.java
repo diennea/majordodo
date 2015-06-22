@@ -67,8 +67,13 @@ public class ClientAPI {
         if (_maxattempts != null) {
             maxattempts = Integer.parseInt(_maxattempts);
         }
+        String _deadline = (String) data.get("deadline");
+        long deadline = 0;
+        if (_deadline != null) {
+            deadline = Long.parseLong(_deadline);
+        }
         try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts);
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts, deadline);
             return getTask(taskId);
         } catch (Exception err) {
             err.printStackTrace();
@@ -102,9 +107,6 @@ public class ClientAPI {
                 break;
             case Task.STATUS_FINISHED:
                 tt.setStatus("finished");
-                break;
-            case Task.STATUS_NEEDS_RECOVERY:
-                tt.setStatus("needs_recovery");
                 break;
             case Task.STATUS_RUNNING:
                 tt.setStatus("running");
