@@ -164,6 +164,14 @@ public class Broker implements AutoCloseable {
         });
     }
 
+    public void recomputeGroups() {
+        try {
+            tasksHeap.recomputeGroups();
+        } catch (Throwable t) {
+            LOGGER.log(Level.SEVERE, "error during group mapping recomputation", t);
+        }
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(StatusEdit action, ActionResult result);
@@ -174,11 +182,14 @@ public class Broker implements AutoCloseable {
             String userId,
             String parameter,
             int maxattempts,
-            long deadline) throws LogNotAvailableException {
+            long deadline,
+            String slot) throws LogNotAvailableException {
         long taskId = brokerStatus.nextTaskId();
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline);
-        this.brokerStatus.applyModification(addTask);
-        this.tasksHeap.insertTask(taskId, taskType, userId);
+        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline, slot);
+        taskId = this.brokerStatus.applyModification(addTask).newTaskId;
+        if (taskId > 0) {
+            this.tasksHeap.insertTask(taskId, taskType, userId);
+        }
         return taskId;
     }
 

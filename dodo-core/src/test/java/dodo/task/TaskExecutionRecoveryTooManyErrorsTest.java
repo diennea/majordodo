@@ -175,7 +175,7 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 5,0);
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 5,0,null);
 
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {

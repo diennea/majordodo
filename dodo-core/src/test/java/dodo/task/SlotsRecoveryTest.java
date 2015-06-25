@@ -57,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class SimpleBrokerRestartWithCheckpointTest {
+public class SlotsRecoveryTest {
 
     protected Path workDir;
 
@@ -137,7 +137,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
     }
 
     @Test
-    public void snapshotTest() throws Exception {
+    public void slotRecoveryTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -145,6 +145,21 @@ public class SimpleBrokerRestartWithCheckpointTest {
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
+        final String SLOTID = "myslot";
+
+        // start a broker and request a task, with slot
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+            broker.start();
+            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
+            assertTrue(taskId > 0);
+            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
+        }
+
+        // restart a broker and request a task, with slot, slot is already busy
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+            broker.start();
+            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
+        }
 
         // start a broker and do some work
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
@@ -184,7 +199,6 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-
                                         allTaskExecuted.countDown();
                                         return "theresult";
                                     }
@@ -192,7 +206,6 @@ public class SimpleBrokerRestartWithCheckpointTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null);
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -208,23 +221,13 @@ public class SimpleBrokerRestartWithCheckpointTest {
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
-                    // do a checkpoint
-                    broker.checkpoint();
-                    assertEquals(1, broker.getBrokerStatus().getCheckpointsCount());
+                    // now the slow is free
+                    taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
+                    assertTrue(taskId > 0);
                 }
             }
         }
 
-        // start another broker
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
-            // ask for task status and worker status
-            TaskStatusView task = broker.getClient().getTask(taskId);
-            assertNotNull(task);
-            assertEquals(taskParams, task.getParameter());
-            assertEquals("theresult", task.getResult());
-            assertEquals(Task.STATUS_FINISHED, task.getStatus());
-        }
     }
 
 }

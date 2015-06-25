@@ -55,6 +55,7 @@ public class BrokerStatus {
     private final StatusChangesLog log;
     private LogSequenceNumber lastLogSequenceNumber;
     private final AtomicInteger checkpointsCount = new AtomicInteger();
+    private final SlotsManager slotsManager = new SlotsManager();
 
     public WorkerStatus getWorkerStatus(String workerId) {
         return workers.get(workerId);
@@ -234,9 +235,24 @@ public class BrokerStatus {
     }
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
-        LOGGER.log(Level.SEVERE, "applyModification {0}", edit);
-        LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
-        return applyEdit(num, edit);
+        LOGGER.log(Level.FINEST, "applyModification {0}", edit);
+        if (edit.editType == StatusEdit.TYPE_ADD_TASK && edit.slot != null) {
+            if (slotsManager.assignSlot(edit.slot)) {
+                try {
+                    LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
+                    return applyEdit(num, edit);
+                } catch (LogNotAvailableException releaseSlot) {
+                    slotsManager.releaseSlot(edit.slot);
+                    throw releaseSlot;
+                }
+            } else {
+                // slot already assigned
+                return new ModificationResult(null, 0);
+            }
+        } else {
+            LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
+            return applyEdit(num, edit);
+        }
     }
 
     /**
@@ -247,7 +263,7 @@ public class BrokerStatus {
      * @param edit
      */
     private ModificationResult applyEdit(LogSequenceNumber num, StatusEdit edit) {
-        LOGGER.log(Level.SEVERE, "applyEdit {0}", edit);
+        LOGGER.log(Level.FINEST, "applyEdit {0}", edit);
 
         lock.writeLock().lock();
         try {
@@ -274,6 +290,14 @@ public class BrokerStatus {
                     }
                     task.setStatus(edit.taskStatus);
                     task.setResult(edit.result);
+                    if (task.getSlot() != null) {
+                        switch (edit.taskStatus) {
+                            case Task.STATUS_FINISHED:
+                            case Task.STATUS_ERROR: {
+                                slotsManager.releaseSlot(task.getSlot());
+                            }
+                        }
+                    }
                     return new ModificationResult(num, -1);
                 }
                 case StatusEdit.TYPE_ADD_TASK: {
@@ -289,7 +313,12 @@ public class BrokerStatus {
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setExecutionDeadline(edit.executionDeadline);
+                    task.setSlot(edit.slot);
                     tasks.put(edit.taskId, task);
+                    if (edit.slot != null) {
+                        // we need this, for log-replay on recovery and on followers
+                        slotsManager.assignSlot(edit.slot);
+                    }
                     return new ModificationResult(num, edit.taskId);
                 }
                 case StatusEdit.TYPE_WORKER_CONNECTED: {

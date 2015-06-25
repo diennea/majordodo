@@ -26,6 +26,7 @@ import dodo.network.SendResultCallback;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -155,7 +156,7 @@ public class NettyChannel extends Channel {
             callbackexecutor.submit(() -> {
                 Message original = pendingReplyMessagesSource.remove(key);
                 if (original != null) {
-                    callback.replyReceived(original, null, new Exception("comunication channel closed"));
+                    callback.replyReceived(original, null, new IOException("comunication channel is closed. Cannot wait for pending messages"));
                 }
             });
         });

@@ -158,7 +158,8 @@ public class TasksChooser {
         }
     }
 
-    boolean accept(int position, TasksHeap.TaskEntry entry, int idgroup) {
+    boolean accept(int position, TasksHeap.TaskEntry entry) {
+        final int idgroup = entry.groupid;
         if (matchAllGroups || groups.contains(idgroup)) {
             int tasktype = entry.tasktype;
             Integer availableSpaceForTaskType = availableSpace.get(tasktype);

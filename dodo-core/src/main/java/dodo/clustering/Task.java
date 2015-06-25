@@ -64,6 +64,17 @@ public class Task {
     private int maxattempts;
     private int attempts;
     private long executionDeadline;
+    private String slot;
+
+    public String getSlot() {
+        return slot;
+    }
+
+    public void setSlot(String slot) {
+        this.slot = slot;
+    }
+    
+    
 
     public int getMaxattempts() {
         return maxattempts;

@@ -266,6 +266,9 @@ public class FileCommitLog extends StatusChangesLog {
                         taskData.put("id", task.getTaskId());
                         taskData.put("status", task.getStatus());
                         taskData.put("maxattempts", task.getMaxattempts());
+                        if (task.getSlot() != null) {
+                            taskData.put("slot", task.getSlot());
+                        }
                         taskData.put("attempts", task.getAttempts());
                         taskData.put("executionDeadline", task.getExecutionDeadline());
 
@@ -346,6 +349,8 @@ public class FileCommitLog extends StatusChangesLog {
                         task.setTaskId(Long.parseLong(taskData.get("id") + ""));
                         task.setStatus(Integer.parseInt(taskData.get("status") + ""));
                         task.setMaxattempts(Integer.parseInt(taskData.get("maxattempts") + ""));
+                        String slot = (String) taskData.get("slot");
+                        task.setSlot(slot);
                         task.setAttempts(Integer.parseInt(taskData.get("attempts") + ""));
                         task.setParameter((String) taskData.get("parameter"));
                         task.setResult((String) taskData.get("result"));

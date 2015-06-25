@@ -76,6 +76,7 @@ public final class StatusEdit {
     public String workerLocation;
     public String workerProcessId;
     public String result;
+    public String slot;
     public Set<Long> actualRunningTasks;
 
     @Override
@@ -102,9 +103,10 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts, long executionDeadline) {
+    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
+        action.slot = slot;
         action.parameter = taskParameter;
         action.taskType = taskType;
         action.taskId = taskId;
@@ -156,6 +158,11 @@ public final class StatusEdit {
                     doo.writeLong(executionDeadline);
                     if (parameter != null) {
                         doo.writeUTF(parameter);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    if (slot != null) {
+                        doo.writeUTF(slot);
                     } else {
                         doo.writeUTF("");
                     }
@@ -217,6 +224,10 @@ public final class StatusEdit {
                 res.maxattempts = doo.readInt();
                 res.executionDeadline = doo.readLong();
                 res.parameter = doo.readUTF();
+                String slot = doo.readUTF();
+                if (!slot.isEmpty()) {
+                    res.slot = slot;
+                }
                 break;
             case TYPE_WORKER_DIED:
             case TYPE_WORKER_DISCONNECTED:

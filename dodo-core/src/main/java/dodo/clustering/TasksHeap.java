@@ -71,7 +71,7 @@ public class TasksHeap {
         this.groupMapper = tenantAssigner;
         this.actuallist = new TaskEntry[size];
         for (int i = 0; i < size; i++) {
-            this.actuallist[i] = new TaskEntry(0, 0, null);
+            this.actuallist[i] = new TaskEntry(0, 0, null, 0);
         }
         this.maxFragmentation = size / 4;
     }
@@ -92,6 +92,7 @@ public class TasksHeap {
                     entry.taskid = 0;
                     entry.tasktype = 0;
                     entry.userid = null;
+                    entry.groupid = 0;
                     // task can be listed only once
                     break;
                 }
@@ -102,6 +103,7 @@ public class TasksHeap {
     }
 
     public boolean insertTask(long taskid, int tasktype, String userid) {
+        int groupid = groupMapper.getGroup(taskid, tasktype, userid);
         lock.writeLock().lock();
         try {
             if (actualsize == size) {
@@ -111,6 +113,7 @@ public class TasksHeap {
             entry.taskid = taskid;
             entry.tasktype = tasktype;
             entry.userid = userid;
+            entry.groupid = groupid;
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -122,11 +125,13 @@ public class TasksHeap {
         public long taskid;
         public int tasktype;
         public String userid;
+        public int groupid;
 
-        TaskEntry(long taskid, int tasktype, String userid) {
+        TaskEntry(long taskid, int tasktype, String userid, int groupid) {
             this.taskid = taskid;
             this.tasktype = tasktype;
             this.userid = userid;
+            this.groupid = groupid;
         }
 
         @Override
@@ -138,6 +143,20 @@ public class TasksHeap {
 
     public void scan(Consumer<TaskEntry> consumer) {
         Stream.of(actuallist).forEach(consumer);
+    }
+
+    public void recomputeGroups() {
+        lock.writeLock().lock();
+        try {
+            for (int i = minValidPosition; i < actualsize; i++) {
+                TaskEntry entry = this.actuallist[i];
+                if (entry.taskid > 0) {
+                    entry.groupid = groupMapper.getGroup(entry.taskid, entry.tasktype, entry.userid);
+                }
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public void runCompaction() {
@@ -162,12 +181,14 @@ public class TasksHeap {
                 actuallist[writepos].taskid = actuallist[nextnotempty].taskid;
                 actuallist[writepos].tasktype = actuallist[nextnotempty].tasktype;
                 actuallist[writepos].userid = actuallist[nextnotempty].userid;
+                actuallist[writepos].groupid = actuallist[nextnotempty].groupid;
                 writepos++;
             }
             for (int j = writepos; j < size; j++) {
                 actuallist[j].taskid = 0;
                 actuallist[j].tasktype = 0;
                 actuallist[j].userid = null;
+                actuallist[j].groupid = 0;
             }
 
             minValidPosition = 0;
@@ -186,8 +207,7 @@ public class TasksHeap {
                 for (int i = minValidPosition; i < actualsize; i++) {
                     TaskEntry entry = this.actuallist[i];
                     if (entry.taskid > 0) {
-                        int group = groupMapper.getGroup(entry.taskid, entry.tasktype, entry.userid);
-                        if (chooser.accept(i, entry, group)) {
+                        if (chooser.accept(i, entry)) {
                             break;
                         }
                     }

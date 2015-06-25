@@ -72,6 +72,22 @@ public class BrokerConfiguration {
         this.finishedTasksRetention = finishedTasksRetention;
     }
 
+    private int recomputeGroupsPeriod = 0;
+
+    /**
+     * Period for recomputation of task to group mapping. 0 means 'never', that
+     * is that groups are assigned at task submission time. Defaults to 0.
+     *
+     * @return
+     */
+    public int getRecomputeGroupsPeriod() {
+        return recomputeGroupsPeriod;
+    }
+
+    public void setRecomputeGroupsPeriod(int recomputeGroupsPeriod) {
+        this.recomputeGroupsPeriod = recomputeGroupsPeriod;
+    }
+
     private int finishedTasksPurgeSchedulerPeriod = 1000 * 60 * 15;
 
     /**

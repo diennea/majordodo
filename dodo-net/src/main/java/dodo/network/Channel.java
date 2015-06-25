@@ -19,12 +19,14 @@
  */
 package dodo.network;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
+ * Abstract for two-way async comunication channels
  *
  * @author enrico.olivelli
  */
@@ -63,6 +65,11 @@ public abstract class Channel {
         try {
             return resp.get(timeout, TimeUnit.MILLISECONDS);
         } catch (ExecutionException err) {
+            if (err.getCause() instanceof IOException) {
+                TimeoutException te = new TimeoutException("io-error while waiting for reply");
+                te.initCause(err.getCause());
+                throw te;
+            }
             throw new RuntimeException(err.getCause());
         }
     }
