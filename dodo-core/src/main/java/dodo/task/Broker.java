@@ -84,6 +84,8 @@ public class Broker implements AutoCloseable {
 
     public void start() {
         this.brokerStatus.recover();
+        
+        this.brokerStatus.startWriting();
         for (Task task : this.brokerStatus.getTasksAtBoot()) {
             switch (task.getStatus()) {
                 case Task.STATUS_WAITING:

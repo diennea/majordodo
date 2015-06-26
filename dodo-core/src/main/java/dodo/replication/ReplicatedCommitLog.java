@@ -146,11 +146,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             for (long ledgerId : actualLedgersList) {
                 LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.CRC32, magic);
                 try {
-                    
+
                     // skipping "magic" first entry
                     for (Enumeration<LedgerEntry> en = handle.readEntries(1, handle.getLastAddConfirmed()); en.hasMoreElements();) {
                         LedgerEntry entry = en.nextElement();
-                        
+
                         LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
                         StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
                         if (number.after(snapshotSequenceNumber)) {
@@ -164,10 +164,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     handle.close();
                 }
             }
-            openNewLedger();
         } catch (Exception err) {
             throw new LogNotAvailableException(err);
         }
+    }
+
+    @Override
+    public void startWriting() throws LogNotAvailableException {
+        openNewLedger();
     }
 
     @Override

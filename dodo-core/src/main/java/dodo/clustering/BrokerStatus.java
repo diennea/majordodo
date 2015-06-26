@@ -391,6 +391,17 @@ public class BrokerStatus {
 
     }
 
+    public void startWriting() {
+        lock.writeLock().lock();
+        try {
+            log.startWriting();
+        } catch (LogNotAvailableException err) {
+            throw new RuntimeException(err);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public Task getTask(long taskId) {
         lock.readLock().lock();
         try {

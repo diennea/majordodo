@@ -227,8 +227,14 @@ public class FileCommitLog extends StatusChangesLog {
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
+
+    }
+
+    @Override
+    public void startWriting() throws LogNotAvailableException {
         openNewLedger();
     }
+
     private static final String LOGFILEEXTENSION = ".txlog";
 
     @Override

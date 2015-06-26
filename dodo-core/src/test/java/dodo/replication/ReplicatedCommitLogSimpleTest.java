@@ -62,6 +62,7 @@ public class ReplicatedCommitLogSimpleTest {
                 log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                     fail();
                 });
+                log.startWriting();
                 assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, 0);
                 assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, 0);
                 assertTrue(snapshot.getTasks().isEmpty());
@@ -90,6 +91,7 @@ public class ReplicatedCommitLogSimpleTest {
                     edits.add(b);
                     last.set(a.sequenceNumber);
                 });
+                log.startWriting();
                 assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
                 assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);
                 assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
