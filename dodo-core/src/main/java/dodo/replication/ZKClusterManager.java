@@ -19,8 +19,14 @@
  */
 package dodo.replication;
 
+import dodo.clustering.LogNotAvailableException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -37,23 +43,33 @@ import org.apache.zookeeper.data.Stat;
  *
  * @author enrico.olivelli
  */
-public class ZKClusterManager {
+public class ZKClusterManager implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(ZKClusterManager.class.getName());
 
     private final ZooKeeper zk;
     private final LeaderShipChangeListener listener;
 
+    public ZooKeeper getZooKeeper() {
+        return zk;
+    }
+
     private class SystemWatcher implements Watcher {
 
         @Override
         public void process(WatchedEvent we) {
             LOGGER.log(Level.SEVERE, "ZK event: " + we);
+            switch (we.getState()) {
+                case Expired:
+                    onSessionExpired();
+                    break;
+            }
         }
     }
     private final String basePath;
     private final byte[] localhostdata;
     private final String leaderpath;
+    private final String ledgersPath;
 
     public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener, byte[] localhostdata) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
@@ -61,12 +77,47 @@ public class ZKClusterManager {
         this.listener = listener;
         this.localhostdata = localhostdata;
         this.leaderpath = basePath + "/leader";
+        this.ledgersPath = basePath + "/ledgers";
+    }
+
+    public List<Long> getActualLedgersList() throws LogNotAvailableException {
+        try {
+            byte[] actualLedgers = zk.getData(ledgersPath, false, null);
+            String list = new String(actualLedgers, "utf-8");
+            return Stream.of(list.split(",")).map(s -> Long.parseLong(s)).collect(Collectors.toList());
+        } catch (KeeperException.NoNodeException firstboot) {
+            return new ArrayList<>();
+        } catch (Exception error) {
+            throw new LogNotAvailableException(error);
+        }
+    }
+
+    public void saveActualLedgersList(List<Long> ids) throws LogNotAvailableException {
+        // TODO: handle connectionloss
+        byte[] actualLedgers = ids.stream().map(l -> l.toString()).collect(Collectors.joining(",")).getBytes(StandardCharsets.UTF_8);
+        try {
+            try {
+                zk.setData(ledgersPath, actualLedgers, -1);
+            } catch (KeeperException.NoNodeException firstboot) {
+                zk.create(ledgersPath, actualLedgers, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+        } catch (Exception anyError) {
+            throw new LogNotAvailableException(anyError);
+        }
     }
 
     public void start() throws Exception {
-        if (this.zk.exists(basePath, false) == null) {
-            LOGGER.log(Level.INFO, "creating base path " + basePath);
-            this.zk.create(basePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        try {
+            if (this.zk.exists(basePath, false) == null) {
+                LOGGER.log(Level.INFO, "creating base path " + basePath);
+                try {
+                    this.zk.create(basePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                } catch (KeeperException anyError) {
+                    throw new Exception("Could not init Zookeeper space at path " + basePath, anyError);
+                }
+            }
+        } catch (KeeperException error) {
+            throw new Exception("Could not init Zookeeper space at path " + basePath, error);
         }
     }
 
@@ -78,11 +129,30 @@ public class ZKClusterManager {
     }
     private MasterStates state = MasterStates.NOTELECTED;
 
-    private void checkMaster() {
-
+    public MasterStates getState() {
+        return state;
     }
 
-    private Watcher masterExistsWatcher = new Watcher() {
+    AsyncCallback.DataCallback masterCheckBallback = new AsyncCallback.DataCallback() {
+
+        @Override
+        public void processResult(int rc, String path, Object o, byte[] bytes, Stat stat) {
+            switch (Code.get(rc)) {
+                case CONNECTIONLOSS:
+                    checkMaster();
+                    break;
+                case NONODE:
+                    runForMaster();
+                    break;
+            }
+        }
+    };
+
+    private void checkMaster() {
+        zk.getData(leaderpath, false, masterCheckBallback, null);
+    }
+
+    private final Watcher masterExistsWatcher = new Watcher() {
 
         @Override
         public void process(WatchedEvent we) {
@@ -119,10 +189,11 @@ public class ZKClusterManager {
         listener.leadershipAcquired();
     }
 
-    private AsyncCallback.StringCallback masterCreateCallback = new AsyncCallback.StringCallback() {
+    private final AsyncCallback.StringCallback masterCreateCallback = new AsyncCallback.StringCallback() {
 
         @Override
         public void processResult(int code, String path, Object o, String name) {
+            System.out.println("masterCreateCallback: " + Code.get(code) + ", path:" + path);
             switch (Code.get(code)) {
                 case CONNECTIONLOSS:
                     checkMaster();
@@ -134,9 +205,6 @@ public class ZKClusterManager {
                 case NODEEXISTS:
                     state = MasterStates.NOTELECTED;
                     masterExists();
-                    break;
-                case SESSIONEXPIRED:
-                    onSessionExpired();
                     break;
                 default:
                     LOGGER.log(Level.SEVERE, "bad ZK state " + KeeperException.create(Code.get(code), path));
@@ -154,7 +222,8 @@ public class ZKClusterManager {
         zk.create(leaderpath, localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, masterCreateCallback, null);
     }
 
-    public void stop() {
+    @Override
+    public void close() {
         listener.leadershipLost();
         if (zk != null) {
             try {

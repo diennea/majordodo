@@ -1,0 +1,5 @@
+4
+bookieHost: "dna101pc193.diennea.lan:5621"
+journalDir: "/tmp/bk-txn"
+ledgerDirs: "1\ttest"
+instanceId: "b610a979-6fbe-46c5-8217-31fc6dd1dbd3"

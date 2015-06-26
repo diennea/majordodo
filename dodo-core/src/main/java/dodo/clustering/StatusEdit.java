@@ -143,7 +143,7 @@ public final class StatusEdit {
         return action;
     }
 
-    byte[] serialize() {
+    public byte[] serialize() {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             DataOutputStream doo = new DataOutputStream(out);
@@ -210,7 +210,7 @@ public final class StatusEdit {
         }
     }
 
-    static StatusEdit read(byte[] data) throws IOException {
+    public static StatusEdit read(byte[] data) throws IOException {
         StatusEdit res = new StatusEdit();
         ByteArrayInputStream in = new ByteArrayInputStream(data);
         DataInputStream doo = new DataInputStream(in);

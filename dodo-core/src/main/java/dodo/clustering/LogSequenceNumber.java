@@ -39,7 +39,7 @@ public final class LogSequenceNumber {
         this.sequenceNumber = sequenceNumber;
     }
 
-    boolean after(LogSequenceNumber snapshotSequenceNumber) {
+    public boolean after(LogSequenceNumber snapshotSequenceNumber) {
         // '>=' because we can be in the same ledger, and '>' because we must be 'after'
         return this.ledgerId >= snapshotSequenceNumber.ledgerId
                 && this.sequenceNumber > snapshotSequenceNumber.sequenceNumber;

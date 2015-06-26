@@ -21,11 +21,14 @@ package dodo.replication;
 
 /**
  * Listener for leadership changes
+ *
  * @author enrico.olivelli
  */
-public interface LeaderShipChangeListener {
-    
-    public void leadershipAcquired();
-    
-    public void leadershipLost();
+public class LeaderShipChangeListener {
+
+    public void leadershipAcquired() {
+    }
+
+    public void leadershipLost() {
+    }
 }

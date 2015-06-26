@@ -24,10 +24,26 @@ import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.LogSequenceNumber;
 import dodo.clustering.StatusChangesLog;
 import dodo.clustering.StatusEdit;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
 import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.LedgerEntry;
+import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.zookeeper.ZooKeeper;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Commit log replicated on Apache Bookeeper
@@ -36,31 +52,206 @@ import org.apache.zookeeper.ZooKeeper;
  */
 public class ReplicatedCommitLog extends StatusChangesLog {
 
-    BookKeeper bookKeeper;
+    private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());
 
-    public ReplicatedCommitLog(ZooKeeper zooKeeper) throws Exception {
+    private static final byte[] magic = "dodo".getBytes(StandardCharsets.UTF_8);
+    private BookKeeper bookKeeper;
+    private ZKClusterManager zKClusterManager;
+    private final ReentrantLock writeLock = new ReentrantLock();
+    private final ReentrantLock snapshotLock = new ReentrantLock();
+    private CommitFileWriter writer;
+    private long currentLedgerId = 0;
+    private long currentSequenceNumber = 0;
+    private Path snapshotsDirectory;
+    private List<Long> actualLedgersList;
+
+    private class CommitFileWriter implements AutoCloseable {
+
+        LedgerHandle out;
+
+        private CommitFileWriter() throws LogNotAvailableException {
+            try {
+                this.out = bookKeeper.createLedger(1, 1, 1, BookKeeper.DigestType.CRC32, magic);
+                this.out.addEntry(magic); // magic
+            } catch (Exception err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+
+        public long getLedgerId() {
+            return this.out.getId();
+        }
+
+        public long writeEntry(StatusEdit edit) throws LogNotAvailableException {
+            try {
+                byte[] serialize = edit.serialize();
+                return this.out.addEntry(serialize);
+            } catch (Exception err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+
+        public void close() throws LogNotAvailableException {
+            try {
+                out.close();
+            } catch (Exception err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+    }
+
+    public ReplicatedCommitLog(ZKClusterManager zKClusterManager, Path snapshotsDirectory) throws Exception {
         ClientConfiguration config = new ClientConfiguration();
-        this.bookKeeper = new BookKeeper(config, zooKeeper);
+        this.zKClusterManager = zKClusterManager;
+        this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());
+        this.snapshotsDirectory = snapshotsDirectory;
     }
 
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        writeLock.lock();
+        try {
+            long newSequenceNumber = writer.writeEntry(edit);
+            return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    private void openNewLedger() throws LogNotAvailableException {
+        writeLock.lock();
+        try {
+            writer = new CommitFileWriter();
+            currentLedgerId = writer.getLedgerId();
+            currentSequenceNumber = 0;
+            LOGGER.log(Level.SEVERE, "Opened new ledger:" + currentLedgerId);
+            actualLedgersList.add(currentLedgerId);
+            zKClusterManager.saveActualLedgersList(actualLedgersList);
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        this.actualLedgersList = zKClusterManager.getActualLedgersList();
+        LOGGER.log(Level.SEVERE, "Actual ledgers list:" + actualLedgersList);
+        LOGGER.log(Level.SEVERE, "Latest snapshot ledgerId:" + currentLedgerId);
+        if (currentLedgerId > 0 && !this.actualLedgersList.contains(currentLedgerId)) {
+            // TODO: download snapshot from another remote broker
+            throw new LogNotAvailableException(new Exception("Actual ledgers list does not include latest snapshot ledgerid:" + currentLedgerId + ". manual recoveryis needed (pickup a recent snapshot from a live broker please)"));
+        }
+
+        try {
+            for (long ledgerId : actualLedgersList) {
+                LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.CRC32, magic);
+                try {
+                    
+                    // skipping "magic" first entry
+                    for (Enumeration<LedgerEntry> en = handle.readEntries(1, handle.getLastAddConfirmed()); en.hasMoreElements();) {
+                        LedgerEntry entry = en.nextElement();
+                        
+                        LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
+                        StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
+                        if (number.after(snapshotSequenceNumber)) {
+                            LOGGER.log(Level.INFO, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                            consumer.accept(number, statusEdit);
+                        } else {
+                            LOGGER.log(Level.INFO, "SKIP ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                        }
+                    }
+                } finally {
+                    handle.close();
+                }
+            }
+            openNewLedger();
+        } catch (Exception err) {
+            throw new LogNotAvailableException(err);
+        }
     }
 
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        snapshotLock.lock();
+        try {
+            LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
+            String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
+            Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
+            LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnaphsot(actualLogSequenceNumber, snapshotData);
+
+            try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
+                mapper.writeValue(out, filedata);
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
+        } finally {
+            snapshotLock.unlock();
+        }
     }
+
+    private static final String SNAPSHOTFILEXTENSION = ".snap.json";
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        Path snapshotfilename = null;
+        LogSequenceNumber latest = null;
+
+        try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
+            for (Path path : allfiles) {
+                String filename = path.getFileName().toString();
+                if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
+                    System.out.println("Processing snapshot file: " + path);
+                    try {
+                        filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
+
+                        int pos = filename.indexOf('_');
+                        if (pos > 0) {
+                            long ledgerId = Long.parseLong(filename.substring(0, pos));
+                            long sequenceNumber = Long.parseLong(filename.substring(pos + 1));
+                            LogSequenceNumber number = new LogSequenceNumber(ledgerId, sequenceNumber);
+                            if (latest == null || number.after(latest)) {
+                                latest = number;
+                                snapshotfilename = path;
+                            }
+                        }
+                    } catch (NumberFormatException invalidName) {
+                        System.out.println("Error:" + invalidName);
+                        invalidName.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        if (snapshotfilename == null) {
+            System.out.println("No snapshot available Starting with a brand new status");
+            currentLedgerId = 0;
+            return new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
+        } else {
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> snapshotdata;
+            try (InputStream in = Files.newInputStream(snapshotfilename)) {
+                snapshotdata = mapper.readValue(in, Map.class);
+                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+                currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
+                return result;
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
+        }
+    }
+
+    @Override
+    public void close() {
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (Exception err) {
+                err.printStackTrace();
+            }
+        }
     }
 
 }
