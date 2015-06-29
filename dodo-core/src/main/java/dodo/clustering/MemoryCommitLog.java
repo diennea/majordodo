@@ -38,11 +38,14 @@ public class MemoryCommitLog extends StatusChangesLog {
     private final ReentrantLock lock = new ReentrantLock();
 
     @Override
-    public LogSequenceNumber logStatusEdit(StatusEdit action) {
+    public LogSequenceNumber logStatusEdit(StatusEdit action) throws LogNotAvailableException {
+        if (!writable) {
+            throw new LogNotAvailableException(new Exception("not yet writable"));
+        }
         lock.lock();
         try {
             long newNumber = ++sequenceNumber;
-            LogSequenceNumber snum = new LogSequenceNumber(1, newNumber);
+            LogSequenceNumber snum = new LogSequenceNumber(0, newNumber);
             log.add(new MemoryLogLine(snum, action));
             return snum;
         } finally {
@@ -51,7 +54,7 @@ public class MemoryCommitLog extends StatusChangesLog {
     }
 
     private List<MemoryLogLine> logatboot;
-    private BrokerStatusSnapshot snapshotatboot = new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
+    private BrokerStatusSnapshot snapshotatboot = new BrokerStatusSnapshot(0, new LogSequenceNumber(-1, -1));
 
     public MemoryCommitLog() {
     }
@@ -85,10 +88,17 @@ public class MemoryCommitLog extends StatusChangesLog {
         logatboot = null;
     }
 
+    boolean writable = false;
+
     @Override
-    public void startWriting() throws LogNotAvailableException {        
+    public void startWriting() throws LogNotAvailableException {
+        writable = true;
     }
-        
+
+    @Override
+    public boolean isWritable() {
+        return writable;
+    }
 
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
@@ -108,6 +118,18 @@ public class MemoryCommitLog extends StatusChangesLog {
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
         return snapshotatboot;
+    }
+
+    private volatile boolean closed;
+
+    @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    @Override
+    public void close() throws LogNotAvailableException {
+        closed = true;
     }
 
 }

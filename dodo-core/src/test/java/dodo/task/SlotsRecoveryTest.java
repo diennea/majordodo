@@ -147,9 +147,9 @@ public class SlotsRecoveryTest {
         String taskParams = "param";
         final String SLOTID = "myslot";
 
-        // start a broker and request a task, with slot
+        // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
             assertTrue(taskId > 0);
             assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
@@ -157,13 +157,13 @@ public class SlotsRecoveryTest {
 
         // restart a broker and request a task, with slot, slot is already busy
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
         }
 
-        // start a broker and do some work
+        // startAsWritable a broker and do some work
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {

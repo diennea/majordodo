@@ -154,7 +154,7 @@ public class BrokerRestartDuringTaskExecutionTest {
         String host = "localhost";
         int port = 7000;
 
-        // start a worker, the broker is not started
+        // startAsWritable a worker, the broker is not started
         try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port)) {
             Map<Integer, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
@@ -179,18 +179,18 @@ public class BrokerRestartDuringTaskExecutionTest {
                         }
                 );
 
-                // start a broker and submit some work
+                // startAsWritable a broker and submit some work
                 BrokerConfiguration brokerConfig = new BrokerConfiguration();
                 brokerConfig.setMaxWorkerIdleTime(5000);
                 try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-                    broker.start();
+                    broker.startAsWritable();
                     taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0,0,null);
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);
                         server.setPort(port);
                         server.start();
 
-                        // wait the worker to start execution
+                        // wait the worker to startAsWritable execution
                         taskStartedLatch.await(10, TimeUnit.SECONDS);
                     }
                     // now the broker will die
@@ -198,7 +198,7 @@ public class BrokerRestartDuringTaskExecutionTest {
 
                 // restart the broker
                 try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-                    broker.start();
+                    broker.startAsWritable();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);
                         server.setPort(port);

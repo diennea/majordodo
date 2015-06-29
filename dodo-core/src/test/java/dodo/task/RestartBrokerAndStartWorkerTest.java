@@ -146,15 +146,15 @@ public class RestartBrokerAndStartWorkerTest {
         String workerId = "abc";
         String taskParams = "param";
 
-        // start a broker and do some work
+        // startAsWritable a broker and do some work
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null);
         }
 
-        // start another broker,
+        // startAsWritable another broker,
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
 
             // ask for task status and worker status
             {

@@ -48,12 +48,16 @@ public class Broker implements AutoCloseable {
     private final Workers workers;
     public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
+    private final StatusChangesLog log;
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
+    private volatile boolean stopped;
+
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
+    private final Thread brokerLifeThread;
 
     public BrokerConfiguration getConfiguration() {
         return configuration;
@@ -78,28 +82,59 @@ public class Broker implements AutoCloseable {
         this.client = new ClientFacade(this);
         this.brokerStatus = new BrokerStatus(log);
         this.tasksHeap = tasksHeap;
+        this.log = log;
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
+        this.brokerLifeThread = new Thread(brokerLife, "broker-life");
     }
 
     public void start() {
         this.brokerStatus.recover();
-        
-        this.brokerStatus.startWriting();
-        for (Task task : this.brokerStatus.getTasksAtBoot()) {
-            switch (task.getStatus()) {
-                case Task.STATUS_WAITING:
-                    tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
-                    break;
-            }
-        }
-        this.workers.start(brokerStatus);
-        started = true;
+        // checkpoint must startAsWritable both in leader mode and in follower mode
         this.checkpointScheduler.start();
-        this.finishedTaskCollectorScheduler.start();
+        this.brokerLifeThread.start();
     }
 
+    public void startAsWritable() throws InterruptedException {
+        this.start();
+        while (!log.isWritable()) {
+            Thread.sleep(500);
+        }
+    }
+
+    private final Runnable brokerLife = new Runnable() {
+
+        @Override
+        public void run() {
+            brokerStatus.followTheLeader();
+            LOGGER.log(Level.SEVERE, "Starting as leader");
+            brokerStatus.startWriting();
+            for (Task task : brokerStatus.getTasksAtBoot()) {
+                switch (task.getStatus()) {
+                    case Task.STATUS_WAITING:
+                        tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                        break;
+                }
+            }
+            workers.start(brokerStatus);
+            started = true;
+            finishedTaskCollectorScheduler.start();
+            try {
+                while (!stopped) {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException exit) {
+            }
+        }
+
+    };
+
     public void stop() {
+        stopped = true;
+        try {
+            brokerLifeThread.join();
+        } catch (InterruptedException exit) {
+        }
         this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
         this.workers.stop();

@@ -54,6 +54,10 @@ public class ZKClusterManager implements AutoCloseable {
         return zk;
     }
 
+    boolean isLeader() {
+        return state == MasterStates.ELECTED;
+    }
+
     private class SystemWatcher implements Watcher {
 
         @Override

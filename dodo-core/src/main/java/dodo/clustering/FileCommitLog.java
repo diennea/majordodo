@@ -19,7 +19,6 @@
  */
 package dodo.clustering;
 
-import dodo.scheduler.WorkerStatus;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -32,7 +31,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -180,6 +178,9 @@ public class FileCommitLog extends StatusChangesLog {
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
         writeLock.lock();
         try {
+            if (writer == null) {
+                throw new LogNotAvailableException(new Exception("not yet writable"));
+            }
             long newSequenceNumber = ++currentSequenceNumber;
             writer.writeEntry(newSequenceNumber, edit);
             return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
@@ -188,6 +189,11 @@ public class FileCommitLog extends StatusChangesLog {
         } finally {
             writeLock.unlock();
         }
+    }
+
+    @Override
+    public boolean isWritable() {
+        return writer != null;
     }
 
     @Override
@@ -297,7 +303,7 @@ public class FileCommitLog extends StatusChangesLog {
         if (snapshotfilename == null) {
             System.out.println("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
-            return new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
+            return new BrokerStatusSnapshot(0, new LogSequenceNumber(-1, -1));
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
@@ -312,12 +318,22 @@ public class FileCommitLog extends StatusChangesLog {
             }
         }
     }
+    private volatile boolean closed = false;
 
     @Override
     public void close() throws LogNotAvailableException {
         if (writer != null) {
-            writer.close();
+            try {
+                writer.close();
+            } finally {
+                closed = true;
+            }
         }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed;
     }
 
 }

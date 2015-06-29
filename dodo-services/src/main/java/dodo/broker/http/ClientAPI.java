@@ -67,13 +67,15 @@ public class ClientAPI {
         if (_maxattempts != null) {
             maxattempts = Integer.parseInt(_maxattempts);
         }
-        String _deadline = (String) data.get("deadline");
+        String _deadline = (String) data.get("deadline");        
         long deadline = 0;
         if (_deadline != null) {
             deadline = Long.parseLong(_deadline);
         }
+        String slot = (String) data.get("slot");
+        
         try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts, deadline);
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts, deadline,slot);
             return getTask(taskId);
         } catch (Exception err) {
             err.printStackTrace();

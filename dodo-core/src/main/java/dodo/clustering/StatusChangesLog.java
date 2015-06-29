@@ -31,14 +31,27 @@ public abstract class StatusChangesLog implements AutoCloseable {
     public abstract LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException;
 
     public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException;
-        
-    public void startWriting() throws LogNotAvailableException {} 
+
+    public void startWriting() throws LogNotAvailableException {
+    }
 
     public abstract void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException;
 
     public abstract BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException;
 
+    @Override
     public void close() throws LogNotAvailableException {
     }
+
+    public boolean isLeader() {
+        return true;
+    }
+
+    public void followTheLeader(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+    }
+
+    public abstract boolean isClosed();
+
+    public abstract boolean isWritable();
 
 }

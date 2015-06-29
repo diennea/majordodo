@@ -39,6 +39,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -72,7 +74,6 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         private CommitFileWriter() throws LogNotAvailableException {
             try {
                 this.out = bookKeeper.createLedger(1, 1, 1, BookKeeper.DigestType.CRC32, magic);
-                this.out.addEntry(magic); // magic
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
             }
@@ -146,9 +147,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             for (long ledgerId : actualLedgersList) {
                 LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.CRC32, magic);
                 try {
-
-                    // skipping "magic" first entry
-                    for (Enumeration<LedgerEntry> en = handle.readEntries(1, handle.getLastAddConfirmed()); en.hasMoreElements();) {
+                    
+                    for (Enumeration<LedgerEntry> en = handle.readEntries(0, handle.getLastAddConfirmed()); en.hasMoreElements();) {
                         LedgerEntry entry = en.nextElement();
 
                         LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
@@ -174,6 +174,12 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         openNewLedger();
     }
 
+    @Override
+    public boolean isWritable() {
+        return writer != null;
+    }
+    
+    
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
         snapshotLock.lock();
@@ -231,8 +237,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
         if (snapshotfilename == null) {
             System.out.println("No snapshot available Starting with a brand new status");
-            currentLedgerId = 0;
-            return new BrokerStatusSnapshot(0, new LogSequenceNumber(0, 0));
+            currentLedgerId = -1;
+            return new BrokerStatusSnapshot(0, new LogSequenceNumber(-1, -1));
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
@@ -247,6 +253,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
     }
 
+    private volatile boolean closed = false;
+
     @Override
     public void close() {
         if (writer != null) {
@@ -256,6 +264,65 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 err.printStackTrace();
             }
         }
+        closed = true;
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    @Override
+    public void followTheLeader(LogSequenceNumber skipPast, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+        List<Long> actualList = zKClusterManager.getActualLedgersList();
+
+        List<Long> toRead = actualList;
+        if (skipPast.ledgerId != -1) {
+            toRead = toRead.stream().filter(l -> l >= skipPast.ledgerId).collect(Collectors.toList());
+        }
+        try {
+            long nextEntry = skipPast.sequenceNumber + 1;
+            LOGGER.log(Level.SEVERE, "followTheLeader skipPast:" + skipPast + " toRead: " + toRead + " actualList:" + actualList + ", nextEntry:" + nextEntry);
+            for (Long previous : toRead) {
+                LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
+                LedgerHandle lh;
+                try {
+                    lh = bookKeeper.openLedger(previous,
+                            BookKeeper.DigestType.CRC32, magic);
+                } catch (BKException.BKLedgerRecoveryException e) {
+                    LOGGER.log(Level.SEVERE, "error", e);
+                    return;
+                }
+                long lastAddConfirmed = lh.getLastAddConfirmed();
+                LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " -> lastAddConfirmed:" + lastAddConfirmed);
+                if (nextEntry > lastAddConfirmed) {
+                    nextEntry = 0;
+                    continue;
+                }
+                Enumeration<LedgerEntry> entries
+                        = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
+
+                while (entries.hasMoreElements()) {
+                    LedgerEntry e = entries.nextElement();
+                    long entryId = e.getEntryId();
+
+                    byte[] entryData = e.getEntry();
+                    StatusEdit statusEdit = StatusEdit.read(entryData);
+                    LOGGER.log(Level.SEVERE, "entry " + previous + "," + entryId + " -> " + statusEdit);
+                    LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
+                    consumer.accept(number, statusEdit);
+
+                }
+            }
+        } catch (InterruptedException | IOException | BKException err) {
+            err.printStackTrace();
+            throw new LogNotAvailableException(err);
+        }
+    }
+
+    @Override
+    public boolean isLeader() {
+        return zKClusterManager.isLeader();
     }
 
 }

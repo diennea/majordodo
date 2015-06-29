@@ -162,17 +162,17 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
 
         };
 
-        // start a broker and do some work
+        // startAsWritable a broker and do some work
         BrokerConfiguration brokerConfig = new BrokerConfiguration();
         brokerConfig.setMaxWorkerIdleTime(5000);
         try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null);
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
 
-                // start a worker, connection will be dropped during the execution of the task
+                // startAsWritable a worker, connection will be dropped during the execution of the task
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<Integer, Integer> tags = new HashMap<>();

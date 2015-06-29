@@ -146,9 +146,9 @@ public class TaskExecutionRecoveryOnErrorTest {
         String workerId = "abc";
         String taskParams = "param";
 
-        // start a broker and do some work
+        // startAsWritable a broker and do some work
         try (Broker broker = new Broker(new BrokerConfiguration(),new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
-            broker.start();
+            broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {

@@ -222,6 +222,19 @@ public class BrokerStatus {
         return expired;
     }
 
+    public void followTheLeader() {
+        try {
+            while (!log.isLeader() && !log.isClosed()) {
+                log.followTheLeader(this.lastLogSequenceNumber,
+                        (logSeqNumber, edit) -> {
+                            applyEdit(logSeqNumber, edit);
+                        });
+            }
+        } catch (LogNotAvailableException err) {
+            throw new RuntimeException(err);
+        }
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;

@@ -57,8 +57,8 @@ public class FileCommitLogSimpleTest {
                 fail();
             });
             log.startWriting();
-            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, 0);
-            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, 0);
+            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
+            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
             assertTrue(snapshot.getTasks().isEmpty());
             StatusEdit edit1 = StatusEdit.ADD_TASK(1, 123, "param1", "myuser", 0, 0,null);
             StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
@@ -73,8 +73,8 @@ public class FileCommitLogSimpleTest {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             System.out.println("snapshot:" + snapshot);
             // no snapshot was taken...
-            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, 0);
-            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, 0);
+            assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
+            assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
             List<StatusEdit> edits = new ArrayList<>();
             AtomicLong last = new AtomicLong(-1);
             log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
