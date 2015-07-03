@@ -56,7 +56,7 @@ public class SimpleLeadershipTest {
                 }
             }, "test".getBytes("utf-8"))) {
                 clusterManager.start();
-                clusterManager.runForMaster();
+                clusterManager.requestLeadership();
                 assertTrue(leadeshipTaken.await(10, TimeUnit.SECONDS));
             }
             assertTrue(leadeshipLost.await(10, TimeUnit.SECONDS));
@@ -77,7 +77,7 @@ public class SimpleLeadershipTest {
             ZKClusterManager clusterManager_2 = null;
             try (ZKClusterManager clusterManager_1 = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader1, "test".getBytes("utf-8"))) {
                 clusterManager_1.start();
-                clusterManager_1.runForMaster();
+                clusterManager_1.requestLeadership();
                 assertTrue(leadeship1_Taken.await(10, TimeUnit.SECONDS));
                 leadeship2_Taken = new CountDownLatch(1);
                 LeaderShipChangeListener leader2 = new LeaderShipChangeListener() {
@@ -88,7 +88,7 @@ public class SimpleLeadershipTest {
                 };
                 clusterManager_2 = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader2, "test2".getBytes("utf-8"));
                 clusterManager_2.start();
-                clusterManager_2.runForMaster();
+                clusterManager_2.requestLeadership();
             }
 
             assertTrue(leadeship2_Taken.await(10, TimeUnit.SECONDS));

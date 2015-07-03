@@ -29,12 +29,16 @@ import dodo.clustering.Task;
 import dodo.clustering.TasksHeap;
 import dodo.scheduler.Workers;
 import dodo.worker.BrokerServerEndpoint;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Global status of the broker
@@ -44,6 +48,17 @@ import java.util.logging.Logger;
 public class Broker implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
+
+    public static byte[] formatHostdata(String host, int port) {
+        try {
+            Map<String, String> data = new HashMap<>();
+            ByteArrayOutputStream oo = new ByteArrayOutputStream();
+            new ObjectMapper().writeValue(oo, data);
+            return oo.toByteArray();
+        } catch (IOException impossible) {
+            throw new RuntimeException(impossible);
+        }
+    }
 
     private final Workers workers;
     public final TasksHeap tasksHeap;
@@ -97,7 +112,7 @@ public class Broker implements AutoCloseable {
 
     public void startAsWritable() throws InterruptedException {
         this.start();
-        while (!log.isWritable()) {
+        while (!log.isWritable() && !log.isClosed()) {
             Thread.sleep(500);
         }
     }
@@ -106,24 +121,32 @@ public class Broker implements AutoCloseable {
 
         @Override
         public void run() {
-            brokerStatus.followTheLeader();
-            LOGGER.log(Level.SEVERE, "Starting as leader");
-            brokerStatus.startWriting();
-            for (Task task : brokerStatus.getTasksAtBoot()) {
-                switch (task.getStatus()) {
-                    case Task.STATUS_WAITING:
-                        tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
-                        break;
-                }
-            }
-            workers.start(brokerStatus);
-            started = true;
-            finishedTaskCollectorScheduler.start();
             try {
-                while (!stopped) {
-                    Thread.sleep(1000);
+                LOGGER.log(Level.SEVERE, "Waiting to became leader...");
+                brokerStatus.followTheLeader();
+                LOGGER.log(Level.SEVERE, "Starting as leader");
+                brokerStatus.startWriting();
+                for (Task task : brokerStatus.getTasksAtBoot()) {
+                    switch (task.getStatus()) {
+                        case Task.STATUS_WAITING:
+                            tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                            break;
+                    }
                 }
-            } catch (InterruptedException exit) {
+                workers.start(brokerStatus);
+                started = true;
+                finishedTaskCollectorScheduler.start();
+                try {
+                    while (!stopped) {
+                        Thread.sleep(1000);
+                    }
+                } catch (InterruptedException exit) {
+                }
+            } catch (Throwable uncaught) {
+                LOGGER.log(Level.SEVERE, "fatal error", uncaught);
+                uncaught.printStackTrace();
+                close();
+
             }
         }
 
@@ -183,7 +206,7 @@ public class Broker implements AutoCloseable {
         return tasks;
     }
 
-    void checkpoint() throws LogNotAvailableException {
+    public void checkpoint() throws LogNotAvailableException {
         this.brokerStatus.checkpoint();
     }
 

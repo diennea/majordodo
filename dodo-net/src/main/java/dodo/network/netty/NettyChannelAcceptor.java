@@ -68,6 +68,12 @@ public class NettyChannelAcceptor implements AutoCloseable {
         this.acceptor = acceptor;
     }
 
+    public NettyChannelAcceptor(ServerSideConnectionAcceptor acceptor, String host, int port) {
+        this.acceptor = acceptor;
+        this.host = host;
+        this.port = port;
+    }
+
     public void start() throws Exception {
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();

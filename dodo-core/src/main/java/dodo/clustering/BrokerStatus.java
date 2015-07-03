@@ -222,17 +222,19 @@ public class BrokerStatus {
         return expired;
     }
 
-    public void followTheLeader() {
+    public void followTheLeader() throws InterruptedException {
         try {
-            while (!log.isLeader() && !log.isClosed()) {
+            log.requestLeadership();
+            while (!log.isLeader() && !log.isClosed()) {                
                 log.followTheLeader(this.lastLogSequenceNumber,
                         (logSeqNumber, edit) -> {
                             applyEdit(logSeqNumber, edit);
                         });
+                Thread.sleep(1000);
             }
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
-        }
+        } 
     }
 
     public static final class ModificationResult {
@@ -385,6 +387,7 @@ public class BrokerStatus {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             this.maxTaskId = snapshot.getMaxTaskId();
             this.newTaskId.set(maxTaskId + 1);
+            this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
             for (Task task : snapshot.getTasks()) {
                 this.tasks.put(task.getTaskId(), task);
             }

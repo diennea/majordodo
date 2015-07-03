@@ -54,4 +54,7 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     public abstract boolean isWritable();
 
+    public void requestLeadership() throws LogNotAvailableException {        
+    }
+
 }

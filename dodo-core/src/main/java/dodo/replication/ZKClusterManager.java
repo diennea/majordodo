@@ -146,7 +146,7 @@ public class ZKClusterManager implements AutoCloseable {
                     checkMaster();
                     break;
                 case NONODE:
-                    runForMaster();
+                    requestLeadership();
                     break;
             }
         }
@@ -161,7 +161,7 @@ public class ZKClusterManager implements AutoCloseable {
         @Override
         public void process(WatchedEvent we) {
             if (we.getType() == EventType.NodeDeleted) {
-                runForMaster();
+                requestLeadership();
             }
         }
     };
@@ -176,7 +176,7 @@ public class ZKClusterManager implements AutoCloseable {
                 case OK:
                     if (stat == null) {
                         state = MasterStates.RUNNING;
-                        runForMaster();
+                        requestLeadership();
                     }
                     break;
                 default:
@@ -222,7 +222,7 @@ public class ZKClusterManager implements AutoCloseable {
         listener.leadershipLost();
     }
 
-    public void runForMaster() {
+    public void requestLeadership() {
         zk.create(leaderpath, localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, masterCreateCallback, null);
     }
 

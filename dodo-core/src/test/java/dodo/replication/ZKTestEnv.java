@@ -62,6 +62,14 @@ public class ZKTestEnv implements AutoCloseable {
         return "localhost:1282";
     }
 
+    public int getTimeout() {
+        return 40000;
+    }
+
+    public String getPath() {
+        return "/dodotest";
+    }
+
     @Override
     public void close() throws Exception {
         try {

@@ -1,20 +1,32 @@
 package dodo.network.netty;
 
 import dodo.network.*;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by enrico.olivelli on 24/03/2015.
  */
 public class NettyBrokerLocator implements BrokerLocator {
 
-    private String host;
-    private int port;
+    private final List<InetSocketAddress> servers = new ArrayList<>();
+    private final AtomicInteger index = new AtomicInteger();
 
     public NettyBrokerLocator(String host, int port) {
-        this.host = host;
-        this.port = port;
+        this.servers.add(new InetSocketAddress(host, port));
+    }
+
+    public NettyBrokerLocator(final List<InetSocketAddress> servers) {
+        this.servers.addAll(servers);
+    }
+    
+    public NettyBrokerLocator(String host, int port, String host2, int port2) {
+        this.servers.add(new InetSocketAddress(host, port));
+        this.servers.add(new InetSocketAddress(host2, port2));
     }
 
     @Override
@@ -22,12 +34,14 @@ public class NettyBrokerLocator implements BrokerLocator {
         boolean ok = false;
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {
-            connector.setPort(port);
-            connector.setHost(host);
+            InetSocketAddress addre = servers.get(index.get() % servers.size());
+            connector.setPort(addre.getPort());
+            connector.setHost(addre.getAddress().getHostAddress());
             NettyChannel channel;
             try {
                 channel = connector.connect();
             } catch (final Exception e) {
+                index.incrementAndGet();
                 throw new BrokerNotAvailableException(e);
             }
 

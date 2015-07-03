@@ -52,12 +52,9 @@ public class ReplicatedCommitLogSimpleTest {
 
     @Test
     public void test() throws Exception {
-        try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());                
-                ZKClusterManager clusterManager = new ZKClusterManager(zkServer.getAddress(), 40000, "/dodo", new LeaderShipChangeListener(),
-                        "ciao".getBytes())) {
-            zkServer.startBookie();
-            clusterManager.start();
-            try (ReplicatedCommitLog log = new ReplicatedCommitLog(clusterManager, folderSnapshots.getRoot().toPath());) {
+        try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());) {
+            zkServer.startBookie();            
+            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null);) {
                 BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
                 log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                     fail();
@@ -76,7 +73,7 @@ public class ReplicatedCommitLogSimpleTest {
                 LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
             }
 
-            try (ReplicatedCommitLog log = new ReplicatedCommitLog(clusterManager, folderSnapshots.getRoot().toPath());) {
+            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null);) {
                 BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
                 System.out.println("snapshot:" + snapshot);
                 // no snapshot was taken...
@@ -86,7 +83,7 @@ public class ReplicatedCommitLogSimpleTest {
                 AtomicLong last = new AtomicLong(-1);
                 log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                     System.out.println("entry:" + a + ", " + b);
-                   
+
                     assertTrue(a.sequenceNumber > last.get());
                     edits.add(b);
                     last.set(a.sequenceNumber);
