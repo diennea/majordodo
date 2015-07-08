@@ -124,6 +124,9 @@ public class Broker implements AutoCloseable {
             try {
                 LOGGER.log(Level.SEVERE, "Waiting to became leader...");
                 brokerStatus.followTheLeader();
+                if (stopped) {
+                    return;
+                }
                 LOGGER.log(Level.SEVERE, "Starting as leader");
                 brokerStatus.startWriting();
                 for (Task task : brokerStatus.getTasksAtBoot()) {
@@ -154,14 +157,14 @@ public class Broker implements AutoCloseable {
 
     public void stop() {
         stopped = true;
-        try {
-            brokerLifeThread.join();
-        } catch (InterruptedException exit) {
-        }
         this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
+        try {
+            brokerLifeThread.join();
+        } catch (InterruptedException exit) {
+        }
         started = false;
     }
 

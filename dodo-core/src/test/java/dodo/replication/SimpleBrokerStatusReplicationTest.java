@@ -93,7 +93,6 @@ public class SimpleBrokerStatusReplicationTest {
     public TemporaryFolder folderZk = new TemporaryFolder();
 
     @Test
-    @Ignore
     public void simpleBrokerReplicationTest() throws Exception {
 
         try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());) {
@@ -112,14 +111,17 @@ public class SimpleBrokerStatusReplicationTest {
 
             try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port)), new TasksHeap(1000, createGroupMapperFunction()));) {
                 broker1.startAsWritable();
-                
-                try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {                    
+
+                try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker2.start();
 
                     taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
 
+                    // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
+                    broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
+
                     assertNotNull(broker1.getClient().getTask(taskId));
-                    
+
                     boolean ok = false;
                     for (int i = 0; i < 10; i++) {
                         TaskStatusView task = broker2.getClient().getTask(taskId);

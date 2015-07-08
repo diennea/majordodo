@@ -281,11 +281,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     @Override
     public final void close() {
+        LOGGER.severe("closing");
         if (writer != null) {
             try {
                 writer.close();
             } catch (Exception err) {
                 err.printStackTrace();
+            } finally {
+                writer = null;
             }
         }
         if (zKClusterManager != null) {
@@ -296,6 +299,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         }
         closed = true;
+        LOGGER.severe("closed");
     }
 
     @Override
@@ -359,7 +363,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     @Override
     public boolean isLeader() {
-        return zKClusterManager.isLeader();
+        return zKClusterManager != null && zKClusterManager.isLeader();
     }
 
 }
