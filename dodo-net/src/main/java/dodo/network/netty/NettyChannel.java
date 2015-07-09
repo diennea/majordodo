@@ -46,6 +46,11 @@ public class NettyChannel extends Channel {
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
     private final ExecutorService callbackexecutor = Executors.newCachedThreadPool();
 
+    @Override
+    public String toString() {
+        return "NettyChannel{" + "socket=" + socket + '}';
+    }        
+
     public NettyChannel(SocketChannel socket) {
         this.socket = socket;
     }

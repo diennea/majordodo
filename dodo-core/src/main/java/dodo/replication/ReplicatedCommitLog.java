@@ -122,6 +122,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         ClientConfiguration config = new ClientConfiguration();
         try {
             this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata);
+            this.zKClusterManager.waitForConnection();
             this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());
             this.snapshotsDirectory = snapshotsDirectory;
             this.zKClusterManager.start();

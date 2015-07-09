@@ -29,8 +29,10 @@ import dodo.clustering.Task;
 import dodo.clustering.TasksHeap;
 import dodo.scheduler.Workers;
 import dodo.worker.BrokerServerEndpoint;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,9 +54,23 @@ public class Broker implements AutoCloseable {
     public static byte[] formatHostdata(String host, int port) {
         try {
             Map<String, String> data = new HashMap<>();
+            data.put("host", host);
+            data.put("port", port + "");
             ByteArrayOutputStream oo = new ByteArrayOutputStream();
             new ObjectMapper().writeValue(oo, data);
             return oo.toByteArray();
+        } catch (IOException impossible) {
+            throw new RuntimeException(impossible);
+        }
+    }
+
+    public static InetSocketAddress parseHostdata(byte[] oo) {
+
+        try {
+            Map<String, String> data = new ObjectMapper().readValue(new ByteArrayInputStream(oo), Map.class);
+            String host = data.get("host");
+            int port = Integer.parseInt(data.get("port"));
+            return new InetSocketAddress(host, port);
         } catch (IOException impossible) {
             throw new RuntimeException(impossible);
         }

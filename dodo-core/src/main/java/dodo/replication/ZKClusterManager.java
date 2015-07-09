@@ -23,6 +23,9 @@ import dodo.clustering.LogNotAvailableException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -58,6 +61,12 @@ public class ZKClusterManager implements AutoCloseable {
         return state == MasterStates.ELECTED;
     }
 
+    CountDownLatch firstConnectionLatch = new CountDownLatch(1);
+
+    void waitForConnection() throws InterruptedException {
+        firstConnectionLatch.await(this.connectionTimeout, TimeUnit.MILLISECONDS);
+    }
+
     private class SystemWatcher implements Watcher {
 
         @Override
@@ -67,6 +76,9 @@ public class ZKClusterManager implements AutoCloseable {
                 case Expired:
                     onSessionExpired();
                     break;
+                case SyncConnected:
+                    firstConnectionLatch.countDown();
+                    break;
             }
         }
     }
@@ -74,6 +86,7 @@ public class ZKClusterManager implements AutoCloseable {
     private final byte[] localhostdata;
     private final String leaderpath;
     private final String ledgersPath;
+    private final int connectionTimeout;
 
     public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener, byte[] localhostdata) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
@@ -82,6 +95,7 @@ public class ZKClusterManager implements AutoCloseable {
         this.localhostdata = localhostdata;
         this.leaderpath = basePath + "/leader";
         this.ledgersPath = basePath + "/ledgers";
+        this.connectionTimeout = zkTimeout; // TODO: specific configuration ?
     }
 
     public List<Long> getActualLedgersList() throws LogNotAvailableException {

@@ -41,6 +41,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Core of the worker inside the JVM
@@ -48,6 +50,8 @@ import java.util.concurrent.TimeoutException;
  * @author enrico.olivelli
  */
 public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, AutoCloseable {
+
+    private static final Logger LOGGER = Logger.getLogger(WorkerCore.class.getName());
 
     private final ExecutorService threadpool;
     private final String processId;
@@ -66,7 +70,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final int tasksRequestTimeout;
 
     public void die() {
-        System.out.println("Die!");
+        LOGGER.log(Level.SEVERE, "Die!");
         if (coreThread != null) {
             coreThread.interrupt();
         }
@@ -101,7 +105,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     private void requestNewTasks() {
-        Channel _channel = channel;
+        Channel _channel = channel;        
         if (_channel != null) {
             Map<Integer, Integer> availableSpace = new HashMap<>(maximumThreadPerTaskType);
             runningTasks.values().forEach(tasktype -> {
@@ -118,12 +122,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
             int maxnewthreads = maxThreads - runningTasks.size();
             try {
+                LOGGER.log(Level.SEVERE, "requestNewTasks maxnewthreads:" + maxnewthreads+", availableSpace:"+availableSpace+" groups:"+groups);
                 _channel.sendMessageWithReply(
                         Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads),
                         tasksRequestTimeout
                 );
+                LOGGER.log(Level.SEVERE, "requestNewTasks finished");
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
+                    LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
                     err.printStackTrace();
                 }
                 return;
@@ -165,7 +172,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void messageReceived(Message message) {
-        System.out.println("[BROKER->WORKER] received " + message);
+        LOGGER.log(Level.SEVERE, "[BROKER->WORKER] received " + message);
         if (message.type == Message.TYPE_KILL_WORKER) {
             killWorkerHandler.killWorker(this);
             return;
@@ -177,7 +184,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        System.out.println("[BROKER->WORKER] channel closed");
+        LOGGER.log(Level.SEVERE, "[BROKER->WORKER] channel closed");
         disconnect();
     }
 
@@ -203,7 +210,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         if (error != null) {
             error.printStackTrace();
         }
-        System.out.println("notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error);
+        LOGGER.log(Level.SEVERE, "notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error);
         Channel _channel = channel;
         if (_channel != null) {
             _channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
@@ -211,13 +218,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 @Override
                 public void messageSent(Message originalMessage, Throwable sendingerror) {
                     if (sendingerror != null) {
-                        System.out.println("enqueing notification of task finish, due to broker connection failure");
+                        LOGGER.log(Level.SEVERE, "enqueing notification of task finish, due to broker connection failure");
                         pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
                     }
                 }
             });
         } else {
-            System.out.println("enqueing notification of task finish, due to broker connection failure");
+            LOGGER.log(Level.SEVERE, "enqueing notification of task finish, due to broker connection failure");
             pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
         }
     }
@@ -259,16 +266,16 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     }
 
                 } catch (InterruptedException | BrokerRejectedConnectionException exit) {
-                    System.out.println("[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
                     break;
                 } catch (BrokerNotAvailableException retry) {
-                    System.out.println("[WORKER] no broker available:" + retry);
+                    LOGGER.log(Level.SEVERE, "[WORKER] no broker available:" + retry);
                 }
 
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException exit) {
-                    System.out.println("[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
                     break;
                 }
 
@@ -303,10 +310,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        System.out.println("[WORKER] connecting");
+        LOGGER.log(Level.SEVERE, "[WORKER] connecting");
         disconnect();
         channel = brokerLocator.connect(this, this);
-        System.out.println("[WORKER] connected, channel:" + channel);
+        LOGGER.log(Level.SEVERE, "[WORKER] connected, channel:" + channel);
         listener.connectionEvent("connected", this);
     }
 

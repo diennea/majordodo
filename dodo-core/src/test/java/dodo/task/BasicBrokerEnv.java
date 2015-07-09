@@ -52,6 +52,11 @@ public abstract class BasicBrokerEnv {
     private BrokerLocator locator;
     protected Path workDir;
 
+    protected void beforeStartBroker() throws Exception {
+    }
+    protected void afterStartBroker() throws Exception {
+    }
+
     private void setupWorkdir() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
@@ -111,7 +116,7 @@ public abstract class BasicBrokerEnv {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    public BrokerLocator getBrokerLocator() {
+    public BrokerLocator getBrokerLocator() throws Exception {
         if (locator == null) {
             locator = createBrokerLocator();
         }
@@ -122,11 +127,11 @@ public abstract class BasicBrokerEnv {
         return broker.getClient();
     }
 
-    protected BrokerLocator createBrokerLocator() {
+    protected BrokerLocator createBrokerLocator() throws Exception {
         return new JVMBrokerLocator(broker);
     }
 
-    protected StatusChangesLog createStatusChangesLog() {
+    protected StatusChangesLog createStatusChangesLog() throws Exception {
         return new MemoryCommitLog();
     }
 
@@ -150,8 +155,10 @@ public abstract class BasicBrokerEnv {
     @Before
     public void startBroker() throws Exception {
         setupWorkdir();
-        broker = new Broker(new BrokerConfiguration(),createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
-        broker.startAsWritable();
+        beforeStartBroker();        
+        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));        
+        broker.startAsWritable();        
+        afterStartBroker();
     }
 
     @After
