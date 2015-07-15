@@ -122,12 +122,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
             int maxnewthreads = maxThreads - runningTasks.size();
             try {
-                LOGGER.log(Level.SEVERE, "requestNewTasks maxnewthreads:" + maxnewthreads+", availableSpace:"+availableSpace+" groups:"+groups);
+                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads+", availableSpace:"+availableSpace+" groups:"+groups);
                 _channel.sendMessageWithReply(
                         Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads),
                         tasksRequestTimeout
                 );
-                LOGGER.log(Level.SEVERE, "requestNewTasks finished");
+                LOGGER.log(Level.FINER, "requestNewTasks finished");
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
                     LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);

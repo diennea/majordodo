@@ -17,6 +17,7 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jetty.server.Server;
@@ -74,6 +75,7 @@ public class BrokerMain implements AutoCloseable {
                 broker = null;
             }
         }
+        running.countDown();
     }
 
     public static void main(String... args) {
@@ -94,20 +96,38 @@ public class BrokerMain implements AutoCloseable {
                 }
             }
 
-            try (BrokerMain main = new BrokerMain(configuration)) {
-                main.start();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                System.out.println("Type ENTER to exit...");
-                reader.readLine();
-                System.out.println("Shutting down");
-            }
+            Runtime.getRuntime().addShutdownHook(new Thread("ctrlc-hook") {
+
+                @Override
+                public void run() {
+                    System.out.println("Ctrl-C trapped. Shutting down");
+                    BrokerMain _brokerMain = runningInstance;
+                    if (_brokerMain != null) {
+                        _brokerMain.close();
+                    }
+                }
+
+            });
+            runningInstance = new BrokerMain(configuration);
+            runningInstance.start();
+            runningInstance.join();
+
         } catch (Throwable t) {
             t.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    private final static CountDownLatch running = new CountDownLatch(1);
+
+    public void join() {
+        try {
+            running.await();
+        } catch (InterruptedException discard) {
         }
     }
 
     public void start() throws Exception {
-        runningInstance = this;
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
