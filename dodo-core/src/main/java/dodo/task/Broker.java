@@ -197,7 +197,7 @@ public class Broker implements AutoCloseable {
         return started;
     }
 
-    public List<Long> assignTasksToWorker(int max, Map<Integer, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
+    public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
         List<Long> tasks = tasksHeap.takeTasks(max, groups, availableSpace);
         long now = System.currentTimeMillis();
         Set<Long> expired = null;
@@ -257,7 +257,7 @@ public class Broker implements AutoCloseable {
     }
 
     public long addTask(
-            int taskType,
+            String taskType,
             String userId,
             String parameter,
             int maxattempts,

@@ -9,7 +9,7 @@
         <artifactId>dodo-parent</artifactId>
     </parent>
     <artifactId>dodo-core</artifactId>
-    
+    <name>Majordodo Core</name>
     <packaging>jar</packaging>
     <dependencies>       
         <dependency>

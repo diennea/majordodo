@@ -40,7 +40,7 @@ import org.junit.Test;
 
 public class SimpleBrokerSuite extends BasicBrokerEnv {
 
-    private static final int TASKTYPE_MYTYPE = 987;
+    private static final String TASKTYPE_MYTYPE = "mytype";
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -69,7 +69,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<Integer, Integer> tags = new HashMap<>();
+        Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
@@ -79,7 +79,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             core.start();
             assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-            core.setExecutorFactory((int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -91,7 +91,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -106,7 +106,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
             todo.add(taskId);
         }
 
@@ -126,7 +126,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<Integer, Integer> tags = new HashMap<>();
+        Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
@@ -134,7 +134,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
-            core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -168,7 +168,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
             todo.add(taskId);
         }
 
@@ -188,7 +188,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<Integer, Integer> tags = new HashMap<>();
+        Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
@@ -196,7 +196,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
-            core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -226,7 +226,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
             todo.add(taskId);
         }
 
@@ -246,7 +246,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             }
 
         };
-        Map<Integer, Integer> tags = new HashMap<>();
+        Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
@@ -254,7 +254,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
-            core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -281,16 +281,16 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
 
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 20; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null);
+            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
             todo.add(taskId);
         }
 
         CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
         // launch 10 workers
         List<WorkerCore> cores = new ArrayList<>();
-        final int numWorkers = 2;
+        final int numWorkers = 10;
         CountDownLatch disconnectedLatch = new CountDownLatch(numWorkers);
         for (int i = 0; i < numWorkers; i++) {
             String workerId = "tester" + i;
@@ -310,7 +310,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
                 }
 
             };
-            Map<Integer, Integer> tags = new HashMap<>();
+            Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
             config.setWorkerId("workerid_" + i);
@@ -319,7 +319,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             WorkerCore core = new WorkerCore(config, "here" + i, getBrokerLocator(), listener);
             cores.add(core);
 
-            core.setExecutorFactory((int typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {

@@ -29,8 +29,8 @@ import org.junit.Test;
 
 public class TasksHeapTest {
 
-    private static final int TASKTYPE_MYTASK1 = 1234;
-    private static final int TASKTYPE_MYTASK2 = 1235;
+    private static final String TASKTYPE_MYTASK1 = "MYTASK1";
+    private static final String TASKTYPE_MYTASK2 = "MYTASK2";
     private static final String USERID1 = "myuser1";
     private static final String USERID2 = "myuser2";
     private static final int GROUPID1 = 9713;
@@ -39,7 +39,7 @@ public class TasksHeapTest {
     private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
 
         @Override
-        public int getGroup(long taskid, int tasktype, String assignerData) {
+        public int getGroup(long taskid, String tasktype, String assignerData) {
             switch (assignerData) {
                 case USERID1:
                     return GROUPID1;
@@ -54,7 +54,7 @@ public class TasksHeapTest {
     @Test
     public void test1() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
@@ -66,7 +66,7 @@ public class TasksHeapTest {
     @Test
     public void test2() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
@@ -78,7 +78,7 @@ public class TasksHeapTest {
     @Test
     public void test3() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
@@ -90,7 +90,7 @@ public class TasksHeapTest {
     @Test
     public void test4() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
@@ -102,7 +102,7 @@ public class TasksHeapTest {
     @Test
     public void test5() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         availableSpace.put(TASKTYPE_MYTASK2, 1);
         AtomicLong newTaskId = new AtomicLong(987);
@@ -123,7 +123,7 @@ public class TasksHeapTest {
     @Test
     public void test6() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(TASKTYPE_MYTASK1, 3);
         availableSpace.put(TASKTYPE_MYTASK2, 1);
         AtomicLong newTaskId = new AtomicLong(0);

@@ -20,8 +20,8 @@
 package dodo.clustering;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -44,6 +44,7 @@ import java.util.stream.Stream;
 public class TasksHeap {
 
     private TaskEntry[] actuallist;
+    private static final int TASKTYPE_ANYTASK = 0;
 
     private int actualsize;
     private int fragmentation;
@@ -102,16 +103,26 @@ public class TasksHeap {
         }
     }
 
-    public boolean insertTask(long taskid, int tasktype, String userid) {
+    private Map<String, Integer> taskTypesIds = new HashMap<>();
+    private Map<Integer, String> taskTypes = new HashMap<>();
+    private int newIdtaskType = 0;
+
+    public boolean insertTask(long taskid, String tasktype, String userid) {
         int groupid = groupMapper.getGroup(taskid, tasktype, userid);
         lock.writeLock().lock();
         try {
             if (actualsize == size) {
                 return false;
             }
+            Integer taskTypeId = taskTypesIds.get(tasktype);
+            if (taskTypeId == null) {
+                taskTypeId = ++newIdtaskType;
+                taskTypesIds.put(tasktype, taskTypeId);
+                taskTypes.put(taskTypeId, tasktype);
+            }
             TaskEntry entry = this.actuallist[actualsize++];
             entry.taskid = taskid;
-            entry.tasktype = tasktype;
+            entry.tasktype = taskTypeId;
             entry.userid = userid;
             entry.groupid = groupid;
             return true;
@@ -151,7 +162,7 @@ public class TasksHeap {
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {
-                    entry.groupid = groupMapper.getGroup(entry.taskid, entry.tasktype, entry.userid);
+                    entry.groupid = groupMapper.getGroup(entry.taskid, taskTypes.get(entry.tasktype), entry.userid);
                 }
             }
         } finally {
@@ -199,9 +210,26 @@ public class TasksHeap {
         }
     }
 
-    public List<Long> takeTasks(int max, List<Integer> groups, Map<Integer, Integer> availableSpace) {
+    public List<Long> takeTasks(int max, List<Integer> groups, Map<String, Integer> availableSpace) {
+        Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
+        lock.readLock().lock();
+        try {
+            for (Map.Entry<String, Integer> entry : availableSpace.entrySet()) {
+                Integer typeId = taskTypesIds.get(entry.getKey());
+                if (typeId != null) {
+                    availableSpaceByTaskTaskId.put(typeId, entry.getValue());
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
+        if (forAny != null) {
+            availableSpaceByTaskTaskId.put(TasksHeap.TASKTYPE_ANYTASK, forAny);
+        }
+
         while (true) {
-            TasksChooser chooser = new TasksChooser(groups, availableSpace, max);
+            TasksChooser chooser = new TasksChooser(groups, availableSpaceByTaskTaskId, max);
             lock.readLock().lock();
             try {
                 for (int i = minValidPosition; i < actualsize; i++) {

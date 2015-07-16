@@ -121,12 +121,12 @@ public class TasksChooser {
                 bestbyTasktype.put(tasktype, new ArrayList<>());
             }
         });
+        availableSpaceForAnyTask = availableSpace.get(0);
         this.matchAllGroups = groups.contains(Task.GROUP_ANY);
         int priority = groups.size();
         for (int idgroup : groups) {
             this.priorityByGroup.put(idgroup, priority--);
         }
-        availableSpaceForAnyTask = availableSpace.get(Task.TASKTYPE_ANY);
         if (availableSpaceForAnyTask != null) {
             matchAllTypesQueue = new ArrayList<>();
         } else {

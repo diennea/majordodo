@@ -29,5 +29,5 @@ package dodo.clustering;
 @FunctionalInterface
 public interface GroupMapperFunction {
 
-    public int getGroup(long taskid, int taskType, String userid);
+    public int getGroup(long taskid, String taskType, String userid);
 }

@@ -117,7 +117,7 @@ public class BrokerRestartDuringTaskExecutionTest {
         return new GroupMapperFunction() {
 
             @Override
-            public int getGroup(long taskid, int tasktype, String userid) {
+            public int getGroup(long taskid, String tasktype, String userid) {
                 return groupsMap.getOrDefault(userid, 0);
 
             }
@@ -126,7 +126,7 @@ public class BrokerRestartDuringTaskExecutionTest {
 
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
-    private static final int TASKTYPE_MYTYPE = 987;
+    private static final String TASKTYPE_MYTYPE = "mytype";
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -156,7 +156,7 @@ public class BrokerRestartDuringTaskExecutionTest {
 
         // startAsWritable a worker, the broker is not started
         try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port)) {
-            Map<Integer, Integer> tags = new HashMap<>();
+            Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
 
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
@@ -167,7 +167,7 @@ public class BrokerRestartDuringTaskExecutionTest {
             try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
                 core.start();
                 core.setExecutorFactory(
-                        (int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                        (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
                                 System.out.println("executeTask: " + parameters);

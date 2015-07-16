@@ -35,7 +35,7 @@ public class TaskStatusView {
     private long createdTimestamp;
     private String parameter;
     private String result;
-    private int type;    
+    private String type;    
     private int attempts;    
     private int maxattempts;       
     private long executionDeadline;
@@ -71,11 +71,11 @@ public class TaskStatusView {
         this.executionDeadline = executionDeadline;
     }
 
-    public int getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(int type) {
+    public void setType(String type) {
         this.type = type;
     }
     

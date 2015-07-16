@@ -82,7 +82,7 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Map<Integer, Integer> availableSpace, int max) {
+    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Map<String, Integer> availableSpace, int max) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);

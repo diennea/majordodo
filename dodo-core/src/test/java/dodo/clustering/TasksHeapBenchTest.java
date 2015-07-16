@@ -22,24 +22,21 @@ package dodo.clustering;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.junit.Test;
 
 public class TasksHeapBenchTest {
 
-    private static final int TASKTYPE_MYTASK1 = 1234;
-    private static final int TASKTYPE_MYTASK2 = 1235;
+    private static final String TASKTYPE_MYTASK1 = "mytask1";
+    private static final String TASKTYPE_MYTASK2 = "mytask2";
     private static final String USERID1 = "myuser1";
     private static final String USERID2 = "myuser2";
     private static final int GROUPID1 = 9713;
     private static final int GROUPID2 = 972;
 
-    private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
+    private final GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
 
         @Override
-        public int getGroup(long taskid, int tasktype, String assignerData) {            
+        public int getGroup(long taskid, String tasktype, String assignerData) {
             switch (assignerData) {
                 case USERID1:
                     return GROUPID1;
@@ -59,7 +56,7 @@ public class TasksHeapBenchTest {
         {
             long _start = System.currentTimeMillis();
             for (int i = 0; i < 1000000; i++) {
-                instance.insertTask(i+1, TASKTYPE_MYTASK1, USERID1);
+                instance.insertTask(i + 1, TASKTYPE_MYTASK1, USERID1);
             }
             long _stop = System.currentTimeMillis();
             System.out.println("Time: " + (_stop - _start) + " ms");
@@ -69,10 +66,9 @@ public class TasksHeapBenchTest {
 //            System.out.println("entry:" + entry);
 //        });
 //        System.out.println("after:");
-
         {
             long _start = System.currentTimeMillis();
-            Map<Integer, Integer> availableSpace = new HashMap<>();
+            Map<String, Integer> availableSpace = new HashMap<>();
             availableSpace.put(TASKTYPE_MYTASK1, 1);
             for (int i = 0; i < 1000; i++) {
                 instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), availableSpace);

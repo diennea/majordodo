@@ -139,7 +139,7 @@ public abstract class BasicBrokerEnv {
         return new GroupMapperFunction() {
 
             @Override
-            public int getGroup(long taskid, int tasktype, String userid) {
+            public int getGroup(long taskid, String tasktype, String userid) {
                 return groupsMap.getOrDefault(userid, 0);
 
             }

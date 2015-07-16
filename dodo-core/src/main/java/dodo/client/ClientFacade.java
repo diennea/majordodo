@@ -19,10 +19,8 @@
  */
 package dodo.client;
 
-import dodo.clustering.Task;
 import dodo.task.Broker;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Client API
@@ -37,7 +35,7 @@ public class ClientFacade {
         this.broker = broker;
     }
 
-    public long submitTask(int taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
+    public long submitTask(String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
         return broker.addTask(taskType, userId, parameter, maxattemps, deadline, slot);
     }
 

@@ -9,7 +9,7 @@
         <artifactId>dodo-parent</artifactId>
     </parent>
     <artifactId>dodo-net</artifactId>
-    
+    <name>Majordodo Network layer</name>
     <packaging>jar</packaging>
     <dependencies>
         <dependency>

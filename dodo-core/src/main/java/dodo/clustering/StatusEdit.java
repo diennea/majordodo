@@ -63,7 +63,7 @@ public final class StatusEdit {
     }
 
     public short editType;
-    public int taskType;
+    public String taskType;
     public long taskId;
     public int taskStatus;
     public int attempt;
@@ -103,7 +103,7 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, int taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
+    public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
         action.slot = slot;
@@ -153,7 +153,7 @@ public final class StatusEdit {
                     doo.writeLong(taskId);
                     doo.writeUTF(userid);
                     doo.writeInt(taskStatus);
-                    doo.writeInt(taskType);
+                    doo.writeUTF(taskType);
                     doo.writeInt(maxattempts);
                     doo.writeLong(executionDeadline);
                     if (parameter != null) {
@@ -220,7 +220,7 @@ public final class StatusEdit {
                 res.taskId = doo.readLong();
                 res.userid = doo.readUTF();
                 res.taskStatus = doo.readInt();
-                res.taskType = doo.readInt();
+                res.taskType = doo.readUTF();
                 res.maxattempts = doo.readInt();
                 res.executionDeadline = doo.readLong();
                 res.parameter = doo.readUTF();

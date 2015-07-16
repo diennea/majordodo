@@ -45,7 +45,7 @@ public class WorkerMain {
             String executorFactory = configuration.getProperty("worker.executorfactory", "dodo.worker.DefaultExecutorFactory");
             String processid = ManagementFactory.getRuntimeMXBean().getName();
             String location = InetAddress.getLocalHost().getCanonicalHostName();
-            Map<Integer, Integer> maximumThreadPerTaskType = new HashMap<>();
+            Map<String, Integer> maximumThreadPerTaskType = new HashMap<>();
             boolean notag = true;
             for (Object key : configuration.keySet()) {
                 String k = key.toString();
@@ -53,12 +53,12 @@ public class WorkerMain {
                     String tag = k.substring(9);
                     notag = false;
                     int maxThreadPerTag = Integer.parseInt(configuration.getProperty(key + ""));
-                    maximumThreadPerTaskType.put(Integer.parseInt(tag), maxThreadPerTag);
+                    maximumThreadPerTaskType.put(tag, maxThreadPerTag);
                 }
             }
             if (notag) {
-                System.out.println("No configuration line tag.xxx found, defaulting to tasktype 0, with max threads = 100");
-                maximumThreadPerTaskType.put(0, 100);
+                System.out.println("No configuration line tag.xxx found, defaulting to tasktype 'any', with max threads = 100");
+                maximumThreadPerTaskType.put(Task.TASKTYPE_ANY, 100);
             }
             BrokerLocator brokerLocator = new NettyBrokerLocator(host, port);
             System.out.println("Starting MajorDodo Worker, workerid=" + workerid);

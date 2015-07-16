@@ -9,7 +9,7 @@
         <artifactId>dodo-parent</artifactId>
     </parent>
     <artifactId>dodo-all</artifactId>
-    
+    <name>Majordodo Packager</name>
     <packaging>pom</packaging>
     <dependencies>       
         <dependency>

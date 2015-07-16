@@ -59,7 +59,7 @@ public class ClientAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public ClientTask submitTask(Map<String, Object> data) {
         System.out.println("submitTask:" + data);
-        int type = Integer.parseInt(data.get("type") + "");
+        String type = (String) data.get("type");
         String tenant = (String) data.get("tenant");
         String parameters = (String) data.get("parameter");
         String _maxattempts = (String) data.get("maxattempts");

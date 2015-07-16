@@ -15,7 +15,7 @@ import java.util.Map;
 public class ClientTask {
 
     private long id;
-    private int type;
+    private String type;
     private String status;
     private String tenant;
     private long creationTimestamp;
@@ -31,11 +31,11 @@ public class ClientTask {
         this.id = id;
     }
 
-    public int getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(int type) {
+    public void setType(String type) {
         this.type = type;
     }
 
@@ -87,5 +87,4 @@ public class ClientTask {
         this.result = result;
     }
 
-    
 }

@@ -50,9 +50,8 @@ public class ExecutorRunnable implements Runnable {
 
     @Override
     public void run() {
-        Map<String, Object> results = new HashMap<>();
         try {
-            int taskType = (Integer) parameters.get("tasktype");
+            String taskType = (String) parameters.get("tasktype");
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, null, null);
             TaskExecutor executor = core.createTaskExecutor(taskType, parameters);
             String result = executor.executeTask(parameters);

@@ -68,7 +68,7 @@ public class SimpleBrokerStatusReplicationTest {
         return new GroupMapperFunction() {
 
             @Override
-            public int getGroup(long taskid, int tasktype, String userid) {
+            public int getGroup(long taskid, String tasktype, String userid) {
                 return groupsMap.getOrDefault(userid, 0);
 
             }
@@ -77,7 +77,7 @@ public class SimpleBrokerStatusReplicationTest {
 
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
-    private static final int TASKTYPE_MYTYPE = 987;
+    private static final String TASKTYPE_MYTYPE = "mytype";
     private static final String userId = "queue1";
     private static final int group = 12345;
 

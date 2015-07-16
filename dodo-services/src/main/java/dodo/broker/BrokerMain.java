@@ -140,7 +140,7 @@ public class BrokerMain implements AutoCloseable {
             mapper = new GroupMapperFunction() {
 
                 @Override
-                public int getGroup(long taskid, int taskType, String assignerData) {
+                public int getGroup(long taskid, String taskType, String assignerData) {
                     if (assignerData == null || assignerData.isEmpty()) {
                         return 0;
                     } else {

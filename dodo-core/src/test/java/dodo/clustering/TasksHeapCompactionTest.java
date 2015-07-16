@@ -30,8 +30,8 @@ import org.junit.Test;
 
 public class TasksHeapCompactionTest {
 
-    private static final int TASKTYPE_MYTASK1 = 1234;
-    private static final int TASKTYPE_MYTASK2 = 1235;
+    private static final String TASKTYPE_MYTASK1 = "MYTASK1";
+    private static final String TASKTYPE_MYTASK2 = "MYTASK2";
     private static final String USERID1 = "myuser1";
     private static final String USERID2 = "myuser2";
     private static final int GROUPID1 = 9713;
@@ -40,7 +40,7 @@ public class TasksHeapCompactionTest {
     private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
 
         @Override
-        public int getGroup(long taskid, int tasktype, String assignerData) {
+        public int getGroup(long taskid, String tasktype, String assignerData) {
             switch (assignerData) {
                 case USERID1:
                     return GROUPID1;
@@ -56,7 +56,7 @@ public class TasksHeapCompactionTest {
     public void testCompation1() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
         instance.setMaxFragmentation(1000000);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         long task1 = newTaskId.incrementAndGet();
@@ -103,7 +103,7 @@ public class TasksHeapCompactionTest {
     public void testCompation2() throws Exception {
         TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
         instance.setMaxFragmentation(1000000);
-        Map< Integer, Integer> availableSpace = new HashMap<>();
+        Map< String, Integer> availableSpace = new HashMap<>();
         availableSpace.put(TASKTYPE_MYTASK1, 100);
         AtomicLong newTaskId = new AtomicLong(0);
         long task1 = newTaskId.incrementAndGet();

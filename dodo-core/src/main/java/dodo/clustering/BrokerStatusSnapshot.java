@@ -95,7 +95,7 @@ public class BrokerStatusSnapshot {
                 task.setUserId((String) taskData.get("userId"));
                 task.setCreatedTimestamp(Long.parseLong(taskData.get("createdTimestamp") + ""));
                 task.setExecutionDeadline(Long.parseLong(taskData.get("executionDeadline") + ""));
-                task.setType(Integer.parseInt(taskData.get("type") + ""));
+                task.setType((String) taskData.get("type"));
                 task.setWorkerId((String) taskData.get("workerId"));
                 result.getTasks().add(task);
             });

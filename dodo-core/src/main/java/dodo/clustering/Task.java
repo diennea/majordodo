@@ -35,7 +35,7 @@ public class Task {
     public static final int STATUS_ERROR = 4;
 
     public static final int GROUP_ANY = 0;
-    public static final int TASKTYPE_ANY = 0;
+    public static final String TASKTYPE_ANY = "any";
 
     public static int taskExecutorStatusToTaskStatus(String status) {
         switch (status) {
@@ -53,7 +53,7 @@ public class Task {
         return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + ", taskId=" + taskId + ", tenantInfo=" + userId + ", workerId=" + workerId + '}';
     }
 
-    private int type;
+    private String type;
     private String parameter;
     private String result;
     private long createdTimestamp;
@@ -73,8 +73,6 @@ public class Task {
     public void setSlot(String slot) {
         this.slot = slot;
     }
-    
-    
 
     public int getMaxattempts() {
         return maxattempts;
@@ -124,11 +122,11 @@ public class Task {
         this.taskId = taskId;
     }
 
-    public int getType() {
+    public String getType() {
         return type;
     }
 
-    public void setType(int type) {
+    public void setType(String type) {
         this.type = type;
     }
 

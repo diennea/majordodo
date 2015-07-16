@@ -81,7 +81,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
             zkEnv.close();
         }
     }
-    private static final int TASKTYPE_MYTYPE = 987;
+    private static final String TASKTYPE_MYTYPE = "mytype";
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -104,7 +104,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
             }
 
         };
-        Map<Integer, Integer> tags = new HashMap<>();
+        Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
@@ -115,7 +115,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
             core.start();
             assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-            core.setExecutorFactory((int tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+            core.setExecutorFactory((String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {

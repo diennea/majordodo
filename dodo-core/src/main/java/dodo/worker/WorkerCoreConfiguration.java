@@ -19,6 +19,7 @@
  */
 package dodo.worker;
 
+import dodo.clustering.Task;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,13 +35,13 @@ public class WorkerCoreConfiguration {
     private int maxThreads;
     private String workerId;
     private String location;
-    private Map<Integer, Integer> maximumThreadByTaskType;
+    private Map<String, Integer> maximumThreadByTaskType;
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
 
     public WorkerCoreConfiguration() {
         maximumThreadByTaskType = new HashMap<>();
-        maximumThreadByTaskType.put(0, 1);
+        maximumThreadByTaskType.put(Task.TASKTYPE_ANY, 1);
         maxThreads = 20;
         location = "unknown";
         groups = new ArrayList<>();
@@ -92,11 +93,11 @@ public class WorkerCoreConfiguration {
      *
      * @return
      */
-    public Map<Integer, Integer> getMaximumThreadByTaskType() {
+    public Map<String, Integer> getMaximumThreadByTaskType() {
         return maximumThreadByTaskType;
     }
 
-    public void setMaximumThreadByTaskType(Map<Integer, Integer> maximumThreadByTaskType) {
+    public void setMaximumThreadByTaskType(Map<String, Integer> maximumThreadByTaskType) {
         this.maximumThreadByTaskType = maximumThreadByTaskType;
     }
 

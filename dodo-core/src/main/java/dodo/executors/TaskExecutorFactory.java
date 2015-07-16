@@ -28,5 +28,5 @@ import java.util.Map;
  */
 public interface TaskExecutorFactory {
 
-    public TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters);
+    public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters);
 }

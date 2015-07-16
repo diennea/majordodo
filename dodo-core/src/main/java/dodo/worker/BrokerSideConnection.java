@@ -169,7 +169,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_WORKER_TASKS_REQUEST:
-                Map<Integer, Integer> availableSpace = (Map<Integer, Integer>) message.parameters.get("availableSpace");
+                Map<String, Integer> availableSpace = (Map<String, Integer>) message.parameters.get("availableSpace");
                 List<Integer> groups = (List<Integer>) message.parameters.get("groups");
                 Integer max = (Integer) message.parameters.get("max");
                 try {

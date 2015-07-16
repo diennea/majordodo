@@ -57,12 +57,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final String processId;
     private final String workerId;
     private final String location;
-    private final Map<Integer, Integer> maximumThreadPerTaskType;
-    private final Map<Long, Integer> runningTasks = new ConcurrentHashMap<>();
+    private Map<String, Integer> maximumThreadPerTaskType;
+    private final Map<Long, String> runningTasks = new ConcurrentHashMap<>();
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
     private volatile boolean stopped = false;
-    private final int maxThreads;
+    private int maxThreads;
     private final List<Integer> groups;
     private Channel channel;
     private WorkerStatusListener listener;
@@ -80,14 +80,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private static final class NotImplementedTaskExecutorFactory implements TaskExecutorFactory {
 
         @Override
-        public TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {
+        public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
             return new TaskExecutor();
         }
 
     };
     private TaskExecutorFactory executorFactory = new NotImplementedTaskExecutorFactory();
 
-    public Map<Long, Integer> getRunningTasks() {
+    public Map<Long, String> getRunningTasks() {
         return runningTasks;
     }
 
@@ -105,9 +105,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     private void requestNewTasks() {
-        Channel _channel = channel;        
+        Channel _channel = channel;
         if (_channel != null) {
-            Map<Integer, Integer> availableSpace = new HashMap<>(maximumThreadPerTaskType);
+            Map<String, Integer> availableSpace = new HashMap<>(maximumThreadPerTaskType);
             runningTasks.values().forEach(tasktype -> {
                 Integer count = availableSpace.get(tasktype);
                 if (count != null && count > 1) {
@@ -122,7 +122,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
             int maxnewthreads = maxThreads - runningTasks.size();
             try {
-                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads+", availableSpace:"+availableSpace+" groups:"+groups);
+                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + groups);
                 _channel.sendMessageWithReply(
                         Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads),
                         tasksRequestTimeout
@@ -231,7 +231,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     private void startTask(Message message) {
         Long taskid = (Long) message.parameters.get("taskid");
-        int tasktype = (Integer) message.parameters.get("tasktype");
+        String tasktype = (String) message.parameters.get("tasktype");
         runningTasks.put(taskid, tasktype);
         ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, executionCallback);
         threadpool.submit(runnable);
@@ -251,7 +251,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         stop();
     }
 
-    TaskExecutor createTaskExecutor(int taskType, Map<String, Object> parameters) {
+    TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
         return executorFactory.createTaskExecutor(taskType, parameters);
     }
 
@@ -341,7 +341,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         return location;
     }
 
-    public Map<Integer, Integer> getMaximumThreadPerTaskType() {
+    public void setMaximumThreadPerTaskType(Map<String, Integer> maximumThreadPerTaskType) {
+        this.maximumThreadPerTaskType = maximumThreadPerTaskType;
+    }
+
+    public void setMaxThreads(int maxThreads) {
+        this.maxThreads = maxThreads;
+    }
+
+    public Map<String, Integer> getMaximumThreadPerTaskType() {
         return maximumThreadPerTaskType;
     }
 
