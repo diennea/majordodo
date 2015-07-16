@@ -128,6 +128,10 @@ public class BrokerMain implements AutoCloseable {
     }
 
     public void start() throws Exception {
+        if (BrokerMain.runningInstance == null) {
+            // TODO: used by ClientAPI for tests
+            BrokerMain.runningInstance = this;
+        }
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");

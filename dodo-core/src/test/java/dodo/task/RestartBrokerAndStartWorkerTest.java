@@ -160,7 +160,7 @@ public class RestartBrokerAndStartWorkerTest {
             {
                 TaskStatusView task = broker.getClient().getTask(taskId);
                 assertNotNull(task);
-                assertEquals(taskParams, task.getParameter());
+                assertEquals(taskParams, task.getData());
                 assertEquals(Task.STATUS_WAITING, task.getStatus());
             }
 
@@ -227,7 +227,7 @@ public class RestartBrokerAndStartWorkerTest {
             {
                 TaskStatusView task = broker.getClient().getTask(taskId);
                 assertNotNull(task);
-                assertEquals(taskParams, task.getParameter());
+                assertEquals(taskParams, task.getData());
                 assertEquals("theresult", task.getResult());
                 assertEquals(Task.STATUS_FINISHED, task.getStatus());
             }

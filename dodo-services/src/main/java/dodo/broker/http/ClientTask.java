@@ -17,10 +17,10 @@ public class ClientTask {
     private long id;
     private String type;
     private String status;
-    private String tenant;
+    private String user;
     private long creationTimestamp;
     private String workerId;
-    private String parameter;
+    private String data;
     private String result;
 
     public long getId() {
@@ -47,13 +47,15 @@ public class ClientTask {
         this.status = status;
     }
 
-    public String getTenant() {
-        return tenant;
+    public String getUser() {
+        return user;
     }
 
-    public void setTenant(String tenant) {
-        this.tenant = tenant;
+    public void setUser(String user) {
+        this.user = user;
     }
+
+    
 
     public long getCreationTimestamp() {
         return creationTimestamp;
@@ -71,12 +73,12 @@ public class ClientTask {
         this.workerId = workerId;
     }
 
-    public String getParameter() {
-        return parameter;
+    public String getData() {
+        return data;
     }
 
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
+    public void setData(String parameter) {
+        this.data = parameter;
     }
 
     public String getResult() {

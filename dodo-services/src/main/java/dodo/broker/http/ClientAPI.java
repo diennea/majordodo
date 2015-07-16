@@ -9,6 +9,7 @@ import dodo.broker.BrokerMain;
 import dodo.clustering.Task;
 import dodo.client.TaskStatusView;
 import dodo.client.WorkerStatusView;
+import dodo.task.Broker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,22 +61,26 @@ public class ClientAPI {
     public ClientTask submitTask(Map<String, Object> data) {
         System.out.println("submitTask:" + data);
         String type = (String) data.get("type");
-        String tenant = (String) data.get("tenant");
-        String parameters = (String) data.get("parameter");
+        String user = (String) data.get("user");
+        String parameters = (String) data.get("data");
         String _maxattempts = (String) data.get("maxattempts");
         int maxattempts = 1;
         if (_maxattempts != null) {
             maxattempts = Integer.parseInt(_maxattempts);
         }
-        String _deadline = (String) data.get("deadline");        
+        String _deadline = (String) data.get("deadline");
         long deadline = 0;
         if (_deadline != null) {
             deadline = Long.parseLong(_deadline);
         }
         String slot = (String) data.get("slot");
-        
+
+        if (BrokerMain.runningInstance == null) {
+            throw new WebApplicationException("broker not yet started", Status.PRECONDITION_FAILED);
+        }
+
         try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, tenant, parameters, maxattempts, deadline,slot);
+            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, user, parameters, maxattempts, deadline, slot);
             return getTask(taskId);
         } catch (Exception err) {
             err.printStackTrace();
@@ -94,7 +99,7 @@ public class ClientAPI {
     @GET
     @Path("/version")
     public String getVersion() {
-        return "1.0";
+        return Broker.VERSION();
     }
 
     private static ClientTask createClientTask(TaskStatusView t) {
@@ -122,8 +127,9 @@ public class ClientAPI {
         tt.setCreationTimestamp(t.getCreatedTimestamp());
         tt.setType(t.getType());
         tt.setWorkerId(t.getWorkerId());
-        tt.setParameter(t.getParameter());
+        tt.setData(t.getData());
         tt.setResult(t.getResult());
+        tt.setUser(t.getUser());
 
         return tt;
     }

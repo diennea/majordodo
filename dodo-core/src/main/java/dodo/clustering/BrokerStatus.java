@@ -97,11 +97,11 @@ public class BrokerStatus {
         }
         TaskStatusView s = new TaskStatusView();
         s.setCreatedTimestamp(task.getCreatedTimestamp());
-        s.setUserid(task.getUserId());
+        s.setUser(task.getUserId());
         s.setWorkerId(task.getWorkerId());
         s.setStatus(task.getStatus());
         s.setTaskId(task.getTaskId());
-        s.setParameter(task.getParameter());
+        s.setData(task.getParameter());
         s.setType(task.getType());
         s.setResult(task.getResult());
         s.setAttempts(task.getAttempts());

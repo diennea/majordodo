@@ -11,12 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.map.ObjectMapper;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class BrokerClientTest {
@@ -27,15 +24,23 @@ public class BrokerClientTest {
             main.start();
             {
                 Map<String, Object> taskParams = new HashMap<>();
-                taskParams.put("type", "1");
-
-                taskParams.put("parameter", "test1");
+                taskParams.put("type", "mytype");
+                taskParams.put("user", "myuser");
+                taskParams.put("data", "test1");
                 String result = request("POST", taskParams, "http://localhost:7364/client/tasks");
                 System.out.println("result2:" + result);
+                assertTrue(result.contains("\"type\":\"mytype\""));
+                assertTrue(result.contains("\"status\":\"waiting\""));
+                assertTrue(result.contains("\"data\":\"test1\""));
+                assertTrue(result.contains("\"user\":\"myuser\""));
             }
             {
                 String result = request("GET", null, "http://localhost:7364/client/tasks");
                 System.out.println("result1:" + result);
+                assertTrue(result.contains("\"type\":\"mytype\""));
+                assertTrue(result.contains("\"status\":\"waiting\""));
+                assertTrue(result.contains("\"data\":\"test1\""));
+                assertTrue(result.contains("\"user\":\"myuser\""));
             }
         }
 
@@ -45,7 +50,7 @@ public class BrokerClientTest {
         URL _url = new URL(url);
         HttpURLConnection con = (HttpURLConnection) _url.openConnection();
         try {
-            System.out.println("reqeust:" + method + " " + data + ", to " + url);
+            System.out.println("request:" + method + " " + data + ", to " + url);
             con.setRequestMethod(method);
             if (method.equals("POST")) {
                 con.setDoOutput(true);

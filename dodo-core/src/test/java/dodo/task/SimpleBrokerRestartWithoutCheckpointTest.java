@@ -220,7 +220,7 @@ public class SimpleBrokerRestartWithoutCheckpointTest {
             // ask for task status and worker status
             TaskStatusView task = broker.getClient().getTask(taskId);
             assertNotNull(task);
-            assertEquals(taskParams, task.getParameter());
+            assertEquals(taskParams, task.getData());
             assertEquals("theresult", task.getResult());
             assertEquals(Task.STATUS_FINISHED, task.getStatus());
         }

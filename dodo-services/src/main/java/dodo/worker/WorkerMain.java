@@ -86,7 +86,7 @@ public class WorkerMain {
             System.out.println("worker.executorfactory=" + executorFactory);
             workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
             workerCore.start();
-            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", tenantid=" + groups);
+            System.out.println("Started worker, broker is at " + host + ":" + port + " maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", groups=" + groups);
             System.out.println("WorkerID:" + workerid + ", processid:" + processid + " location:" + location);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Type ENTER to exit...");

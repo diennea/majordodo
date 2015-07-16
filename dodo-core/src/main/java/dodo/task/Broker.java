@@ -50,6 +50,10 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class Broker implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
+    
+    public static String VERSION() {
+        return "1.0";
+    }
 
     public static byte[] formatHostdata(String host, int port) {
         try {

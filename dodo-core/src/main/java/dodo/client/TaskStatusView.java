@@ -30,10 +30,10 @@ public class TaskStatusView {
 
     private long taskId;
     private int status;
-    private String userid;
+    private String user;
     private String workerId;
     private long createdTimestamp;
-    private String parameter;
+    private String data;
     private String result;
     private String type;    
     private int attempts;    
@@ -42,7 +42,7 @@ public class TaskStatusView {
 
     @Override
     public String toString() {
-        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + userid + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + parameter + ", result=" + result + ", type=" + type + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + data + ", result=" + result + ", type=" + type + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
     }
     
     
@@ -97,12 +97,12 @@ public class TaskStatusView {
         this.status = status;
     }
 
-    public String getUserid() {
-        return userid;
+    public String getUser() {
+        return user;
     }
 
-    public void setUserid(String userid) {
-        this.userid = userid;
+    public void setUser(String user) {
+        this.user = user;
     }
 
     public String getWorkerId() {
@@ -121,12 +121,12 @@ public class TaskStatusView {
         this.createdTimestamp = createdTimestamp;
     }
 
-    public String getParameter() {
-        return parameter;
+    public String getData() {
+        return data;
     }
 
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
+    public void setData(String data) {
+        this.data = data;
     }
 
     public String getResult() {
