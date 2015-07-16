@@ -10,7 +10,7 @@
         <module>./dodo-net</module>
         <module>./dodo-core</module>
         <module>./dodo-services</module>                
-        <module>./dodo-all</module>
+        <module>./dodo-packager</module>
     </modules>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
