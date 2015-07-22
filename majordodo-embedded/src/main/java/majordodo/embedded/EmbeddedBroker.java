@@ -5,6 +5,8 @@
  */
 package majordodo.embedded;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.replication.ReplicatedCommitLog;
 import majordodo.task.Broker;
@@ -65,16 +67,33 @@ public class EmbeddedBroker {
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
 
         switch (mode) {
-            case EmbeddedBrokerConfiguration.MODE_JVMONLY:
-                statusChangesLog = new MemoryCommitLog();                
+            case EmbeddedBrokerConfiguration.MODE_JVMONLY: {
+                statusChangesLog = new MemoryCommitLog();
                 break;
-            case EmbeddedBrokerConfiguration.MODE_SIGLESERVER:
-                statusChangesLog = new FileCommitLog(Paths.get(logDirectory), Paths.get(snapshotsDirectory));
+            }
+            case EmbeddedBrokerConfiguration.MODE_SIGLESERVER: {
+                Path _logDirectory = Paths.get(logDirectory);
+                if (!Files.isDirectory(_logDirectory)) {
+                    Files.createDirectory(_logDirectory);
+                }
+                Path _snapshotsDirectory = Paths.get(snapshotsDirectory);
+                if (!Files.isDirectory(_snapshotsDirectory)) {
+                    Files.createDirectory(_snapshotsDirectory);
+                }
+                statusChangesLog = new FileCommitLog(_logDirectory, _snapshotsDirectory);
                 break;
-            case EmbeddedBrokerConfiguration.MODE_CLUSTERED:
-                statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, Paths.get(snapshotsDirectory), Broker.formatHostdata(host, port));
+            }
+            case EmbeddedBrokerConfiguration.MODE_CLUSTERED: {
+                Path _snapshotsDirectory = Paths.get(snapshotsDirectory);
+                if (!Files.isDirectory(_snapshotsDirectory)) {
+                    Files.createDirectory(_snapshotsDirectory);
+                }
+                statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port));
                 break;
+            }
         }
+        brokerConfiguration = new BrokerConfiguration();
+        brokerConfiguration.read(configuration.getProperties());
         broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), groupMapperFunction));
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY:

@@ -19,6 +19,8 @@
  */
 package majordodo.task;
 
+import java.util.Map;
+
 /**
  * Broker configuration
  *
@@ -145,6 +147,10 @@ public class BrokerConfiguration {
 
     public void setTasksHeapSize(int tasksHeapSize) {
         this.tasksHeapSize = tasksHeapSize;
+    }
+
+    public void read(Map<String, Object> properties) {
+        // TODO
     }
 
 }
