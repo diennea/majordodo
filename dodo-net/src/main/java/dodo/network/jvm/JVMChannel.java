@@ -42,6 +42,12 @@ public class JVMChannel extends Channel {
     private JVMChannel otherSide;
     private final ExecutorService callbackexecutor = Executors.newCachedThreadPool();
     private final ExecutorService executionserializer = Executors.newFixedThreadPool(1);
+    private String id = UUID.randomUUID().toString();
+
+    @Override
+    public String toString() {
+        return "JVMChannel{" + "active=" + active + ", id=" + id + '}';
+    }
 
     public JVMChannel() {
     }

@@ -24,11 +24,8 @@ import dodo.network.Channel;
 import dodo.network.ConnectionRequestInfo;
 import dodo.network.ChannelEventListener;
 import dodo.network.Message;
-import dodo.network.jvm.JVMChannel;
-import dodo.task.Broker;
 import dodo.network.BrokerNotAvailableException;
 import dodo.network.BrokerRejectedConnectionException;
-import dodo.worker.BrokerSideConnection;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -38,25 +35,25 @@ import java.util.concurrent.TimeoutException;
  */
 public class JVMBrokerLocator implements BrokerLocator {
 
-    private Broker broker;
+    private final JVMBrokerSupportInterface broker;
+    private final String brokerId;
 
-    public JVMBrokerLocator(Broker broker) {
-        this.broker = broker;
+    public JVMBrokerLocator(String brokerId) {
+        this.brokerId = brokerId;
+        this.broker = JVMBrokersRegistry.lookupBroker(brokerId);
     }
 
     @Override
     public Channel connect(ChannelEventListener worker, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerRejectedConnectionException, BrokerNotAvailableException {
-        if (!broker.isRunning()) {
-            throw new BrokerNotAvailableException(new Exception("embedded broker is not running"));
+        if (broker == null || !broker.isRunning()) {
+            throw new BrokerNotAvailableException(new Exception("embedded broker " + brokerId + " is not running"));
         }
         JVMChannel workerSide = new JVMChannel();
         workerSide.setMessagesReceiver(worker);
         JVMChannel brokerSide = new JVMChannel();
-        BrokerSideConnection connection = broker.getAcceptor().createConnection(brokerSide);
+        broker.getAcceptor().createConnection(brokerSide);
         brokerSide.setOtherSide(workerSide);
         workerSide.setOtherSide(brokerSide);
-        connection.setChannel(brokerSide);
-        connection.setBroker(broker);
         Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);

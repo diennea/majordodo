@@ -119,4 +119,19 @@ public class BrokerConfiguration {
         this.maxExpiredTasksPerCycle = maxExpiredTasksPerCycle;
     }
 
+    private long transactionsTtl = 1000 * 60 * 5;
+
+    /**
+     * Maximum time to live for an active transaction
+     *
+     * @return
+     */
+    public long getTransactionsTtl() {
+        return transactionsTtl;
+    }
+
+    public void setTransactionsTtl(long transactionsTtl) {
+        this.transactionsTtl = transactionsTtl;
+    }
+
 }

@@ -19,7 +19,7 @@
  */
 package dodo.worker;
 
-import dodo.clustering.Task;
+import dodo.task.Task;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

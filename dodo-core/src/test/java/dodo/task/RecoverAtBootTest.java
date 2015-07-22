@@ -20,12 +20,6 @@
 package dodo.task;
 
 import dodo.client.TaskStatusView;
-import dodo.clustering.BrokerStatusSnapshot;
-import dodo.clustering.LogSequenceNumber;
-import dodo.clustering.MemoryCommitLog;
-import dodo.clustering.StatusChangesLog;
-import dodo.clustering.StatusEdit;
-import dodo.clustering.Task;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;

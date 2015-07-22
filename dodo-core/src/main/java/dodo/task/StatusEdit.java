@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -46,9 +46,12 @@ public final class StatusEdit {
     public static final short TYPE_COMMIT_TRANSACTION = 8;
     public static final short TYPE_ROLLBACK_TRANSACTION = 9;
     public static final short TYPE_PREPARE_ADD_TASK = 10;
+    public static final short TYPE_NOOP = 11;
 
     public static String typeToString(short type) {
         switch (type) {
+            case TYPE_NOOP:
+                return "TYPE_NOOP";
             case TYPE_ADD_TASK:
                 return "ADD_TASK";
             case TYPE_PREPARE_ADD_TASK:
@@ -95,6 +98,12 @@ public final class StatusEdit {
     @Override
     public String toString() {
         return "StatusEdit{" + "editType=" + editType + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", attempt=" + attempt + ", maxattempts=" + maxattempts + ", timestamp=" + timestamp + ", transactionId=" + transactionId + ", executionDeadline=" + executionDeadline + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", slot=" + slot + ", actualRunningTasks=" + actualRunningTasks + '}';
+    }
+
+    public static final StatusEdit NOOP() {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_NOOP;
+        return action;
     }
 
     public static final StatusEdit BEGIN_TRANSACTION(long transactionId, long timestamp) {
@@ -153,7 +162,7 @@ public final class StatusEdit {
 
     public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
         StatusEdit action = new StatusEdit();
-        action.editType = TYPE_ADD_TASK;
+        action.editType = TYPE_PREPARE_ADD_TASK;
         action.transactionId = transactionId;
         action.slot = slot;
         action.parameter = taskParameter;
@@ -277,6 +286,8 @@ public final class StatusEdit {
                         doo.writeUTF("");
                     }
                     break;
+                case TYPE_NOOP:
+                    break;
                 default:
                     throw new UnsupportedOperationException();
 
@@ -350,8 +361,20 @@ public final class StatusEdit {
                 res.workerId = doo.readUTF();
                 res.result = doo.readUTF();
                 break;
+            case TYPE_BEGIN_TRANSACTION:
+                res.transactionId = doo.readLong();
+                res.timestamp = doo.readLong();
+                break;
+            case TYPE_COMMIT_TRANSACTION:
+                res.transactionId = doo.readLong();
+                break;
+            case TYPE_ROLLBACK_TRANSACTION:
+                res.transactionId = doo.readLong();
+                break;
+            case TYPE_NOOP:
+                break;
             default:
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("editType=" + res.editType);
         }
         return res;
 

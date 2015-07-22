@@ -42,7 +42,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * @author enrico.olivelli
  */
-public class SimpleBrokerStatusReplicationTest {
+public class TransactionBrokerStatusReplicationTest {
 
     @Before
     public void setupLogger() throws Exception {
@@ -115,9 +115,12 @@ public class SimpleBrokerStatusReplicationTest {
                 try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker2.start();
 
-                    taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+                    long transaction1 = broker1.getClient().beginTransaction();
 
-                    // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
+                    taskId = broker1.getClient().submitTask(transaction1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+
+                    broker1.getClient().commitTransaction(taskId);
+
                     broker1.noop();
 
                     assertNotNull(broker1.getClient().getTask(taskId));

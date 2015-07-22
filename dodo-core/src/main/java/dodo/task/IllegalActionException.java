@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
 /**
  * error upon an invalid action requested to the broker

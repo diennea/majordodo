@@ -19,6 +19,9 @@
  */
 package dodo.clustering;
 
+import dodo.task.Task;
+import dodo.task.TasksHeap;
+import dodo.task.GroupMapperFunction;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;

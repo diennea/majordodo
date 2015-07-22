@@ -20,16 +20,8 @@
 package dodo.task;
 
 import dodo.client.ClientFacade;
-import dodo.clustering.StatusEdit;
-import dodo.clustering.ActionResult;
-import dodo.clustering.BrokerStatus;
-import dodo.clustering.IllegalActionException;
-import dodo.clustering.LogNotAvailableException;
-import dodo.clustering.StatusChangesLog;
-import dodo.clustering.Task;
-import dodo.clustering.TasksHeap;
-import dodo.scheduler.Workers;
-import dodo.worker.BrokerServerEndpoint;
+import dodo.network.jvm.JVMBrokerSupportInterface;
+import dodo.network.jvm.JVMBrokersRegistry;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -48,12 +41,17 @@ import org.codehaus.jackson.map.ObjectMapper;
  *
  * @author enrico.olivelli
  */
-public class Broker implements AutoCloseable {
+public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
+    private final String brokerId = UUID.randomUUID().toString();
+
+    public String getBrokerId() {
+        return brokerId;
+    }
 
     public static String VERSION() {
-        return "1.0";
+        return "1.0-ALPHA";
     }
 
     public static byte[] formatHostdata(String host, int port) {
@@ -92,6 +90,7 @@ public class Broker implements AutoCloseable {
 
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
+    private final GroupMapperScheduler groupMapperScheduler;
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
     private final Thread brokerLifeThread;
 
@@ -120,15 +119,18 @@ public class Broker implements AutoCloseable {
         this.tasksHeap = tasksHeap;
         this.log = log;
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
+        this.groupMapperScheduler = new GroupMapperScheduler(configuration, this);
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
     }
 
     public void start() {
+        JVMBrokersRegistry.registerBroker(brokerId, this);
         this.brokerStatus.recover();
-        // checkpoint must startAsWritable both in leader mode and in follower mode
+        // checkpoint must startboth in leader mode and in follower mode
         this.checkpointScheduler.start();
         this.brokerLifeThread.start();
+        this.groupMapperScheduler.start();
     }
 
     public void startAsWritable() throws InterruptedException {
@@ -178,8 +180,10 @@ public class Broker implements AutoCloseable {
 
     public void stop() {
         stopped = true;
+        JVMBrokersRegistry.unregisterBroker(brokerId);
         this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
+        this.groupMapperScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
         try {
@@ -231,7 +235,7 @@ public class Broker implements AutoCloseable {
     }
 
     public void checkpoint() throws LogNotAvailableException {
-        this.brokerStatus.checkpoint();
+        this.brokerStatus.checkpoint(configuration.getTransactionsTtl());
     }
 
     void purgeTasks() {
@@ -254,6 +258,10 @@ public class Broker implements AutoCloseable {
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "error during group mapping recomputation", t);
         }
+    }
+
+    public void noop() throws LogNotAvailableException {
+        this.brokerStatus.applyModification(StatusEdit.NOOP());
     }
 
     public long beginTransaction() throws LogNotAvailableException, IllegalActionException {

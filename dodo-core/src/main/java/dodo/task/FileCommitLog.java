@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

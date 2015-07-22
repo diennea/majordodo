@@ -29,7 +29,4 @@ import dodo.network.jvm.JVMBrokerLocator;
  */
 public class JVMWorkerTest extends SimpleBrokerSuite {
 
-    protected BrokerLocator createBrokerLocator() {
-        return new JVMBrokerLocator(broker);
-    }
 }

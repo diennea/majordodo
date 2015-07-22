@@ -17,21 +17,17 @@
  under the License.
 
  */
-package dodo.callbacks;
+package dodo.task;
 
 /**
- * Generic callback
+ * Log is not available, please retry
  *
  * @author enrico.olivelli
  */
-public interface SimpleCallback<T> {
+public class LogNotAvailableException extends Exception {
 
-    /**
-     * If an error occurred than the error parameter will be not null, otherwise
-     * the result parameter will be the result of the action
-     *
-     * @param result
-     * @param error
-     */
-    public void onResult(T result, Throwable error);
+    public LogNotAvailableException(Throwable cause) {
+        super(cause);
+    }
+
 }

@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>dodo</groupId>
     <artifactId>dodo-parent</artifactId>
-    <version>1.0</version>
+    <version>0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Dodo</name>
     <modules>
@@ -39,5 +39,12 @@
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
-    </dependencies>    
+    </dependencies>  
+    <distributionManagement>
+        <repository>            
+            <id>maven.mag-news.it</id>
+            <name>MagNews Public Repository</name>
+            <url>https://maven.mag-news.it/content/repositories/releases/</url>
+        </repository>
+    </distributionManagement>  
 </project>

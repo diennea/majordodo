@@ -19,7 +19,7 @@
  */
 package dodo.replication;
 
-import dodo.clustering.LogNotAvailableException;
+import dodo.task.LogNotAvailableException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;

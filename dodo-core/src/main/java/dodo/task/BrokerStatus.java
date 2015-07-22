@@ -17,9 +17,8 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
-import dodo.scheduler.WorkerStatus;
 import dodo.client.TaskStatusView;
 import dodo.client.WorkerStatusView;
 import java.util.ArrayList;
@@ -28,7 +27,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -158,9 +156,32 @@ public class BrokerStatus {
         return checkpointsCount.get();
     }
 
-    public void checkpoint() throws LogNotAvailableException {
+    private void purgeAbandonedTransactions(long ttl) throws LogNotAvailableException {
+        List<Long> staleTransactions = new ArrayList<>();
+        lock.readLock().lock();
+        try {
+            long deadLine = System.currentTimeMillis() - ttl;
+            transactions.values().stream().filter((t) -> (t.getCreationTimestamp() < deadLine)).forEach((t) -> {
+                staleTransactions.add(t.getTransactionId());
+            });
+        } finally {
+            lock.readLock().unlock();
+        }
+        for (long transactionId : staleTransactions) {
+            StatusEdit rollback = StatusEdit.ROLLBACK_TRANSACTION(transactionId);
+            LOGGER.log(Level.SEVERE, "Detected abandoned transaction {0}, Forcing rollback", new Object[]{transactionId});
+            applyModification(rollback);
+        }
+    }
+
+    public void checkpoint(long transactionsTtl) throws LogNotAvailableException {
         checkpointsCount.incrementAndGet();
         LOGGER.info("checkpoint");
+
+        if (transactionsTtl > 0) {
+            purgeAbandonedTransactions(transactionsTtl);
+        }
+
         BrokerStatusSnapshot snapshot;
         lock.readLock().lock();
         try {
@@ -266,7 +287,8 @@ public class BrokerStatus {
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
         LOGGER.log(Level.FINEST, "applyModification {0}", edit);
-        if (edit.editType == StatusEdit.TYPE_ADD_TASK && edit.slot != null) {
+        if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
+                && edit.slot != null) {
             if (slotsManager.assignSlot(edit.slot)) {
                 try {
                     LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
@@ -347,7 +369,8 @@ public class BrokerStatus {
                     for (Task task : transaction.getPreparedTasks()) {
                         tasks.put(task.getTaskId(), task);
                     }
-                    return new ModificationResult(num, tasks, null);
+                    transactions.remove(edit.transactionId);
+                    return new ModificationResult(num, transaction.getPreparedTasks(), null);
                 }
                 case StatusEdit.TYPE_ROLLBACK_TRANSACTION: {
                     Transaction transaction = transactions.get(edit.transactionId);
@@ -448,6 +471,9 @@ public class BrokerStatus {
                         workers.put(edit.workerId, node);
                     }
                     node.setStatus(WorkerStatus.STATUS_DEAD);
+                    return new ModificationResult(num, null, null);
+                }
+                case StatusEdit.TYPE_NOOP: {
                     return new ModificationResult(num, null, null);
                 }
                 default:

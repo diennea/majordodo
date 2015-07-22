@@ -1,6 +1,6 @@
 package dodo.worker;
 
-import dodo.clustering.Task;
+import dodo.task.Task;
 import dodo.executors.TaskExecutorFactory;
 import dodo.network.BrokerLocator;
 import dodo.network.netty.NettyBrokerLocator;

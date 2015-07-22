@@ -7,7 +7,7 @@ package dodo.broker.http;
 
 import dodo.broker.BrokerMain;
 import dodo.client.SubmitTaskResult;
-import dodo.clustering.Task;
+import dodo.task.Task;
 import dodo.client.TaskStatusView;
 import dodo.client.WorkerStatusView;
 import dodo.task.Broker;

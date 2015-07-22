@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
 import java.util.ArrayList;
 import java.util.List;

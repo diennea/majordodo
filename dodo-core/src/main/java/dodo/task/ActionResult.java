@@ -17,52 +17,40 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
-import java.util.ArrayDeque;
-import java.util.Queue;
+import dodo.task.WorkerManager;
 
 /**
- * A queue of tasks
+ * Result of an action
  *
  * @author enrico.olivelli
  */
-public class TaskQueue {
+public class ActionResult {
 
-    public static final String DEFAULT_TAG = "default";
-
-    private final Queue<Task> tasks = new ArrayDeque<>();
-    private final String tag;
-    private final String name;
+    public final long taskId;
+    public final Throwable error;
 
     @Override
     public String toString() {
-        return "TaskQueue{" + "tag=" + tag + ", name=" + name + '}';
+        return "{" + "taskId=" + taskId + ", error=" + error + '}';
     }
 
-    public TaskQueue(String tag, String name) {
-        this.tag = tag;
-        this.name = name;
+    private ActionResult(long taskId, Throwable error) {
+        this.taskId = taskId;
+        this.error = error;
     }
 
-    public String getTag() {
-        return tag;
+    public static ActionResult ERROR(Throwable error) {
+        return new ActionResult(0, error);
     }
 
-    void addNewTask(Task task) {
-        tasks.add(task);
+    public static ActionResult TASKID(long taskId) {
+        return new ActionResult(taskId, null);
     }
 
-    public Task peekNext() {
-        return tasks.peek();
-    }
-
-    public Task removeNext(long expectedTaskId) {
-        Task t = tasks.poll();        
-        if (t == null || t.getTaskId() != expectedTaskId) {
-            throw new RuntimeException();
-        }
-        return t;
+    public static ActionResult OK() {
+        return new ActionResult(0, null);
     }
 
 }

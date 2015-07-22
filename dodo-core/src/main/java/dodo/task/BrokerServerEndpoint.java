@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.task;
 
 import dodo.network.Channel;
 import dodo.network.ServerSideConnectionAcceptor;

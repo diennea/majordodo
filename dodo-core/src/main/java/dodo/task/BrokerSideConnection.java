@@ -17,16 +17,12 @@
  under the License.
 
  */
-package dodo.worker;
+package dodo.task;
 
-import dodo.callbacks.SimpleCallback;
-import dodo.clustering.LogNotAvailableException;
 import dodo.network.Channel;
 import dodo.network.ChannelEventListener;
 import dodo.network.Message;
-import dodo.scheduler.WorkerManager;
 import dodo.task.Broker;
-import dodo.clustering.Task;
 import dodo.network.SendResultCallback;
 import dodo.network.ServerSideConnection;
 import java.util.ArrayList;

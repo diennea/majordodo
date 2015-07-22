@@ -344,4 +344,62 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
 
         assertTrue(todo.isEmpty());
     }
+
+    @Test
+    public void transactionTest() throws Exception {
+
+        // submit 10 tasks in transaction
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        long transaction = getClient().beginTransaction();
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            todo.add(taskId);
+        }
+        getClient().commitTransaction(transaction);
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setWorkerId("workerid");
+        config.setMaximumThreadByTaskType(tags);
+        config.setGroups(Arrays.asList(group));
+        try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                    return "";
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+            assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+        }
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
 }

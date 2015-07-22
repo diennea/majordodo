@@ -20,10 +20,6 @@
 package dodo.task;
 
 import dodo.client.TaskStatusView;
-import dodo.clustering.FileCommitLog;
-import dodo.clustering.GroupMapperFunction;
-import dodo.clustering.Task;
-import dodo.clustering.TasksHeap;
 import dodo.executors.TaskExecutor;
 import dodo.network.netty.NettyBrokerLocator;
 import dodo.network.netty.NettyChannelAcceptor;

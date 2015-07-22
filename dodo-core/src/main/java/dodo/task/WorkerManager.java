@@ -17,13 +17,10 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.task;
 
-import dodo.callbacks.SimpleCallback;
-import dodo.clustering.LogNotAvailableException;
-import dodo.clustering.Task;
 import dodo.task.Broker;
-import dodo.worker.BrokerSideConnection;
+import dodo.task.BrokerSideConnection;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;

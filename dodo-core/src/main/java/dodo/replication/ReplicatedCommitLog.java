@@ -19,11 +19,11 @@
  */
 package dodo.replication;
 
-import dodo.clustering.BrokerStatusSnapshot;
-import dodo.clustering.LogNotAvailableException;
-import dodo.clustering.LogSequenceNumber;
-import dodo.clustering.StatusChangesLog;
-import dodo.clustering.StatusEdit;
+import dodo.task.BrokerStatusSnapshot;
+import dodo.task.LogNotAvailableException;
+import dodo.task.LogSequenceNumber;
+import dodo.task.StatusChangesLog;
+import dodo.task.StatusEdit;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

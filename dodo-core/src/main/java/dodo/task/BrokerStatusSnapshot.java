@@ -17,9 +17,9 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
-import dodo.scheduler.WorkerStatus;
+import dodo.task.WorkerStatus;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

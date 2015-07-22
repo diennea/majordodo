@@ -19,7 +19,7 @@
  */
 package dodo.replication;
 
-import dodo.clustering.StatusChangesLog;
+import dodo.task.StatusChangesLog;
 import dodo.executors.TaskExecutor;
 import dodo.network.BrokerLocator;
 import dodo.network.netty.NettyChannelAcceptor;

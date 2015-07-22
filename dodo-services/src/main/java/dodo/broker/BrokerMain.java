@@ -1,11 +1,11 @@
 package dodo.broker;
 
 import dodo.broker.http.HttpAPI;
-import dodo.clustering.FileCommitLog;
-import dodo.clustering.GroupMapperFunction;
-import dodo.clustering.MemoryCommitLog;
-import dodo.clustering.StatusChangesLog;
-import dodo.clustering.TasksHeap;
+import dodo.task.FileCommitLog;
+import dodo.task.GroupMapperFunction;
+import dodo.task.MemoryCommitLog;
+import dodo.task.StatusChangesLog;
+import dodo.task.TasksHeap;
 import dodo.network.netty.NettyChannelAcceptor;
 import dodo.task.Broker;
 import dodo.task.BrokerConfiguration;

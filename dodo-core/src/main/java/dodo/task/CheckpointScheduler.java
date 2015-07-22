@@ -19,7 +19,6 @@
  */
 package dodo.task;
 
-import dodo.clustering.LogNotAvailableException;
 import dodo.task.Broker;
 import dodo.task.BrokerConfiguration;
 import java.util.concurrent.Executors;

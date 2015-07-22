@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.task;
 
 /**
  * Status of a worker

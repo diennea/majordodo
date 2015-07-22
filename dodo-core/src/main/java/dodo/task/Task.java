@@ -17,7 +17,7 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.task;
 
 import dodo.executors.TaskExecutorStatus;
 import java.util.Map;

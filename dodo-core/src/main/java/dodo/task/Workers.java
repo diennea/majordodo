@@ -17,10 +17,8 @@
  under the License.
 
  */
-package dodo.scheduler;
+package dodo.task;
 
-import dodo.clustering.BrokerStatus;
-import dodo.clustering.Task;
 import dodo.task.Broker;
 import java.util.Collection;
 import java.util.HashMap;

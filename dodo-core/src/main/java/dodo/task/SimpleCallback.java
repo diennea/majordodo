@@ -17,40 +17,21 @@
  under the License.
 
  */
-package dodo.clustering;
-
-import dodo.scheduler.WorkerManager;
+package dodo.task;
 
 /**
- * Result of an action
+ * Generic callback
  *
  * @author enrico.olivelli
  */
-public class ActionResult {
+public interface SimpleCallback<T> {
 
-    public final long taskId;
-    public final Throwable error;
-
-    @Override
-    public String toString() {
-        return "{" + "taskId=" + taskId + ", error=" + error + '}';
-    }
-
-    private ActionResult(long taskId, Throwable error) {
-        this.taskId = taskId;
-        this.error = error;
-    }
-
-    public static ActionResult ERROR(Throwable error) {
-        return new ActionResult(0, error);
-    }
-
-    public static ActionResult TASKID(long taskId) {
-        return new ActionResult(taskId, null);
-    }
-
-    public static ActionResult OK() {
-        return new ActionResult(0, null);
-    }
-
+    /**
+     * If an error occurred than the error parameter will be not null, otherwise
+     * the result parameter will be the result of the action
+     *
+     * @param result
+     * @param error
+     */
+    public void onResult(T result, Throwable error);
 }

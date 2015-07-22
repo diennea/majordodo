@@ -17,17 +17,19 @@
  under the License.
 
  */
-package dodo.clustering;
+package dodo.network.jvm;
+
+import dodo.network.ServerSideConnectionAcceptor;
 
 /**
- * Function which maps a task to a group of user. This funciton must be very
- * fast, usually the implementation will be a HashMap lookup. This function must
- * be trehead safe must it should never impose any lock
+ * Abstraction for the JVM Channel
  *
  * @author enrico.olivelli
  */
-@FunctionalInterface
-public interface GroupMapperFunction {
+public interface JVMBrokerSupportInterface {
 
-    public int getGroup(long taskid, String taskType, String userid);
+    public boolean isRunning();
+
+    public ServerSideConnectionAcceptor getAcceptor();
+
 }

@@ -21,10 +21,6 @@ package dodo.task;
 
 import dodo.client.SubmitTaskResult;
 import dodo.client.TaskStatusView;
-import dodo.clustering.FileCommitLog;
-import dodo.clustering.GroupMapperFunction;
-import dodo.clustering.Task;
-import dodo.clustering.TasksHeap;
 import dodo.executors.TaskExecutor;
 import dodo.network.netty.NettyBrokerLocator;
 import dodo.network.netty.NettyChannelAcceptor;
@@ -227,6 +223,19 @@ public class SlotsRecoveryTest {
                     taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID).getTaskId();
                     assertTrue(taskId > 0);
                 }
+                // transactions
+                long transaction_1 = broker.getClient().beginTransaction();
+                String SLOTTRANSACTION_1 = "sltr1";
+                long slotTransactionTaskId = broker.getClient().submitTask(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1).getTaskId();
+                assertTrue(slotTransactionTaskId > 0);
+                long slotTransactionTaskId2 = broker.getClient().submitTask(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1).getTaskId();
+                assertEquals(0, slotTransactionTaskId2);
+                broker.getClient().rollbackTransaction(transaction_1);
+                long transaction_2 = broker.getClient().beginTransaction();
+                long slotTransactionTaskId3 = broker.getClient().submitTask(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1).getTaskId();
+                assertTrue(slotTransactionTaskId3 > 0);
+                broker.getClient().commitTransaction(transaction_2);
+
             }
         }
 

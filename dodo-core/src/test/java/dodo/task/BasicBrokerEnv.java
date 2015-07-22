@@ -20,10 +20,6 @@
 package dodo.task;
 
 import dodo.client.ClientFacade;
-import dodo.clustering.MemoryCommitLog;
-import dodo.clustering.TasksHeap;
-import dodo.clustering.GroupMapperFunction;
-import dodo.clustering.StatusChangesLog;
 import dodo.network.BrokerLocator;
 import dodo.network.jvm.JVMBrokerLocator;
 import java.io.IOException;
@@ -54,6 +50,7 @@ public abstract class BasicBrokerEnv {
 
     protected void beforeStartBroker() throws Exception {
     }
+
     protected void afterStartBroker() throws Exception {
     }
 
@@ -128,7 +125,7 @@ public abstract class BasicBrokerEnv {
     }
 
     protected BrokerLocator createBrokerLocator() throws Exception {
-        return new JVMBrokerLocator(broker);
+        return new JVMBrokerLocator(broker.getBrokerId());
     }
 
     protected StatusChangesLog createStatusChangesLog() throws Exception {
@@ -155,9 +152,9 @@ public abstract class BasicBrokerEnv {
     @Before
     public void startBroker() throws Exception {
         setupWorkdir();
-        beforeStartBroker();        
-        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));        
-        broker.startAsWritable();        
+        beforeStartBroker();
+        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
+        broker.startAsWritable();
         afterStartBroker();
     }
 
