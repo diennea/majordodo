@@ -115,7 +115,7 @@ public class SimpleBrokerStatusReplicationTest {
                 try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker2.start();
 
-                    taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);
+                    taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
 
                     // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                     broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null);

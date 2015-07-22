@@ -303,7 +303,7 @@ public class FileCommitLog extends StatusChangesLog {
         if (snapshotfilename == null) {
             System.out.println("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
-            return new BrokerStatusSnapshot(0, new LogSequenceNumber(-1, -1));
+            return new BrokerStatusSnapshot(0, 0,new LogSequenceNumber(-1, -1));
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;

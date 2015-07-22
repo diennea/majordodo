@@ -151,7 +151,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         brokerConfig.setMaxWorkerIdleTime(5000);
         try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null);
+            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null).getTaskId();
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();

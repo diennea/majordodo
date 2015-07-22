@@ -19,6 +19,7 @@
  */
 package dodo.client;
 
+import dodo.task.AddTaskResult;
 import dodo.task.Broker;
 import java.util.List;
 
@@ -35,8 +36,25 @@ public class ClientFacade {
         this.broker = broker;
     }
 
-    public long submitTask(String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
-        return broker.addTask(taskType, userId, parameter, maxattemps, deadline, slot);
+    public SubmitTaskResult submitTask(String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
+        return submitTask(0, taskType, userId, parameter, maxattemps, deadline, slot);
+    }
+
+    public SubmitTaskResult submitTask(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
+        AddTaskResult res = broker.addTask(transaction, taskType, userId, parameter, maxattemps, deadline, slot);
+        return new SubmitTaskResult(res.taskId, res.error);
+    }
+
+    public long beginTransaction() throws Exception {
+        return broker.beginTransaction();
+    }
+
+    public void commitTransaction(long id) throws Exception {
+        broker.commitTransaction(id);
+    }
+
+    public void rollbackTransaction(long id) throws Exception {
+        broker.rollbackTransaction(id);
     }
 
     public List<TaskStatusView> getAllTasks() {

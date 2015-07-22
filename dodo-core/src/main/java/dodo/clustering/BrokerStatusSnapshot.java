@@ -35,11 +35,21 @@ public class BrokerStatusSnapshot {
     List<Task> tasks = new ArrayList<>();
     List<WorkerStatus> workers = new ArrayList<>();
     long maxTaskId;
+    long maxTransactionId;
     LogSequenceNumber actualLogSequenceNumber;
 
-    public BrokerStatusSnapshot(long maxTaskId, LogSequenceNumber actualLogSequenceNumber) {
+    public BrokerStatusSnapshot(long maxTaskId, long maxTransactionId, LogSequenceNumber actualLogSequenceNumber) {
         this.maxTaskId = maxTaskId;
+        this.maxTransactionId = maxTransactionId;
         this.actualLogSequenceNumber = actualLogSequenceNumber;
+    }
+
+    public long getMaxTransactionId() {
+        return maxTransactionId;
+    }
+
+    public void setMaxTransactionId(long maxTransactionId) {
+        this.maxTransactionId = maxTransactionId;
     }
 
     public LogSequenceNumber getActualLogSequenceNumber() {
@@ -79,7 +89,8 @@ public class BrokerStatusSnapshot {
         long sequenceNumber = Long.parseLong(snapshotdata.get("sequenceNumber") + "");
 
         long maxTaskId = Long.parseLong(snapshotdata.get("maxTaskId") + "");
-        BrokerStatusSnapshot result = new BrokerStatusSnapshot(maxTaskId, new LogSequenceNumber(ledgerId, sequenceNumber));
+        long maxTransactionId = Long.parseLong(snapshotdata.get("maxTransactionId") + "");
+        BrokerStatusSnapshot result = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, new LogSequenceNumber(ledgerId, sequenceNumber));
         List<Map<String, Object>> tasksStatus = (List<Map<String, Object>>) snapshotdata.get("tasks");
         if (tasksStatus != null) {
             tasksStatus.forEach(taskData -> {
@@ -120,6 +131,7 @@ public class BrokerStatusSnapshot {
         filedata.put("ledgerid", actualLogSequenceNumber.ledgerId);
         filedata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
         filedata.put("maxTaskId", snapshotData.maxTaskId);
+        filedata.put("maxTransactionId", snapshotData.maxTransactionId);
         List<Map<String, Object>> tasksStatus = new ArrayList<>();
         filedata.put("tasks", tasksStatus);
         List<Map<String, Object>> workersStatus = new ArrayList<>();

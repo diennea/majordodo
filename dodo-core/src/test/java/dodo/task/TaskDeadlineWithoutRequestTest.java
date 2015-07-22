@@ -152,7 +152,7 @@ public class TaskDeadlineWithoutRequestTest {
 
             Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
-            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60,null);
+            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60,null).getTaskId();
 
             broker.purgeTasks();
             

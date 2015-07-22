@@ -54,7 +54,7 @@ public class MemoryCommitLog extends StatusChangesLog {
     }
 
     private List<MemoryLogLine> logatboot;
-    private BrokerStatusSnapshot snapshotatboot = new BrokerStatusSnapshot(0, new LogSequenceNumber(-1, -1));
+    private BrokerStatusSnapshot snapshotatboot = new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
 
     public MemoryCommitLog() {
     }

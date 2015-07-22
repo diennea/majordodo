@@ -196,7 +196,7 @@ public class TaskExecutionRecoveryOnErrorTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null);
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams,0,0,null).getTaskId();
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;

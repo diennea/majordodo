@@ -23,6 +23,7 @@ import dodo.client.ClientFacade;
 import dodo.clustering.StatusEdit;
 import dodo.clustering.ActionResult;
 import dodo.clustering.BrokerStatus;
+import dodo.clustering.IllegalActionException;
 import dodo.clustering.LogNotAvailableException;
 import dodo.clustering.StatusChangesLog;
 import dodo.clustering.Task;
@@ -50,7 +51,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class Broker implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
-    
+
     public static String VERSION() {
         return "1.0";
     }
@@ -238,8 +239,8 @@ public class Broker implements AutoCloseable {
 
         expired.stream().forEach((taskId) -> {
             try {
-                StatusEdit addTask = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
-                this.brokerStatus.applyModification(addTask);
+                StatusEdit change = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
+                this.brokerStatus.applyModification(change);
                 this.tasksHeap.removeExpiredTask(taskId);
             } catch (LogNotAvailableException logNotAvailableException) {
                 LOGGER.log(Level.SEVERE, "error while expiring task " + taskId, logNotAvailableException);
@@ -255,25 +256,64 @@ public class Broker implements AutoCloseable {
         }
     }
 
+    public long beginTransaction() throws LogNotAvailableException, IllegalActionException {
+        long transactionId = brokerStatus.nextTransactionId();
+        StatusEdit edit = StatusEdit.BEGIN_TRANSACTION(transactionId, System.currentTimeMillis());
+        BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
+        if (result.error != null) {
+            throw new IllegalActionException(result.error);
+        }
+        return transactionId;
+    }
+
+    public void commitTransaction(long id) throws LogNotAvailableException, IllegalActionException {
+        StatusEdit edit = StatusEdit.COMMIT_TRANSACTION(id);
+        BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
+        if (result.error != null) {
+            throw new IllegalActionException(result.error);
+        }
+        List<Task> preparedtasks = (List<Task>) result.data;
+        for (Task task : preparedtasks) {
+            this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+        }
+
+    }
+
+    public void rollbackTransaction(long id) throws LogNotAvailableException, IllegalActionException {
+        StatusEdit edit = StatusEdit.ROLLBACK_TRANSACTION(id);
+        BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
+        if (result.error != null) {
+            throw new IllegalActionException(result.error);
+        }
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(StatusEdit action, ActionResult result);
     }
 
-    public long addTask(
+    public AddTaskResult addTask(
+            long transaction,
             String taskType,
             String userId,
             String parameter,
             int maxattempts,
             long deadline,
             String slot) throws LogNotAvailableException {
-        long taskId = brokerStatus.nextTaskId();
-        StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline, slot);
-        taskId = this.brokerStatus.applyModification(addTask).newTaskId;
-        if (taskId > 0) {
-            this.tasksHeap.insertTask(taskId, taskType, userId);
+        Long taskId = brokerStatus.nextTaskId();
+        if (transaction > 0) {
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(transaction, taskId, taskType, parameter, userId, maxattempts, deadline, slot);
+            BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
+            return new AddTaskResult((Long) result.data, result.error);
+        } else {
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline, slot);
+            BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
+            taskId = (Long) result.data;
+            if (taskId > 0 && result.error == null) {
+                this.tasksHeap.insertTask(taskId, taskType, userId);
+            }
+            return new AddTaskResult((Long) result.data, result.error);
         }
-        return taskId;
     }
 
     public void taskNeedsRecoveryDueToWorkerDeath(long taskId, String workerId) throws LogNotAvailableException {

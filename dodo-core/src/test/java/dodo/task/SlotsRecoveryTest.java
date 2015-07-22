@@ -19,6 +19,7 @@
  */
 package dodo.task;
 
+import dodo.client.SubmitTaskResult;
 import dodo.client.TaskStatusView;
 import dodo.clustering.FileCommitLog;
 import dodo.clustering.GroupMapperFunction;
@@ -47,7 +48,6 @@ import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -150,15 +150,17 @@ public class SlotsRecoveryTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
+            SubmitTaskResult res = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
+            taskId = res.getTaskId();
             assertTrue(taskId > 0);
-            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
+            assertTrue(res.getError() == null);
+            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID).getTaskId());
         }
 
         // restart a broker and request a task, with slot, slot is already busy
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
+            assertEquals(0, broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID).getTaskId());
         }
 
         // startAsWritable a broker and do some work
@@ -222,7 +224,7 @@ public class SlotsRecoveryTest {
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
                     // now the slow is free
-                    taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID);
+                    taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID).getTaskId();
                     assertTrue(taskId > 0);
                 }
             }

@@ -6,6 +6,7 @@
 package dodo.broker.http;
 
 import dodo.broker.BrokerMain;
+import dodo.client.SubmitTaskResult;
 import dodo.clustering.Task;
 import dodo.client.TaskStatusView;
 import dodo.client.WorkerStatusView;
@@ -58,12 +59,16 @@ public class ClientAPI {
     @Path("/tasks")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public ClientTask submitTask(Map<String, Object> data) {
+    public ClientSubmitTaskResult submitTask(Map<String, Object> data) {
         System.out.println("submitTask:" + data);
         String type = (String) data.get("type");
         String user = (String) data.get("user");
         String parameters = (String) data.get("data");
         String _maxattempts = (String) data.get("maxattempts");
+        long transaction = 0;
+        if (data.containsKey("transaction")) {
+            transaction = Long.parseLong(data.get("transaction") + "");
+        }
         int maxattempts = 1;
         if (_maxattempts != null) {
             maxattempts = Integer.parseInt(_maxattempts);
@@ -78,13 +83,18 @@ public class ClientAPI {
         if (BrokerMain.runningInstance == null) {
             throw new WebApplicationException("broker not yet started", Status.PRECONDITION_FAILED);
         }
-
+        SubmitTaskResult result;
         try {
-            long taskId = BrokerMain.runningInstance.getBroker().getClient().submitTask(type, user, parameters, maxattempts, deadline, slot);
-            return getTask(taskId);
+            result = BrokerMain.runningInstance.getBroker().getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
         } catch (Exception err) {
-            err.printStackTrace();
             throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
+        }
+        long taskId = result.getTaskId();
+        String error = result.getError();
+        if (error != null) {
+            return new ClientSubmitTaskResult(null, false, error);
+        } else {
+            return new ClientSubmitTaskResult(getTask(taskId), true, error);
         }
     }
 

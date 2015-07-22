@@ -68,7 +68,7 @@ public class RecoverAtBootTest extends BasicBrokerEnv {
                 new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber5), StatusEdit.WORKER_CONNECTED(worker1, worker1processid, "localhost", new HashSet<>(), System.currentTimeMillis())),
                 new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber6), StatusEdit.ASSIGN_TASK_TO_WORKER(taskId4, worker1, 1)),
                 new MemoryCommitLog.MemoryLogLine(new LogSequenceNumber(0, sequenceNumber7), StatusEdit.TASK_STATUS_CHANGE(taskId4, worker1, Task.STATUS_FINISHED, "ok!"))
-        ), new BrokerStatusSnapshot(taskId4, new LogSequenceNumber(0, sequenceNumber_snapshot)));
+        ), new BrokerStatusSnapshot(taskId4, 0, new LogSequenceNumber(0, sequenceNumber_snapshot)));
     }
 
     @Test

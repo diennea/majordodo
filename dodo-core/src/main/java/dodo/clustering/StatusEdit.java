@@ -42,11 +42,17 @@ public final class StatusEdit {
     public static final short TYPE_TASK_STATUS_CHANGE = 4;
     public static final short TYPE_WORKER_DISCONNECTED = 5;
     public static final short TYPE_WORKER_DIED = 6;
+    public static final short TYPE_BEGIN_TRANSACTION = 7;
+    public static final short TYPE_COMMIT_TRANSACTION = 8;
+    public static final short TYPE_ROLLBACK_TRANSACTION = 9;
+    public static final short TYPE_PREPARE_ADD_TASK = 10;
 
     public static String typeToString(short type) {
         switch (type) {
             case TYPE_ADD_TASK:
                 return "ADD_TASK";
+            case TYPE_PREPARE_ADD_TASK:
+                return "TYPE_PREPARE_ADD_TASK";
             case TYPE_WORKER_CONNECTED:
                 return "WORKER_CONNECTED";
             case TYPE_ASSIGN_TASK_TO_WORKER:
@@ -57,6 +63,12 @@ public final class StatusEdit {
                 return "TYPE_WORKER_DISCONNECTED";
             case TYPE_WORKER_DIED:
                 return "TYPE_WORKER_DIED";
+            case TYPE_BEGIN_TRANSACTION:
+                return "TYPE_BEGIN_TRANSACTION";
+            case TYPE_COMMIT_TRANSACTION:
+                return "TYPE_COMMIT_TRANSACTION";
+            case TYPE_ROLLBACK_TRANSACTION:
+                return "TYPE_ROLLBACK_TRANSACTION";
             default:
                 return "?" + type;
         }
@@ -69,6 +81,7 @@ public final class StatusEdit {
     public int attempt;
     public int maxattempts;
     public long timestamp;
+    public long transactionId;
     public long executionDeadline;
     public String parameter;
     public String userid;
@@ -81,7 +94,29 @@ public final class StatusEdit {
 
     @Override
     public String toString() {
-        return "StatusEdit{" + "editType=" + typeToString(editType) + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", timestamp=" + timestamp + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", actualRunningTasks=" + actualRunningTasks + '}';
+        return "StatusEdit{" + "editType=" + editType + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", attempt=" + attempt + ", maxattempts=" + maxattempts + ", timestamp=" + timestamp + ", transactionId=" + transactionId + ", executionDeadline=" + executionDeadline + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", slot=" + slot + ", actualRunningTasks=" + actualRunningTasks + '}';
+    }
+
+    public static final StatusEdit BEGIN_TRANSACTION(long transactionId, long timestamp) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_BEGIN_TRANSACTION;
+        action.transactionId = transactionId;
+        action.timestamp = timestamp;
+        return action;
+    }
+
+    public static final StatusEdit ROLLBACK_TRANSACTION(long transactionId) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_ROLLBACK_TRANSACTION;
+        action.transactionId = transactionId;
+        return action;
+    }
+
+    public static final StatusEdit COMMIT_TRANSACTION(long transactionId) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_COMMIT_TRANSACTION;
+        action.transactionId = transactionId;
+        return action;
     }
 
     public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId, int attempt) {
@@ -106,6 +141,20 @@ public final class StatusEdit {
     public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
+        action.slot = slot;
+        action.parameter = taskParameter;
+        action.taskType = taskType;
+        action.taskId = taskId;
+        action.userid = userid;
+        action.maxattempts = maxattempts;
+        action.executionDeadline = executionDeadline;
+        return action;
+    }
+
+    public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_ADD_TASK;
+        action.transactionId = transactionId;
         action.slot = slot;
         action.parameter = taskParameter;
         action.taskType = taskType;
@@ -149,7 +198,36 @@ public final class StatusEdit {
             DataOutputStream doo = new DataOutputStream(out);
             doo.writeShort(this.editType);
             switch (this.editType) {
+                case TYPE_BEGIN_TRANSACTION:
+                    doo.writeLong(transactionId);
+                    doo.writeLong(timestamp);
+                    break;
+                case TYPE_COMMIT_TRANSACTION:
+                    doo.writeLong(transactionId);
+                    break;
+                case TYPE_ROLLBACK_TRANSACTION:
+                    doo.writeLong(transactionId);
+                    break;
                 case TYPE_ADD_TASK:
+                    doo.writeLong(taskId);
+                    doo.writeUTF(userid);
+                    doo.writeInt(taskStatus);
+                    doo.writeUTF(taskType);
+                    doo.writeInt(maxattempts);
+                    doo.writeLong(executionDeadline);
+                    if (parameter != null) {
+                        doo.writeUTF(parameter);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    if (slot != null) {
+                        doo.writeUTF(slot);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    break;
+                case TYPE_PREPARE_ADD_TASK:
+                    doo.writeLong(transactionId);
                     doo.writeLong(taskId);
                     doo.writeUTF(userid);
                     doo.writeInt(taskStatus);
@@ -216,7 +294,7 @@ public final class StatusEdit {
         DataInputStream doo = new DataInputStream(in);
         res.editType = doo.readShort();
         switch (res.editType) {
-            case TYPE_ADD_TASK:
+            case TYPE_ADD_TASK: {
                 res.taskId = doo.readLong();
                 res.userid = doo.readUTF();
                 res.taskStatus = doo.readInt();
@@ -229,6 +307,22 @@ public final class StatusEdit {
                     res.slot = slot;
                 }
                 break;
+            }
+            case TYPE_PREPARE_ADD_TASK: {
+                res.transactionId = doo.readLong();
+                res.taskId = doo.readLong();
+                res.userid = doo.readUTF();
+                res.taskStatus = doo.readInt();
+                res.taskType = doo.readUTF();
+                res.maxattempts = doo.readInt();
+                res.executionDeadline = doo.readLong();
+                res.parameter = doo.readUTF();
+                String slot = doo.readUTF();
+                if (!slot.isEmpty()) {
+                    res.slot = slot;
+                }
+                break;
+            }
             case TYPE_WORKER_DIED:
             case TYPE_WORKER_DISCONNECTED:
                 res.workerId = doo.readUTF();

@@ -47,10 +47,14 @@ public class BrokerStatus {
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
     private final Map<Long, Task> tasks = new HashMap<>();
+    private final Map<Long, Transaction> transactions = new HashMap<>();
     private final AtomicLong nextTaskId = new AtomicLong(0);
+    private final AtomicLong nextTransactionId = new AtomicLong(0);
     private final Map<String, WorkerStatus> workers = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
+    private final AtomicLong newTransactionId = new AtomicLong();
     private long maxTaskId = -1;
+    private long maxTransactionId = -1;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final StatusChangesLog log;
     private LogSequenceNumber lastLogSequenceNumber;
@@ -146,6 +150,10 @@ public class BrokerStatus {
         return nextTaskId.incrementAndGet();
     }
 
+    public long nextTransactionId() {
+        return nextTransactionId.incrementAndGet();
+    }
+
     public int getCheckpointsCount() {
         return checkpointsCount.get();
     }
@@ -164,7 +172,7 @@ public class BrokerStatus {
     }
 
     private BrokerStatusSnapshot createSnapshot() {
-        BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, lastLogSequenceNumber);
+        BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, lastLogSequenceNumber);
         for (Task task : tasks.values()) {
             snap.tasks.add(task.cloneForSnapshot());
         }
@@ -225,7 +233,7 @@ public class BrokerStatus {
     public void followTheLeader() throws InterruptedException {
         try {
             log.requestLeadership();
-            while (!log.isLeader() && !log.isClosed()) {                
+            while (!log.isLeader() && !log.isClosed()) {
                 log.followTheLeader(this.lastLogSequenceNumber,
                         (logSeqNumber, edit) -> {
                             applyEdit(logSeqNumber, edit);
@@ -234,17 +242,24 @@ public class BrokerStatus {
             }
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
-        } 
+        }
     }
 
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
-        public final long newTaskId;
+        public final String error;
+        public final Object data;
 
-        public ModificationResult(LogSequenceNumber sequenceNumber, long newTaskId) {
+        public ModificationResult(LogSequenceNumber sequenceNumber, Object data, String error) {
             this.sequenceNumber = sequenceNumber;
-            this.newTaskId = newTaskId;
+            this.data = data;
+            this.error = error;
+        }
+
+        @Override
+        public String toString() {
+            return "ModificationResult{" + "sequenceNumber=" + sequenceNumber + ", error=" + error + ", data=" + data + '}';
         }
 
     }
@@ -262,7 +277,7 @@ public class BrokerStatus {
                 }
             } else {
                 // slot already assigned
-                return new ModificationResult(null, 0);
+                return new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned");
             }
         } else {
             LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
@@ -291,7 +306,7 @@ public class BrokerStatus {
                     task.setStatus(Task.STATUS_RUNNING);
                     task.setWorkerId(workerId);
                     task.setAttempts(edit.attempt);
-                    return new ModificationResult(num, -1);
+                    return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
                     long taskId = edit.taskId;
@@ -313,7 +328,43 @@ public class BrokerStatus {
                             }
                         }
                     }
-                    return new ModificationResult(num, -1);
+                    return new ModificationResult(num, null, null);
+                }
+                case StatusEdit.TYPE_BEGIN_TRANSACTION: {
+                    if (maxTransactionId < edit.transactionId) {
+                        maxTransactionId = edit.transactionId;
+                    }
+                    Transaction transaction = new Transaction(edit.transactionId, edit.timestamp);
+                    transactions.put(transaction.getTransactionId(), transaction);
+                    return new ModificationResult(num, null, null);
+                }
+                case StatusEdit.TYPE_COMMIT_TRANSACTION: {
+                    Transaction transaction = transactions.get(edit.transactionId);
+                    if (transaction == null) {
+                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                    }
+                    for (Task task : transaction.getPreparedTasks()) {
+                        tasks.put(task.getTaskId(), task);
+                    }
+                    return new ModificationResult(num, tasks, null);
+                }
+                case StatusEdit.TYPE_ROLLBACK_TRANSACTION: {
+                    Transaction transaction = transactions.get(edit.transactionId);
+                    if (transaction == null) {
+                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                    }
+                    // release slots
+                    for (Task task : transaction.getPreparedTasks()) {
+                        if (task.getSlot() != null) {
+                            LOGGER.log(Level.SEVERE, "Rollback transaction {0}, relase slot ", new Object[]{edit.transactionId, task.getSlot()});
+                            slotsManager.releaseSlot(task.getSlot());
+                        }
+                    }
+                    // then discard the transaction
+                    transactions.remove(edit.transactionId);
+                    return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_ADD_TASK: {
                     Task task = new Task();
@@ -334,7 +385,36 @@ public class BrokerStatus {
                         // we need this, for log-replay on recovery and on followers
                         slotsManager.assignSlot(edit.slot);
                     }
-                    return new ModificationResult(num, edit.taskId);
+                    return new ModificationResult(num, edit.taskId, null);
+                }
+                case StatusEdit.TYPE_PREPARE_ADD_TASK: {
+                    Transaction transaction = transactions.get(edit.transactionId);
+                    if (transaction == null) {
+                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                    }
+                    Task task = new Task();
+                    task.setTaskId(edit.taskId);
+                    if (maxTaskId < edit.taskId) {
+                        maxTaskId = edit.taskId;
+                    }
+                    task.setCreatedTimestamp(System.currentTimeMillis());
+                    task.setParameter(edit.parameter);
+                    task.setType(edit.taskType);
+                    task.setUserId(edit.userid);
+                    task.setStatus(Task.STATUS_WAITING);
+                    task.setMaxattempts(edit.maxattempts);
+                    task.setExecutionDeadline(edit.executionDeadline);
+                    task.setSlot(edit.slot);
+                    if (edit.slot != null) {
+                        // we need this, for log-replay on recovery and on followers
+                        slotsManager.assignSlot(edit.slot);
+                    }
+                    // the slot it acquired on prepare (and eventually released on rollback)
+                    // task is not really submitted not, it will be submitted on commit
+                    transaction.getPreparedTasks().add(task);
+
+                    return new ModificationResult(num, edit.taskId, null);
                 }
                 case StatusEdit.TYPE_WORKER_CONNECTED: {
                     WorkerStatus node = workers.get(edit.workerId);
@@ -348,7 +428,7 @@ public class BrokerStatus {
                     node.setWorkerLocation(edit.workerLocation);
                     node.setProcessId(edit.workerProcessId);
                     node.setLastConnectionTs(edit.timestamp);
-                    return new ModificationResult(num, -1);
+                    return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_WORKER_DISCONNECTED: {
                     WorkerStatus node = workers.get(edit.workerId);
@@ -358,7 +438,7 @@ public class BrokerStatus {
                         workers.put(edit.workerId, node);
                     }
                     node.setStatus(WorkerStatus.STATUS_DISCONNECTED);
-                    return new ModificationResult(num, -1);
+                    return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_WORKER_DIED: {
                     WorkerStatus node = workers.get(edit.workerId);
@@ -368,7 +448,7 @@ public class BrokerStatus {
                         workers.put(edit.workerId, node);
                     }
                     node.setStatus(WorkerStatus.STATUS_DEAD);
-                    return new ModificationResult(num, -1);
+                    return new ModificationResult(num, null, null);
                 }
                 default:
                     throw new IllegalArgumentException();
@@ -387,6 +467,8 @@ public class BrokerStatus {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             this.maxTaskId = snapshot.getMaxTaskId();
             this.newTaskId.set(maxTaskId + 1);
+            this.maxTransactionId = snapshot.getMaxTaskId();
+            this.newTransactionId.set(maxTransactionId + 1);
             this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
             for (Task task : snapshot.getTasks()) {
                 this.tasks.put(task.getTaskId(), task);
@@ -399,6 +481,7 @@ public class BrokerStatus {
                         applyEdit(logSeqNumber, edit);
                     });
             newTaskId.set(maxTaskId + 1);
+            newTaskId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
         } finally {

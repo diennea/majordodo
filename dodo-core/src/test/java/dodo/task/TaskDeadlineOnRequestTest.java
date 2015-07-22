@@ -190,7 +190,7 @@ public class TaskDeadlineOnRequestTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60,null);
+                        taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60,null).getTaskId();
 
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
