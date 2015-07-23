@@ -312,7 +312,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.SEVERE, "[WORKER] connecting");
+        LOGGER.log(Level.SEVERE, "[WORKER] connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
         disconnect();
         channel = brokerLocator.connect(this, this);
         LOGGER.log(Level.SEVERE, "[WORKER] connected, channel:" + channel);

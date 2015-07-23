@@ -56,7 +56,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public static String VERSION() {
-        return "0.1-SNAPSHOT";
+        return "0.1.0";
     }
 
     public static byte[] formatHostdata(String host, int port) {
