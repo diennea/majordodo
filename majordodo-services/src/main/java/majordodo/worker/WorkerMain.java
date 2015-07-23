@@ -77,7 +77,7 @@ public class WorkerMain {
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
             config.setMaxThreads(maxthreads);
             config.setWorkerId(workerid);
-            config.setMaximumThreadByTaskType(maximumThreadPerTaskType);
+            config.setMaxThreadsByTaskType(maximumThreadPerTaskType);
             config.setGroups(groupsList);
             config.setLocation(location);
             config.setTasksRequestTimeout(tasksRequestTimeout);

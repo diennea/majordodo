@@ -12,12 +12,6 @@ package majordodo.embedded;
  */
 public class EmbeddedWorkerConfiguration extends AbstractEmbeddedServiceConfiguration {
 
-    public static final String MODE_SINGLEBROKER = "singlebroker";
-    public static final String MODE_CLUSTERED = "clustered";
-    public static final String MODE_JVMONLY = "jvmonly";
-
-    public static final String KEY_MODE = "worker.mode";
-
     public static String KEY_HOST = "worker.broker.host";
     public static String KEY_PORT = "worker.broker.port";
 }

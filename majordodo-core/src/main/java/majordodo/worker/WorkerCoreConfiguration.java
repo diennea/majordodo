@@ -35,13 +35,13 @@ public class WorkerCoreConfiguration {
     private int maxThreads;
     private String workerId;
     private String location;
-    private Map<String, Integer> maximumThreadByTaskType;
+    private Map<String, Integer> maxThreadsByTaskType;
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
 
     public WorkerCoreConfiguration() {
-        maximumThreadByTaskType = new HashMap<>();
-        maximumThreadByTaskType.put(Task.TASKTYPE_ANY, 1);
+        maxThreadsByTaskType = new HashMap<>();
+        maxThreadsByTaskType.put(Task.TASKTYPE_ANY, 1);
         maxThreads = 20;
         location = "unknown";
         groups = new ArrayList<>();
@@ -93,12 +93,12 @@ public class WorkerCoreConfiguration {
      *
      * @return
      */
-    public Map<String, Integer> getMaximumThreadByTaskType() {
-        return maximumThreadByTaskType;
+    public Map<String, Integer> getMaxThreadsByTaskType() {
+        return maxThreadsByTaskType;
     }
 
-    public void setMaximumThreadByTaskType(Map<String, Integer> maximumThreadByTaskType) {
-        this.maximumThreadByTaskType = maximumThreadByTaskType;
+    public void setMaxThreadsByTaskType(Map<String, Integer> maxThreadsByTaskType) {
+        this.maxThreadsByTaskType = maxThreadsByTaskType;
     }
 
     /**

@@ -57,17 +57,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final String processId;
     private final String workerId;
     private final String location;
-    private Map<String, Integer> maximumThreadPerTaskType;
     private final Map<Long, String> runningTasks = new ConcurrentHashMap<>();
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
     private volatile boolean stopped = false;
-    private int maxThreads;
-    private final List<Integer> groups;
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
-    private final int tasksRequestTimeout;
 
     public void die() {
         LOGGER.log(Level.SEVERE, "Die!");
@@ -107,7 +103,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private void requestNewTasks() {
         Channel _channel = channel;
         if (_channel != null) {
-            Map<String, Integer> availableSpace = new HashMap<>(maximumThreadPerTaskType);
+            Map<String, Integer> availableSpace = new HashMap<>(config.getMaxThreadsByTaskType());
             runningTasks.values().forEach(tasktype -> {
                 Integer count = availableSpace.get(tasktype);
                 if (count != null && count > 1) {
@@ -120,12 +116,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             if (availableSpace.isEmpty()) {
                 return;
             }
-            int maxnewthreads = maxThreads - runningTasks.size();
+            int maxnewthreads = config.getMaxThreads() - runningTasks.size();
+            if (maxnewthreads <= 0) {
+                return;
+            }
             try {
-                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + groups);
+                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups());
                 _channel.sendMessageWithReply(
-                        Message.WORKER_TASKS_REQUEST(processId, groups, availableSpace, maxnewthreads),
-                        tasksRequestTimeout
+                        Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), availableSpace, maxnewthreads),
+                        config.getTasksRequestTimeout()
                 );
                 LOGGER.log(Level.FINER, "requestNewTasks finished");
             } catch (InterruptedException | TimeoutException err) {
@@ -138,20 +137,21 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         }
     }
 
+    private WorkerCoreConfiguration config;
+
     public WorkerCore(
             WorkerCoreConfiguration config,
             String processId,
             BrokerLocator brokerLocator,
             WorkerStatusListener listener) {
-        this.tasksRequestTimeout = config.getTasksRequestTimeout();
-        this.maxThreads = config.getMaxThreads();
+        this.config = config;
+
         if (listener == null) {
             listener = new WorkerStatusListener() {
             };
         }
-        this.groups = config.getGroups();
         this.listener = listener;
-        this.threadpool = Executors.newFixedThreadPool(maxThreads, new ThreadFactory() {
+        this.threadpool = Executors.newCachedThreadPool(new ThreadFactory() {
 
             @Override
             public Thread newThread(Runnable r) {
@@ -161,7 +161,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.processId = processId;
         this.workerId = config.getWorkerId();
         this.location = config.getWorkerId();
-        this.maximumThreadPerTaskType = config.getMaximumThreadByTaskType();
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
     }
@@ -342,22 +341,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     public String getLocation() {
         return location;
-    }
-
-    public void setMaximumThreadPerTaskType(Map<String, Integer> maximumThreadPerTaskType) {
-        this.maximumThreadPerTaskType = maximumThreadPerTaskType;
-    }
-
-    public void setMaxThreads(int maxThreads) {
-        this.maxThreads = maxThreads;
-    }
-
-    public Map<String, Integer> getMaximumThreadPerTaskType() {
-        return maximumThreadPerTaskType;
-    }
-
-    public int getMaxThreads() {
-        return maxThreads;
     }
 
 }

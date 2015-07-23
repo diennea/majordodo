@@ -166,7 +166,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
                     config.setWorkerId(workerId);
-                    config.setMaximumThreadByTaskType(tags);
+                    config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     config.setTasksRequestTimeout(1000);
                     try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
@@ -212,7 +212,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
                     config.setWorkerId(workerId);
-                    config.setMaximumThreadByTaskType(tags);
+                    config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     try (WorkerCore core = new WorkerCore(config, "process2", locator, null);) {
                         core.start();

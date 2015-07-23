@@ -73,7 +73,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
             core.start();
@@ -130,7 +130,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
@@ -192,7 +192,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
@@ -250,7 +250,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 
@@ -314,7 +314,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             tags.put(TASKTYPE_MYTYPE, 1);
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
             config.setWorkerId("workerid_" + i);
-            config.setMaximumThreadByTaskType(tags);
+            config.setMaxThreadsByTaskType(tags);
             config.setGroups(Arrays.asList(group));
             WorkerCore core = new WorkerCore(config, "here" + i, getBrokerLocator(), listener);
             cores.add(core);
@@ -378,7 +378,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
 

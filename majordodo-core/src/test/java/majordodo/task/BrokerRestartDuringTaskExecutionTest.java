@@ -163,7 +163,7 @@ public class BrokerRestartDuringTaskExecutionTest {
 
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
             config.setWorkerId(workerId);
-            config.setMaximumThreadByTaskType(tags);
+            config.setMaxThreadsByTaskType(tags);
             config.setGroups(Arrays.asList(group));
             config.setTasksRequestTimeout(1000);
             try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {

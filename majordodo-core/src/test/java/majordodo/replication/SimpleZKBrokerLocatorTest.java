@@ -110,7 +110,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setWorkerId("workerid");
-        config.setMaximumThreadByTaskType(tags);
+        config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
         groupsMap.put(userId,group);
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {

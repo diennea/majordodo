@@ -179,7 +179,7 @@ public class PurgeFinishedTaskTest {
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
                     config.setWorkerId(workerId);
-                    config.setMaximumThreadByTaskType(tags);
+                    config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
 
