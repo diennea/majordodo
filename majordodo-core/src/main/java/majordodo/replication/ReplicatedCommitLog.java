@@ -136,6 +136,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
         writeLock.lock();
         try {
+            if (writer == null) {
+                throw new LogNotAvailableException(new Exception("no ledger opened for writing"));
+            }
             long newSequenceNumber = writer.writeEntry(edit);
             return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
         } finally {

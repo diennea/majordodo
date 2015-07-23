@@ -94,6 +94,9 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                     deadline = Long.parseLong(_deadline);
                 }
                 String slot = (String) data.get("slot");
+                if (slot != null && slot.trim().isEmpty()) {
+                    slot = null;
+                }
 
                 SubmitTaskResult result;
                 try {
