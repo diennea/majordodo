@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -337,7 +338,7 @@ public class BrokerStatus {
                     if (task == null) {
                         throw new IllegalStateException();
                     }
-                    if (workerId != null && !workerId.equals(task.getWorkerId())) {
+                    if (!Objects.equals(workerId, task.getWorkerId())) {
                         throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
                     task.setStatus(edit.taskStatus);
