@@ -37,6 +37,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.utils.FileUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -158,6 +159,7 @@ public class FileCommitLog extends StatusChangesLog {
     private void openNewLedger() throws LogNotAvailableException {
         writeLock.lock();
         try {
+            ensureDirectories();
             currentLedgerId++;
             currentSequenceNumber = 0;
             writer = new CommitFileWriter(currentLedgerId);
@@ -241,6 +243,35 @@ public class FileCommitLog extends StatusChangesLog {
         openNewLedger();
     }
 
+    @Override
+    public void clear() throws LogNotAvailableException {
+        this.currentLedgerId = 0;
+        this.currentSequenceNumber = 0;
+        try {
+            FileUtils.cleanDirectory(logDirectory);
+            FileUtils.cleanDirectory(snapshotsDirectory);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+    }
+
+    private void ensureDirectories() throws LogNotAvailableException {
+        try {
+            if (!Files.isDirectory(snapshotsDirectory)) {
+                Files.createDirectories(snapshotsDirectory);
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        try {
+            if (!Files.isDirectory(logDirectory)) {
+                Files.createDirectories(logDirectory);
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+    }
+
     private static final String LOGFILEEXTENSION = ".txlog";
 
     @Override
@@ -248,6 +279,7 @@ public class FileCommitLog extends StatusChangesLog {
 
         snapshotLock.lock();
         try {
+            ensureDirectories();
             LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
             String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
             Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
@@ -272,7 +304,7 @@ public class FileCommitLog extends StatusChangesLog {
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
         Path snapshotfilename = null;
         LogSequenceNumber latest = null;
-
+        ensureDirectories();
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
@@ -303,7 +335,7 @@ public class FileCommitLog extends StatusChangesLog {
         if (snapshotfilename == null) {
             System.out.println("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
-            return new BrokerStatusSnapshot(0, 0,new LogSequenceNumber(-1, -1));
+            return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;

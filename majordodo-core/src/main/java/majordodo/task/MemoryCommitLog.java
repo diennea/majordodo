@@ -91,6 +91,18 @@ public class MemoryCommitLog extends StatusChangesLog {
     boolean writable = false;
 
     @Override
+    public void clear() throws LogNotAvailableException {
+        lock.lock();
+        try {
+            this.sequenceNumber = 0;
+            this.log.clear();
+        } finally {
+            lock.unlock();
+        }
+
+    }
+        
+    @Override
     public void startWriting() throws LogNotAvailableException {
         writable = true;
     }

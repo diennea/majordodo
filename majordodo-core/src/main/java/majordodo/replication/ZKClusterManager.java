@@ -102,7 +102,7 @@ public class ZKClusterManager implements AutoCloseable {
         try {
             byte[] actualLedgers = zk.getData(ledgersPath, false, null);
             String list = new String(actualLedgers, "utf-8");
-            return Stream.of(list.split(",")).map(s -> Long.parseLong(s)).collect(Collectors.toList());
+            return Stream.of(list.split(",")).filter(s -> !s.isEmpty()).map(s -> Long.parseLong(s)).collect(Collectors.toList());
         } catch (KeeperException.NoNodeException firstboot) {
             return new ArrayList<>();
         } catch (Exception error) {

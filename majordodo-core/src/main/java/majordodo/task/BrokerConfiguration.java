@@ -20,6 +20,7 @@
 package majordodo.task;
 
 import java.util.Map;
+import majordodo.utils.ReflectionUtils;
 
 /**
  * Broker configuration
@@ -150,7 +151,23 @@ public class BrokerConfiguration {
     }
 
     public void read(Map<String, Object> properties) {
-        // TODO
+        ReflectionUtils.apply(properties, this);
+    }
+
+    /**
+     * Forces the broker to remove all data at boot. In a replicated environment
+     * it clears the leadgers list on ZooKeeper, every broker must be stopped
+     * and then restarted with this option
+     *
+     */
+    private boolean clearStatusAtBoot;
+
+    public boolean isClearStatusAtBoot() {
+        return clearStatusAtBoot;
+    }
+
+    public void setClearStatusAtBoot(boolean clearStatusAtBoot) {
+        this.clearStatusAtBoot = clearStatusAtBoot;
     }
 
 }

@@ -102,6 +102,7 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                 try {
                     result = broker.getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
                 } catch (Exception err) {
+                    LOGGER.log(Level.SEVERE, "error for " + data, err);
                     throw new ServletException("error " + err);
                 }
                 long taskId = result.getTaskId();
@@ -118,6 +119,7 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                 try {
                     transactionId = broker.getClient().beginTransaction();
                 } catch (Exception err) {
+                    LOGGER.log(Level.SEVERE, "error for " + data, err);
                     error = err + "";
                 }
                 resultMap.put("transaction", transactionId);
@@ -131,6 +133,7 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                 try {
                     broker.getClient().commitTransaction(transactionId);
                 } catch (Exception err) {
+                    LOGGER.log(Level.SEVERE, "error for " + data, err);
                     error = err + "";
                 }
                 resultMap.put("ok", true);
@@ -144,6 +147,7 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                 try {
                     broker.getClient().rollbackTransaction(transactionId);
                 } catch (Exception err) {
+                    LOGGER.log(Level.SEVERE, "error for " + data, err);
                     error = err + "";
                 }
                 resultMap.put("ok", true);

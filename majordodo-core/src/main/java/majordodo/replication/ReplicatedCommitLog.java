@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
@@ -204,14 +206,37 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     @Override
+    public void clear() throws LogNotAvailableException {
+        this.currentLedgerId = 0;
+        try {
+            FileUtils.cleanDirectory(snapshotsDirectory);
+            zKClusterManager.saveActualLedgersList(new ArrayList<>());
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        ensureDirectories();
+    }
+
+    @Override
     public boolean isWritable() {
         return writer != null;
+    }
+
+    private void ensureDirectories() throws LogNotAvailableException {
+        try {
+            if (!Files.isDirectory(snapshotsDirectory)) {
+                Files.createDirectories(snapshotsDirectory);
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
     }
 
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
         snapshotLock.lock();
         try {
+            ensureDirectories();
             LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
             String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
             Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
@@ -235,7 +260,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
         Path snapshotfilename = null;
         LogSequenceNumber latest = null;
-
+        ensureDirectories();
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
@@ -270,8 +295,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
+
             try (InputStream in = Files.newInputStream(snapshotfilename)) {
-                snapshotdata = mapper.readValue(in, Map.class);
+                snapshotdata = mapper.readValue(in, Map.class
+                );
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;

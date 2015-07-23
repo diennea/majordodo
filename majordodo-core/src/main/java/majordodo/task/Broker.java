@@ -131,6 +131,14 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     public void start() {
         JVMBrokersRegistry.registerBroker(brokerId, this);
+        if (configuration.isClearStatusAtBoot()) {
+            try {
+                this.log.clear();
+            } catch (LogNotAvailableException error) {
+                LOGGER.log(Level.SEVERE, "Could not clear status at boot", error);
+                throw new RuntimeException(error);
+            }
+        }
         this.brokerStatus.recover();
         // checkpoint must startboth in leader mode and in follower mode
         this.checkpointScheduler.start();

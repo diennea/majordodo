@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import majordodo.utils.ReflectionUtils;
 
 /**
  * configuration of the worker
@@ -46,6 +47,10 @@ public class WorkerCoreConfiguration {
         location = "unknown";
         groups = new ArrayList<>();
         groups.add(0);
+    }
+
+    public void read(Map<String, Object> properties) {
+        ReflectionUtils.apply(properties, this);
     }
 
     /**

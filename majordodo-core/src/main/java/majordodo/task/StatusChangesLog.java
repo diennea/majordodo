@@ -32,6 +32,9 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException;
 
+    public void clear() throws LogNotAvailableException {
+    }
+
     public void startWriting() throws LogNotAvailableException {
     }
 
@@ -54,7 +57,7 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     public abstract boolean isWritable();
 
-    public void requestLeadership() throws LogNotAvailableException {        
+    public void requestLeadership() throws LogNotAvailableException {
     }
 
 }
