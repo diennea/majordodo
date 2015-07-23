@@ -35,6 +35,10 @@ public class ClientFacade {
     public ClientFacade(Broker broker) {
         this.broker = broker;
     }
+    
+    public BrokerStatusView getBrokerStatus() {
+        return this.broker.createBrokerStatusView();
+    }
 
     public SubmitTaskResult submitTask(String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
         return submitTask(0, taskType, userId, parameter, maxattemps, deadline, slot);
@@ -68,5 +72,7 @@ public class ClientFacade {
     public TaskStatusView getTask(long taskid) {
         return broker.getBrokerStatus().getTaskStatus(taskid);
     }
+    
+    
 
 }

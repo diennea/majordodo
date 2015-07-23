@@ -140,7 +140,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 try {
-                    this.broker.workerConnected(workerId, location, workerProcessId, actualRunningTasks, System.currentTimeMillis());
+                    this.broker.workerConnected(workerId, workerProcessId, location, actualRunningTasks, System.currentTimeMillis());
                 } catch (LogNotAvailableException error) {
                     answerConnectionNotAcceptedAndClose(message, error);
                     return;

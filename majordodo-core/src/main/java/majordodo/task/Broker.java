@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.client.BrokerStatusView;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -297,6 +298,16 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         if (result.error != null) {
             throw new IllegalActionException(result.error);
         }
+    }
+
+    public BrokerStatusView createBrokerStatusView() {
+        BrokerStatusView res = new BrokerStatusView();
+        if (log.isLeader()) {
+            res.setClusterMode("LEADER");
+        } else {
+            res.setClusterMode("FOLLOWER");
+        }
+        return res;
     }
 
     public static interface ActionCallback {

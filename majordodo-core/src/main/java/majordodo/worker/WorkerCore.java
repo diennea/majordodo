@@ -160,7 +160,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         });
         this.processId = processId;
         this.workerId = config.getWorkerId();
-        this.location = config.getWorkerId();
+        this.location = config.getLocation();
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
     }

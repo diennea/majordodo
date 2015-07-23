@@ -17,18 +17,23 @@
  under the License.
 
  */
-package majordodo.embedded;
+package majordodo.client;
 
 /**
- * Configuration for the embedded broker
+ * General view of the status of the broker
  *
  * @author enrico.olivelli
  */
-public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfiguration {
+public class BrokerStatusView {
 
-    public static String KEY_LOGSDIRECTORY = "logsdirectory";
-    public static String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
-    public static String KEY_HOST = "broker.host";
-    public static String KEY_PORT = "broker.port";
+    private String clusterMode;
+
+    public String getClusterMode() {
+        return clusterMode;
+    }
+
+    public void setClusterMode(String clusterMode) {
+        this.clusterMode = clusterMode;
+    }
 
 }

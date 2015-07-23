@@ -20,6 +20,8 @@
 package majordodo.network.jvm;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * JVM classloader based registry for Brokers
@@ -29,8 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class JVMBrokersRegistry {
 
     private static final ConcurrentHashMap<String, JVMBrokerSupportInterface> brokers = new ConcurrentHashMap<>();
+    private static final Logger LOGGER = Logger.getLogger(JVMBrokersRegistry.class.getName());
 
     public static void registerBroker(String id, JVMBrokerSupportInterface broker) {
+        LOGGER.log(Level.SEVERE, "registerBroker {0}", id);
         brokers.put(id, broker);
     }
 
@@ -39,10 +43,12 @@ public class JVMBrokersRegistry {
     }
 
     public static void clear() {
+        LOGGER.log(Level.SEVERE, "clear");
         brokers.clear();
     }
 
     public static void unregisterBroker(String brokerId) {
+        LOGGER.log(Level.SEVERE, "unregisterBroker {0}", brokerId);
         brokers.remove(brokerId);
     }
 }
