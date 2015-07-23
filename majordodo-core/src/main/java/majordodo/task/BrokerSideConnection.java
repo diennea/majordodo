@@ -206,6 +206,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         params.put("tasktype", task.getType());
         params.put("parameter", task.getParameter());
         params.put("attempt", task.getAttempts());
+        params.put("userid", task.getUserId());
         channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params), new SendResultCallback() {
 
             @Override
