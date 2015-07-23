@@ -104,8 +104,8 @@ public class EmbeddedBroker {
                 }
                 statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port));
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, 1);
-                int writeQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_WRITEQUORUMSIZE, 1);
-                int ackQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ACKQUORUMSIZE, 1);
+                int writeQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_WRITEQUORUMSIZE, 1);
+                int ackQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ACKQUORUMSIZE, 1);
                 break;
             }
         }
