@@ -67,6 +67,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long currentLedgerId = 0;
     private Path snapshotsDirectory;
     private List<Long> actualLedgersList;
+    private int ensemble = 1;
+    private int writeQuorumSize = 1;
+    private int ackQuorumSize = 1;
 
     private class CommitFileWriter implements AutoCloseable {
 
@@ -74,7 +77,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         private CommitFileWriter() throws LogNotAvailableException {
             try {
-                this.out = bookKeeper.createLedger(1, 1, 1, BookKeeper.DigestType.MAC, magic);
+                this.out = bookKeeper.createLedger(ensemble, writeQuorumSize, ackQuorumSize, BookKeeper.DigestType.MAC, magic);
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
             }
@@ -84,10 +87,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             return this.out.getId();
         }
 
-        public long writeEntry(StatusEdit edit) throws LogNotAvailableException {
+        public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException {
             try {
                 byte[] serialize = edit.serialize();
                 return this.out.addEntry(serialize);
+            } catch (BKException.BKLedgerClosedException err) {
+                throw err;
+            } catch (BKException.BKLedgerFencedException err) {
+                throw err;
             } catch (Exception err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger", err);
                 throw new LogNotAvailableException(err);
@@ -134,6 +141,30 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
     }
 
+    public int getEnsemble() {
+        return ensemble;
+    }
+
+    public void setEnsemble(int ensemble) {
+        this.ensemble = ensemble;
+    }
+
+    public int getWriteQuorumSize() {
+        return writeQuorumSize;
+    }
+
+    public void setWriteQuorumSize(int writeQuorumSize) {
+        this.writeQuorumSize = writeQuorumSize;
+    }
+
+    public int getAckQuorumSize() {
+        return ackQuorumSize;
+    }
+
+    public void setAckQuorumSize(int ackQuorumSize) {
+        this.ackQuorumSize = ackQuorumSize;
+    }
+
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
         writeLock.lock();
@@ -141,8 +172,23 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             if (writer == null) {
                 throw new LogNotAvailableException(new Exception("no ledger opened for writing"));
             }
-            long newSequenceNumber = writer.writeEntry(edit);
-            return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
+            while (true) {
+                try {
+                    long newSequenceNumber = writer.writeEntry(edit);
+                    return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
+                } catch (BKException.BKLedgerClosedException closed) {
+                    LOGGER.log(Level.SEVERE, "ledger has been closed, need to open a new ledger", closed);
+                    Thread.sleep(1000);
+                    openNewLedger();
+                } catch (BKException.BKLedgerFencedException fenced) {
+                    LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
+                    zKClusterManager.close();
+                    close();
+                    throw new LogNotAvailableException(fenced);
+                }
+            }
+        } catch (InterruptedException err) {
+            throw new LogNotAvailableException(err);
         } finally {
             writeLock.unlock();
         }
@@ -151,6 +197,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private void openNewLedger() throws LogNotAvailableException {
         writeLock.lock();
         try {
+            if (writer != null) {
+                writer.close();
+            }
             writer = new CommitFileWriter();
             currentLedgerId = writer.getLedgerId();
             LOGGER.log(Level.SEVERE, "Opened new ledger:" + currentLedgerId);
