@@ -109,6 +109,7 @@ public class BrokerStatus {
         s.setResult(task.getResult());
         s.setAttempts(task.getAttempts());
         s.setMaxattempts(task.getMaxattempts());
+        s.setSlot(task.getSlot());
         s.setExecutionDeadline(task.getExecutionDeadline());
         return s;
     }
@@ -338,6 +339,9 @@ public class BrokerStatus {
                     Task task = tasks.get(taskId);
                     if (task == null) {
                         throw new IllegalStateException();
+                    }
+                    if (workerId != null && workerId.isEmpty()) {
+                        workerId = null;
                     }
                     if (!Objects.equals(workerId, task.getWorkerId())) {
                         throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());

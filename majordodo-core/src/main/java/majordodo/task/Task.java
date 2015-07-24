@@ -175,6 +175,7 @@ public class Task {
         copy.attempts = this.attempts;
         copy.maxattempts = this.maxattempts;
         copy.executionDeadline = this.executionDeadline;
+        copy.slot = this.slot;
         return copy;
     }
 

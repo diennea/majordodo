@@ -72,6 +72,10 @@ public class ClientFacade {
     public TaskStatusView getTask(long taskid) {
         return broker.getBrokerStatus().getTaskStatus(taskid);
     }
+
+    public HeapStatusView getHeapStatus() {
+        return broker.getHeapStatusView();
+    }
     
     
 

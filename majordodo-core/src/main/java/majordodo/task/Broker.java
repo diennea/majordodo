@@ -35,6 +35,8 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.client.BrokerStatusView;
+import majordodo.client.HeapStatusView;
+import majordodo.client.HeapStatusView.TaskStatus;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -168,6 +170,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 for (Task task : brokerStatus.getTasksAtBoot()) {
                     switch (task.getStatus()) {
                         case Task.STATUS_WAITING:
+                            LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + " is to be scheduled");
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                             break;
                     }
@@ -317,6 +320,18 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         }
         res.setCurrentLedgerId(log.getCurrentLedgerId());
         res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
+        return res;
+    }
+
+    public HeapStatusView getHeapStatusView() {
+        HeapStatusView res = new HeapStatusView();
+        tasksHeap.scan((task) -> {
+            TaskStatus status = new TaskStatus();
+            status.setGroup(task.groupid);
+            status.setTaskId(task.taskid);
+            status.setTaskType(tasksHeap.resolveTaskType(task.tasktype));
+            res.getTasks().add(status);
+        });
         return res;
     }
 

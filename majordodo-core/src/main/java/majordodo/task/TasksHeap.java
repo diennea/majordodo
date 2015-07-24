@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 /**
@@ -43,7 +45,9 @@ import java.util.stream.Stream;
  */
 public class TasksHeap {
 
-    private TaskEntry[] actuallist;
+    private static final Logger LOGGER = Logger.getLogger(TasksHeap.class.getName());
+
+    private final TaskEntry[] actuallist;
     private static final int TASKTYPE_ANYTASK = 0;
 
     private int actualsize;
@@ -131,6 +135,10 @@ public class TasksHeap {
         }
     }
 
+    String resolveTaskType(int tasktype) {
+        return taskTypes.get(tasktype);
+    }
+
     public static final class TaskEntry {
 
         public long taskid;
@@ -171,6 +179,7 @@ public class TasksHeap {
     }
 
     public void runCompaction() {
+        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize);
         lock.writeLock().lock();
         try {
             int[] nonemptypositions = new int[size];

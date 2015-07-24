@@ -66,6 +66,14 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                     resultMap.put("status", "not_started");
                 }
                 break;
+            case "tasksheap":
+                if (broker != null) {
+                    resultMap.put("tasksheap", broker.getClient().getHeapStatus());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
             case "workers":
                 if (broker != null) {
                     resultMap.put("workers", broker.getClient().getAllWorkers());
@@ -115,6 +123,7 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
                         map.put("tasktype", t.getType());
                         map.put("workerId", t.getWorkerId());
                         map.put("result", t.getResult());
+                        map.put("slot", t.getSlot());
                         map.put("data", t.getData());
                         String status;
                         switch (t.getStatus()) {

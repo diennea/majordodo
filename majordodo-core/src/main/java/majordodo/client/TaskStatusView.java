@@ -36,16 +36,23 @@ public class TaskStatusView {
     private String data;
     private String result;
     private String type;    
+    private String slot;    
     private int attempts;    
     private int maxattempts;       
     private long executionDeadline;
 
     @Override
     public String toString() {
-        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", userid=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", parameter=" + data + ", result=" + result + ", type=" + type + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
     }
-    
-    
+
+    public String getSlot() {
+        return slot;
+    }
+
+    public void setSlot(String slot) {
+        this.slot = slot;
+    }
 
     public int getMaxattempts() {
         return maxattempts;

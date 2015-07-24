@@ -115,7 +115,7 @@ public class BrokerStatusSnapshot {
         if (workersStatus != null) {
             workersStatus.forEach(w -> {
                 WorkerStatus workerStatus = new WorkerStatus();
-                workerStatus.setWorkerId((String) w.get("workerId"));
+                workerStatus.setWorkerId((String) w.get("workerId"));                
                 workerStatus.setWorkerLocation((String) w.get("location"));
                 workerStatus.setProcessId((String) w.get("processId"));
                 workerStatus.setLastConnectionTs(Long.parseLong(w.get("lastConnectionTs") + ""));
