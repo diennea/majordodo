@@ -45,9 +45,9 @@ public class InboundMessageHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-        session.channeldClosed();
+        session.channelClosed();
     }
-        
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         Message message = (Message) msg;

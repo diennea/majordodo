@@ -32,6 +32,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Channel implemented on Netty
@@ -49,7 +50,7 @@ public class NettyChannel extends Channel {
     @Override
     public String toString() {
         return "NettyChannel{" + "socket=" + socket + '}';
-    }        
+    }
 
     public NettyChannel(SocketChannel socket) {
         this.socket = socket;
@@ -75,7 +76,7 @@ public class NettyChannel extends Channel {
             pendingReplyMessages.remove(anwermessage.getReplyMessageId());
             Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
             if (original != null) {
-                callbackexecutor.submit(() -> {
+                submitCallback(() -> {
                     callback.replyReceived(original, anwermessage, null);
                 });
             }
@@ -129,7 +130,7 @@ public class NettyChannel extends Channel {
             message.setMessageId(UUID.randomUUID().toString());
         }
         if (this.socket == null) {
-            callbackexecutor.submit(() -> {
+            submitCallback(() -> {
                 callback.replyReceived(message, null, new Exception("connection is not active"));
             });
             return;
@@ -158,7 +159,7 @@ public class NettyChannel extends Channel {
         }
 
         pendingReplyMessages.forEach((key, callback) -> {
-            callbackexecutor.submit(() -> {
+            submitCallback(() -> {
                 Message original = pendingReplyMessagesSource.remove(key);
                 if (original != null) {
                     callback.replyReceived(original, null, new IOException("comunication channel is closed. Cannot wait for pending messages"));
@@ -170,20 +171,27 @@ public class NettyChannel extends Channel {
     }
 
     void exceptionCaught(Throwable cause) {
-        callbackexecutor.submit(() -> {
+        submitCallback(() -> {
             if (this.messagesReceiver != null) {
                 this.messagesReceiver.channelClosed();
             }
         });
     }
 
-    void channeldClosed() {
+    void channelClosed() {
         if (socket != null) {
-            callbackexecutor.submit(() -> {
+            submitCallback(() -> {
                 if (this.messagesReceiver != null) {
                     this.messagesReceiver.channelClosed();
                 }
             });
+        }
+    }
+
+    private void submitCallback(Runnable runnable) {
+        try {
+            callbackexecutor.submit(runnable);
+        } catch (RejectedExecutionException stopped) {
         }
     }
 
