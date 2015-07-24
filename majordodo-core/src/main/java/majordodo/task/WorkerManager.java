@@ -90,26 +90,31 @@ public class WorkerManager {
             }
             LOGGER.log(Level.FINE, "wakeup {0}, lastActivity {1} ", new Object[]{workerId, new java.util.Date(lastActivity)});
             if (connection != null) {
-                Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
-                if (taskToBeSubmitted != null) {
-                    LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
-                    Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
-                    if (task == null) {
-                        // task disappeared ?
-                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
-                    } else {
-                        if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
-                            connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
-                                if (error != null) {
-                                    // the write failed
-                                    taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
-                                } else {
-                                    tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
-                                }
-                            });
+                int max = 100;
+                while (max-- > 0) {
+                    Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
+                    if (taskToBeSubmitted != null) {
+                        LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
+                        Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
+                        if (task == null) {
+                            // task disappeared ?
+                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
                         } else {
-                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                            if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
+                                connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
+                                    if (error != null) {
+                                        // the write failed
+                                        taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
+                                    } else {
+                                        tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
+                                    }
+                                });
+                            } else {
+                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                            }
                         }
+                    } else {
+                        break;
                     }
                 }
             }
