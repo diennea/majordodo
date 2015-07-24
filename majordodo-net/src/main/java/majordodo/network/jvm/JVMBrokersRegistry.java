@@ -32,14 +32,20 @@ public class JVMBrokersRegistry {
 
     private static final ConcurrentHashMap<String, JVMBrokerSupportInterface> brokers = new ConcurrentHashMap<>();
     private static final Logger LOGGER = Logger.getLogger(JVMBrokersRegistry.class.getName());
+    private static String lastRegisteredBroker = "";
 
     public static void registerBroker(String id, JVMBrokerSupportInterface broker) {
         LOGGER.log(Level.SEVERE, "registerBroker {0}", id);
         brokers.put(id, broker);
+        lastRegisteredBroker = id;
     }
 
     public static <T extends JVMBrokerSupportInterface> T lookupBroker(String id) {
         return (T) brokers.get(id);
+    }
+
+    public static <T extends JVMBrokerSupportInterface> T getDefaultBroker() {
+        return (T) brokers.get(lastRegisteredBroker);
     }
 
     public static void clear() {

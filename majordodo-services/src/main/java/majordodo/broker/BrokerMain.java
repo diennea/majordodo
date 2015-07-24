@@ -33,10 +33,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.replication.ReplicatedCommitLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -52,7 +55,7 @@ public class BrokerMain implements AutoCloseable {
     private NettyChannelAcceptor server;
     private final Properties configuration;
 
-    public static BrokerMain runningInstance;
+    private static BrokerMain runningInstance;
 
     public Broker getBroker() {
         return broker;
@@ -145,16 +148,13 @@ public class BrokerMain implements AutoCloseable {
     }
 
     public void start() throws Exception {
-        if (BrokerMain.runningInstance == null) {
-            // TODO: used by ClientAPI for tests
-            BrokerMain.runningInstance = this;
-        }
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
-        int taskheapsize = Integer.parseInt(configuration.getProperty("tasksheap.size", "1000000"));
+        int taskheapsize = Integer.parseInt(configuration.getProperty("broker.tasksheap.size", "1000000"));
         String assigner = configuration.getProperty("tasks.groupmapper", "");
+        String clusteringmode = configuration.getProperty("clustering.mode", "singleserver");
         System.out.println("Starting MajorDodo Broker");
         GroupMapperFunction mapper;
         if (assigner.isEmpty()) {
@@ -179,23 +179,31 @@ public class BrokerMain implements AutoCloseable {
             System.out.println("GroupMapperFunction Mapper:" + mapper);
         }
 
-        String logtype = configuration.getProperty("logtype", "file");
         StatusChangesLog log;
-        switch (logtype) {
-            case "file":
+        switch (clusteringmode) {
+            case "singleserver": {
                 String logsdir = configuration.getProperty("logs.dir", "txlog");
                 String snapdir = configuration.getProperty("data.dir", "data");
                 log = new FileCommitLog(Paths.get(snapdir), Paths.get(logsdir));
                 break;
-            case "mem":
-                log = new MemoryCommitLog();
+            }
+            case "clustered": {
+                String zkAddress = configuration.getProperty("zk.address", "localhost:1281");
+                int zkSessionTimeout = Integer.parseInt(configuration.getProperty("zk.sessiontimeout", "40000"));
+                String zkPath = configuration.getProperty("zk.path", "/majordodo");
+                String snapdir = configuration.getProperty("data.dir", "data");
+                log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir), Broker.formatHostdata(host, port));
                 break;
+            }
             default:
-                throw new RuntimeException("bad value for logtype property, only valid values are file|mem");
+                throw new RuntimeException("bad value for clustering.mode property, only valid values are singleserver|clustered");
         }
-        BrokerConfiguration config = new BrokerConfiguration();
-        broker = new Broker(config, new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
 
+        BrokerConfiguration config = new BrokerConfiguration();
+        Map<String, Object> props = new HashMap<>();
+        configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
+        config.read(props);
+        broker = new Broker(config, new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
         broker.start();
 
         System.out.println("Listening for workers connections on " + host + ":" + port);

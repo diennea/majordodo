@@ -19,7 +19,6 @@
  */
 package majordodo.broker.http;
 
-import majordodo.broker.BrokerMain;
 import majordodo.client.SubmitTaskResult;
 import majordodo.task.Task;
 import majordodo.client.TaskStatusView;
@@ -37,6 +36,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
+import majordodo.network.jvm.JVMBrokersRegistry;
 
 /**
  * Client API
@@ -49,7 +49,8 @@ public class ClientAPI {
     @Path("/tasks")
     @Produces(MediaType.APPLICATION_JSON)
     public List<ClientTask> getAllTasks() {
-        List<TaskStatusView> tasks = BrokerMain.runningInstance.getBroker().getClient().getAllTasks();
+        Broker broker = JVMBrokersRegistry.getDefaultBroker();
+        List<TaskStatusView> tasks = broker.getClient().getAllTasks();
         List<ClientTask> result = new ArrayList<>();
         for (TaskStatusView t : tasks) {
             result.add(createClientTask(t));
@@ -61,7 +62,8 @@ public class ClientAPI {
     @Path("/workers")
     @Produces(MediaType.APPLICATION_JSON)
     public List<WorkerStatus> getAllWorkers() {
-        List<WorkerStatusView> tasks = BrokerMain.runningInstance.getBroker().getClient().getAllWorkers();
+        Broker broker = JVMBrokersRegistry.getDefaultBroker();
+        List<WorkerStatusView> tasks = broker.getClient().getAllWorkers();
         List<WorkerStatus> result = new ArrayList<>();
         for (WorkerStatusView t : tasks) {
             result.add(createWorkerStatus(t));
@@ -94,12 +96,10 @@ public class ClientAPI {
         }
         String slot = (String) data.get("slot");
 
-        if (BrokerMain.runningInstance == null) {
-            throw new WebApplicationException("broker not yet started", Status.PRECONDITION_FAILED);
-        }
         SubmitTaskResult result;
         try {
-            result = BrokerMain.runningInstance.getBroker().getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
+            Broker broker = JVMBrokersRegistry.getDefaultBroker();
+            result = broker.getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
         } catch (Exception err) {
             throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
         }
@@ -116,7 +116,8 @@ public class ClientAPI {
     @Path("/tasks/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     public ClientTask getTask(@PathParam("id") long id) {
-        TaskStatusView task = BrokerMain.runningInstance.getBroker().getClient().getTask(id);
+        Broker broker = JVMBrokersRegistry.getDefaultBroker();
+        TaskStatusView task = broker.getClient().getTask(id);
         return createClientTask(task);
     }
 
