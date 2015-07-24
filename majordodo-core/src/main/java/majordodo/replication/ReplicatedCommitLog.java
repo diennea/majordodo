@@ -216,7 +216,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
         this.actualLedgersList = zKClusterManager.getActualLedgersList();
         LOGGER.log(Level.SEVERE, "Actual ledgers list:" + actualLedgersList);
-        LOGGER.log(Level.SEVERE, "Latest snapshot ledgerId:" + currentLedgerId);
+        this.currentLedgerId = snapshotSequenceNumber.ledgerId;
+        LOGGER.log(Level.SEVERE, "Latest snapshotSequenceNumber:" + snapshotSequenceNumber);
         if (currentLedgerId > 0 && !this.actualLedgersList.contains(currentLedgerId)) {
             // TODO: download snapshot from another remote broker
             throw new LogNotAvailableException(new Exception("Actual ledgers list does not include latest snapshot ledgerid:" + currentLedgerId + ". manual recoveryis needed (pickup a recent snapshot from a live broker please)"));
@@ -235,10 +236,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
                             StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
                             if (number.after(snapshotSequenceNumber)) {
-                                LOGGER.log(Level.INFO, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
                                 consumer.accept(number, statusEdit);
                             } else {
-                                LOGGER.log(Level.INFO, "SKIP ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
                             }
                         }
                     }
@@ -405,7 +406,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
         try {
             long nextEntry = skipPast.sequenceNumber + 1;
-            //LOGGER.log(Level.SEVERE, "followTheLeader skipPast:" + skipPast + " toRead: " + toRead + " actualList:" + actualList + ", nextEntry:" + nextEntry);
+            LOGGER.log(Level.SEVERE, "followTheLeader skipPast:" + skipPast + " toRead: " + toRead + " actualList:" + actualList + ", nextEntry:" + nextEntry);
             for (Long previous : toRead) {
                 //LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
                 LedgerHandle lh;
@@ -417,7 +418,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     return;
                 }
                 long lastAddConfirmed = lh.getLastAddConfirmed();
-                LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " -> lastAddConfirmed:" + lastAddConfirmed);
+                LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " -> lastAddConfirmed:" + lastAddConfirmed + ", nextEntry:" + nextEntry);
                 if (nextEntry > lastAddConfirmed) {
                     nextEntry = 0;
                     continue;

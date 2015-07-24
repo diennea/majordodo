@@ -258,6 +258,7 @@ public class BrokerStatus {
             while (!log.isLeader() && !log.isClosed()) {
                 log.followTheLeader(this.lastLogSequenceNumber,
                         (logSeqNumber, edit) -> {
+                            LOGGER.log(Level.INFO, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
                             applyEdit(logSeqNumber, edit);
                         });
                 Thread.sleep(1000);
@@ -515,6 +516,7 @@ public class BrokerStatus {
             lock.writeLock().unlock();
         }
 
+        LOGGER.log(Level.SEVERE, "After recovery maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
     }
 
     public void startWriting() {

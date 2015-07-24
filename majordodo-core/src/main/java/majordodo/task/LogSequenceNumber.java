@@ -40,9 +40,13 @@ public final class LogSequenceNumber {
     }
 
     public boolean after(LogSequenceNumber snapshotSequenceNumber) {
-        // '>=' because we can be in the same ledger, and '>' because we must be 'after'
-        return this.ledgerId >= snapshotSequenceNumber.ledgerId
-                && this.sequenceNumber > snapshotSequenceNumber.sequenceNumber;
+        if (this.ledgerId < snapshotSequenceNumber.ledgerId) {
+            return false;
+        } else if (this.ledgerId == snapshotSequenceNumber.ledgerId) {
+            return this.sequenceNumber > snapshotSequenceNumber.sequenceNumber;
+        } else {
+            return true;
+        }
     }
 
 }

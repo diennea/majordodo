@@ -267,10 +267,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         connect();
                     }
 
-                } catch (InterruptedException | BrokerRejectedConnectionException exit) {
+                } catch (InterruptedException exit) {
                     LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
                     break;
-                } catch (BrokerNotAvailableException retry) {
+                } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
                     LOGGER.log(Level.SEVERE, "[WORKER] no broker available:" + retry);
                 }
 
@@ -279,6 +279,16 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 } catch (InterruptedException exit) {
                     LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
                     break;
+                }
+
+                if (channel == null) {
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException exit) {
+                        LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                        break;
+                    }
+                    continue;
                 }
 
                 FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();

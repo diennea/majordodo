@@ -45,12 +45,17 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
         @Override
         public void processResult(int rc, String path, Object param, byte[] data, Stat arg4) {
-            try {
-                String brokerData = new String(data, StandardCharsets.UTF_8);
-                LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " " + brokerData);
-                leaderBroker = Broker.parseHostdata(data);
-            } catch (Throwable t) {
-                LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
+            if (Code.get(rc) == Code.OK) {
+                try {
+                    String brokerData = new String(data, StandardCharsets.UTF_8);
+                    LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " " + brokerData);
+                    leaderBroker = Broker.parseHostdata(data);
+                } catch (Throwable t) {
+                    LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
+                }
+            } else {
+                LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " path=" + path);
+                lookForLeader();
             }
         }
     };

@@ -170,90 +170,95 @@ public class EmbeddedBrokerAPIServlet extends HttpServlet {
         if (data.containsKey("transaction")) {
             resultMap.put("transaction", data.get("transaction"));
         }
-        switch (action) {
-            case "submitTask": {
-                String type = (String) data.get("tasktype");
-                String user = (String) data.get("userid");
-                String parameters = (String) data.get("data");
-                String _maxattempts = (String) data.get("maxattempts");
-                long transaction = 0;
-                if (data.containsKey("transaction")) {
-                    transaction = Long.parseLong(data.get("transaction") + "");
-                }
-                int maxattempts = 1;
-                if (_maxattempts != null) {
-                    maxattempts = Integer.parseInt(_maxattempts);
-                }
-                String _deadline = (String) data.get("deadline");
-                long deadline = 0;
-                if (_deadline != null) {
-                    deadline = Long.parseLong(_deadline);
-                }
-                String slot = (String) data.get("slot");
-                if (slot != null && slot.trim().isEmpty()) {
-                    slot = null;
-                }
+        if (broker == null) {
+            resultMap.put("error", "broker_not_started");
+            resultMap.put("ok", false);
+        } else {
+            switch (action) {
+                case "submitTask": {
+                    String type = (String) data.get("tasktype");
+                    String user = (String) data.get("userid");
+                    String parameters = (String) data.get("data");
+                    String _maxattempts = (String) data.get("maxattempts");
+                    long transaction = 0;
+                    if (data.containsKey("transaction")) {
+                        transaction = Long.parseLong(data.get("transaction") + "");
+                    }
+                    int maxattempts = 1;
+                    if (_maxattempts != null) {
+                        maxattempts = Integer.parseInt(_maxattempts);
+                    }
+                    String _deadline = (String) data.get("deadline");
+                    long deadline = 0;
+                    if (_deadline != null) {
+                        deadline = Long.parseLong(_deadline);
+                    }
+                    String slot = (String) data.get("slot");
+                    if (slot != null && slot.trim().isEmpty()) {
+                        slot = null;
+                    }
 
-                SubmitTaskResult result;
-                try {
-                    result = broker.getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
-                } catch (Exception err) {
-                    LOGGER.log(Level.SEVERE, "error for " + data, err);
-                    throw new ServletException("error " + err);
-                }
-                long taskId = result.getTaskId();
-                String error = result.getError();
+                    SubmitTaskResult result;
+                    try {
+                        result = broker.getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        throw new ServletException("error " + err);
+                    }
+                    long taskId = result.getTaskId();
+                    String error = result.getError();
 
-                resultMap.put("taskId", taskId);
-                resultMap.put("error", error);
-                resultMap.put("ok", error != null && taskId > 0);
-                break;
-            }
-            case "beginTransaction": {
-                String error = null;
-                long transactionId = 0;
-                try {
-                    transactionId = broker.getClient().beginTransaction();
-                } catch (Exception err) {
-                    LOGGER.log(Level.SEVERE, "error for " + data, err);
-                    error = err + "";
+                    resultMap.put("taskId", taskId);
+                    resultMap.put("error", error);
+                    resultMap.put("ok", error != null && taskId > 0);
+                    break;
                 }
-                resultMap.put("transaction", transactionId);
-                resultMap.put("ok", error != null && transactionId > 0);
-                resultMap.put("error", error);
-                break;
-            }
-            case "commitTransaction": {
-                long transactionId = Long.parseLong(data.get("transaction") + "");
-                String error = null;
-                try {
-                    broker.getClient().commitTransaction(transactionId);
-                } catch (Exception err) {
-                    LOGGER.log(Level.SEVERE, "error for " + data, err);
-                    error = err + "";
+                case "beginTransaction": {
+                    String error = null;
+                    long transactionId = 0;
+                    try {
+                        transactionId = broker.getClient().beginTransaction();
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        error = err + "";
+                    }
+                    resultMap.put("transaction", transactionId);
+                    resultMap.put("ok", error != null && transactionId > 0);
+                    resultMap.put("error", error);
+                    break;
                 }
-                resultMap.put("ok", true);
-                resultMap.put("transaction", transactionId);
-                resultMap.put("ok", error != null && transactionId > 0);
-                break;
-            }
-            case "rollbackTransaction": {
-                long transactionId = Long.parseLong(data.get("transaction") + "");
-                String error = null;
-                try {
-                    broker.getClient().rollbackTransaction(transactionId);
-                } catch (Exception err) {
-                    LOGGER.log(Level.SEVERE, "error for " + data, err);
-                    error = err + "";
+                case "commitTransaction": {
+                    long transactionId = Long.parseLong(data.get("transaction") + "");
+                    String error = null;
+                    try {
+                        broker.getClient().commitTransaction(transactionId);
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        error = err + "";
+                    }
+                    resultMap.put("ok", true);
+                    resultMap.put("transaction", transactionId);
+                    resultMap.put("ok", error != null && transactionId > 0);
+                    break;
                 }
-                resultMap.put("ok", true);
-                resultMap.put("transaction", transactionId);
-                resultMap.put("ok", error != null && transactionId > 0);
-                break;
-            }
-            default: {
-                resultMap.put("ok", false);
-                resultMap.put("error", "bad action " + action);
+                case "rollbackTransaction": {
+                    long transactionId = Long.parseLong(data.get("transaction") + "");
+                    String error = null;
+                    try {
+                        broker.getClient().rollbackTransaction(transactionId);
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        error = err + "";
+                    }
+                    resultMap.put("ok", true);
+                    resultMap.put("transaction", transactionId);
+                    resultMap.put("ok", error != null && transactionId > 0);
+                    break;
+                }
+                default: {
+                    resultMap.put("ok", false);
+                    resultMap.put("error", "bad action " + action);
+                }
             }
         }
 

@@ -158,7 +158,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         @Override
         public void run() {
             try {
-                LOGGER.log(Level.SEVERE, "Waiting to became leader...");
+                LOGGER.log(Level.SEVERE, "Waiting to become leader...");
                 brokerStatus.followTheLeader();
                 if (stopped) {
                     return;
