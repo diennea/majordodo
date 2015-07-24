@@ -174,7 +174,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void messageReceived(Message message) {
-        LOGGER.log(Level.SEVERE, "[BROKER->WORKER] received " + message);
+        LOGGER.log(Level.FINER, "[BROKER->WORKER] received " + message);
         if (message.type == Message.TYPE_KILL_WORKER) {
             killWorkerHandler.killWorker(this);
             return;
@@ -186,7 +186,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.SEVERE, "[BROKER->WORKER] channel closed");
+        LOGGER.log(Level.SEVERE, "channel closed");
         disconnect();
     }
 
