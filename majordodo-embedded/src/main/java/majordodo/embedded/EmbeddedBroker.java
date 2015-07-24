@@ -119,11 +119,12 @@ public class EmbeddedBroker {
             case EmbeddedBrokerConfiguration.MODE_SIGLESERVER:
             case EmbeddedBrokerConfiguration.MODE_CLUSTERED:
                 server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
-                server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
                 break;
         }
         broker.start();
-        server.start();
+        if (server != null) {
+            server.start();
+        }
     }
 
     public void stop() {

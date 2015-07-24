@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * In-JVM comunications
@@ -73,12 +74,12 @@ public class JVMChannel extends Channel {
     @Override
     public void sendOneWayMessage(Message message, SendResultCallback callback) {
 //        System.out.println("[JVM] sendOneWayMessage " + message);
-        if (!active) {
+        if (!active || executionserializer.isShutdown()) {
             return;
         }
         executionserializer.submit(() -> {
             otherSide.receiveMessageFromPeer(message);
-            callbackexecutor.submit(() -> {
+            sumitCallback(() -> {
                 callback.messageSent(message, null);
             });
         });
@@ -93,7 +94,7 @@ public class JVMChannel extends Channel {
             pendingReplyMessages.remove(anwermessage.getReplyMessageId());
             Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
             if (original != null) {
-                callbackexecutor.submit(() -> {
+                sumitCallback(() -> {
                     callback.replyReceived(original, anwermessage, null);
                 });
             }
@@ -102,6 +103,10 @@ public class JVMChannel extends Channel {
 
     @Override
     public void sendReplyMessage(Message inAnswerTo, Message message) {
+        if (executionserializer.isShutdown()) {
+            System.out.println("[JVM] channel shutdown, discarding reply message " + message);            
+            return;
+        }
         executionserializer.submit(() -> {
 //        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
             if (!active) {
@@ -114,8 +119,19 @@ public class JVMChannel extends Channel {
         });
     }
 
+    private void sumitCallback(Runnable r) {
+        try {
+            callbackexecutor.submit(r);
+        } catch (RejectedExecutionException discard) {
+        }
+    }
+
     @Override
     public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
+        if (executionserializer.isShutdown()) {
+            System.out.println("[JVM] channel shutdown, discarding sendMessageWithAsyncReply");            
+            return;
+        }
         executionserializer.submit(() -> {
 //        System.out.println("[JVM] sendMessageWithAsyncReply " + message);
             if (!active) {
@@ -135,7 +151,7 @@ public class JVMChannel extends Channel {
     public void close() {
         active = false;
         pendingReplyMessages.forEach((key, callback) -> {
-            callbackexecutor.submit(() -> {
+            sumitCallback(() -> {
                 Message original = pendingReplyMessagesSource.remove(key);
                 if (original != null) {
                     callback.replyReceived(original, null, new Exception("comunication channel closed"));

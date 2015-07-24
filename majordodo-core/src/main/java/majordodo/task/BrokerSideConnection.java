@@ -177,6 +177,9 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
+            case Message.TYPE_WORKER_SHUTDOWN:
+                /// ignore
+                break;
             default:
                 channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
 
