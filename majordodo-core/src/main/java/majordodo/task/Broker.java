@@ -315,6 +315,8 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         } else {
             res.setClusterMode("FOLLOWER");
         }
+        res.setCurrentLedgerId(log.getCurrentLedgerId());
+        res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
         return res;
     }
 

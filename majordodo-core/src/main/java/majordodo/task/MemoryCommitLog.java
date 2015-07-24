@@ -38,6 +38,16 @@ public class MemoryCommitLog extends StatusChangesLog {
     private final ReentrantLock lock = new ReentrantLock();
 
     @Override
+    public long getCurrentLedgerId() {
+        return 0;
+    }
+
+    @Override
+    public long getCurrentSequenceNumber() {
+        return sequenceNumber;
+    }
+
+    @Override
     public LogSequenceNumber logStatusEdit(StatusEdit action) throws LogNotAvailableException {
         if (!writable) {
             throw new LogNotAvailableException(new Exception("not yet writable"));
@@ -101,7 +111,7 @@ public class MemoryCommitLog extends StatusChangesLog {
         }
 
     }
-        
+
     @Override
     public void startWriting() throws LogNotAvailableException {
         writable = true;

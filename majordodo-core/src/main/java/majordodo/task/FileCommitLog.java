@@ -368,4 +368,14 @@ public class FileCommitLog extends StatusChangesLog {
         return closed;
     }
 
+    @Override
+    public long getCurrentLedgerId() {
+        return currentLedgerId;
+    }
+
+    @Override
+    public long getCurrentSequenceNumber() {
+        return currentSequenceNumber;
+    }
+
 }

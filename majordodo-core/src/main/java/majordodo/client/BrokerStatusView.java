@@ -27,6 +27,26 @@ package majordodo.client;
 public class BrokerStatusView {
 
     private String clusterMode;
+    private long currentLedgerId;
+    private long currentSequenceNumber;
+
+    public long getCurrentLedgerId() {
+        return currentLedgerId;
+    }
+
+    public void setCurrentLedgerId(long currentLedgerId) {
+        this.currentLedgerId = currentLedgerId;
+    }
+
+    public long getCurrentSequenceNumber() {
+        return currentSequenceNumber;
+    }
+
+    public void setCurrentSequenceNumber(long currentSequenceNumber) {
+        this.currentSequenceNumber = currentSequenceNumber;
+    }
+    
+    
 
     public String getClusterMode() {
         return clusterMode;

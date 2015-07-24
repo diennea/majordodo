@@ -65,6 +65,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private final ReentrantLock snapshotLock = new ReentrantLock();
     private CommitFileWriter writer;
     private long currentLedgerId = 0;
+    private long lastSequenceNumber = -1;
     private Path snapshotsDirectory;
     private List<Long> actualLedgersList;
     private int ensemble = 1;
@@ -175,6 +176,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             while (true) {
                 try {
                     long newSequenceNumber = writer.writeEntry(edit);
+                    lastSequenceNumber = newSequenceNumber;
                     return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
                 } catch (BKException.BKLedgerClosedException closed) {
                     LOGGER.log(Level.SEVERE, "ledger has been closed, need to open a new ledger", closed);
@@ -432,6 +434,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     LOGGER.log(Level.SEVERE, "entry " + previous + "," + entryId + " -> " + statusEdit);
                     LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
                     consumer.accept(number, statusEdit);
+                    lastSequenceNumber = number.sequenceNumber;
+                    currentLedgerId = number.ledgerId;
 
                 }
             }
@@ -444,6 +448,16 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public boolean isLeader() {
         return zKClusterManager != null && zKClusterManager.isLeader();
+    }
+
+    @Override
+    public long getCurrentLedgerId() {
+        return currentLedgerId;
+    }
+
+    @Override
+    public long getCurrentSequenceNumber() {
+        return lastSequenceNumber;
     }
 
 }
