@@ -158,22 +158,7 @@ public class BrokerMain implements AutoCloseable {
         System.out.println("Starting MajorDodo Broker");
         GroupMapperFunction mapper;
         if (assigner.isEmpty()) {
-            mapper = new GroupMapperFunction() {
-
-                @Override
-                public int getGroup(long taskid, String taskType, String assignerData) {
-                    if (assignerData == null || assignerData.isEmpty()) {
-                        return 0;
-                    } else {
-                        try {
-                            return Integer.parseInt(assignerData);
-                        } catch (NumberFormatException err) {
-                            return 0;
-                        }
-                    }
-                }
-
-            };
+            mapper = new DefaultGroupMapperFunction();
         } else {
             mapper = (GroupMapperFunction) Class.forName(assigner).newInstance();
             System.out.println("GroupMapperFunction Mapper:" + mapper);
