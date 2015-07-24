@@ -16,9 +16,15 @@
     <dependencies>       
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>majordodo-services</artifactId>
+            <artifactId>majordodo-core</artifactId>
             <version>${project.version}</version>
-        </dependency>        
+        </dependency>   
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope>
+        </dependency>            
     </dependencies>
 
 </project>
