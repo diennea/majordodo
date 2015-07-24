@@ -209,10 +209,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     };
 
     private void notifyTaskFinished(long taskId, String finalStatus, String results, Throwable error) {
-        if (error != null) {
-            error.printStackTrace();
-        }
-        LOGGER.log(Level.SEVERE, "notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error);
+
+        LOGGER.log(Level.FINE, "notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error, error);
+
         Channel _channel = channel;
         if (_channel != null) {
             _channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
