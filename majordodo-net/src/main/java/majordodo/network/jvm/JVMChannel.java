@@ -104,7 +104,7 @@ public class JVMChannel extends Channel {
     @Override
     public void sendReplyMessage(Message inAnswerTo, Message message) {
         if (executionserializer.isShutdown()) {
-            System.out.println("[JVM] channel shutdown, discarding reply message " + message);            
+            System.out.println("[JVM] channel shutdown, discarding reply message " + message);
             return;
         }
         executionserializer.submit(() -> {
@@ -129,7 +129,7 @@ public class JVMChannel extends Channel {
     @Override
     public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
         if (executionserializer.isShutdown()) {
-            System.out.println("[JVM] channel shutdown, discarding sendMessageWithAsyncReply");            
+            System.out.println("[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
             return;
         }
         executionserializer.submit(() -> {
@@ -165,6 +165,7 @@ public class JVMChannel extends Channel {
         }
         executionserializer.shutdown();
         callbackexecutor.shutdown();
+        messagesReceiver.channelClosed();
     }
 
 }

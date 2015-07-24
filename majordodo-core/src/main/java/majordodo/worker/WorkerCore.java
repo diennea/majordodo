@@ -329,13 +329,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     public void disconnect() {
-        if (channel != null) {
-            try {
-                channel.close();
-                listener.connectionEvent("disconnected", this);
-            } finally {
+        try {
+            Channel c = channel;
+            if (c != null) {
                 channel = null;
+                c.close();
+                listener.connectionEvent("disconnected", this);
             }
+        } finally {
+            channel = null;
         }
 
     }
