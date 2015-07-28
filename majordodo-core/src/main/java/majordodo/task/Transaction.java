@@ -58,4 +58,15 @@ public class Transaction {
         return preparedTasks;
     }
 
+    Transaction cloneForSnapshot() {
+        Transaction clone = new Transaction(transactionId, creationTimestamp);
+        if (preparedTasks != null) {
+            clone.preparedTasks = new ArrayList<>();
+            this.preparedTasks.forEach(t -> {
+                clone.preparedTasks.add(t.cloneForSnapshot());
+            });
+        }
+        return clone;
+    }
+
 }

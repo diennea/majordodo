@@ -58,7 +58,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public static String VERSION() {
-        return "0.1.0";
+        return "0.1.2";
     }
 
     public static byte[] formatHostdata(String host, int port) {
@@ -180,6 +180,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped) {
+                        noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
                         Thread.sleep(1000);
                     }
                 } catch (InterruptedException exit) {

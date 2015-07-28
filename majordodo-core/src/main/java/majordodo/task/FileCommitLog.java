@@ -177,7 +177,7 @@ public class FileCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
+    public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {        
         writeLock.lock();
         try {
             if (writer == null) {

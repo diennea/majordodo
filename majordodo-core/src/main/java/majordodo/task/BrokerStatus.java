@@ -202,6 +202,9 @@ public class BrokerStatus {
         for (WorkerStatus status : workers.values()) {
             snap.workers.add(status.cloneForSnapshot());
         }
+        for (Transaction status : transactions.values()) {
+            snap.transactions.add(status.cloneForSnapshot());
+        }
         return snap;
     }
 
