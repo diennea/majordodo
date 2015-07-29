@@ -35,7 +35,7 @@ public class ClientFacade {
     public ClientFacade(Broker broker) {
         this.broker = broker;
     }
-    
+
     public BrokerStatusView getBrokerStatus() {
         return this.broker.createBrokerStatusView();
     }
@@ -76,7 +76,5 @@ public class ClientFacade {
     public HeapStatusView getHeapStatus() {
         return broker.getHeapStatusView();
     }
-    
-    
 
 }

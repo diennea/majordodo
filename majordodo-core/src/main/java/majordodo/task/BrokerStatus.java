@@ -47,8 +47,7 @@ public class BrokerStatus {
 
     private final Map<Long, Task> tasks = new HashMap<>();
     private final Map<Long, Transaction> transactions = new HashMap<>();
-    private final AtomicLong nextTaskId = new AtomicLong(0);
-    private final AtomicLong nextTransactionId = new AtomicLong(0);
+
     private final Map<String, WorkerStatus> workers = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
     private final AtomicLong newTransactionId = new AtomicLong();
@@ -59,6 +58,7 @@ public class BrokerStatus {
     private LogSequenceNumber lastLogSequenceNumber;
     private final AtomicInteger checkpointsCount = new AtomicInteger();
     private final SlotsManager slotsManager = new SlotsManager();
+    private BrokerStatusStats stats = new BrokerStatusStats();
 
     public WorkerStatus getWorkerStatus(String workerId) {
         return workers.get(workerId);
@@ -147,11 +147,11 @@ public class BrokerStatus {
     }
 
     public long nextTaskId() {
-        return nextTaskId.incrementAndGet();
+        return newTaskId.incrementAndGet();
     }
 
     public long nextTransactionId() {
-        return nextTransactionId.incrementAndGet();
+        return newTransactionId.incrementAndGet();
     }
 
     public int getCheckpointsCount() {
@@ -246,6 +246,7 @@ public class BrokerStatus {
                         if (t.getCreatedTimestamp() < finished_deadline) {
                             LOGGER.log(Level.INFO, "purging finished task {0}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp())});
                             it.remove();
+                            stats.taskStatusChange(t.getStatus(), -1);
                         }
                         break;
                 }
@@ -331,9 +332,11 @@ public class BrokerStatus {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
+                    int oldStatus = task.getStatus();
                     task.setStatus(Task.STATUS_RUNNING);
                     task.setWorkerId(workerId);
                     task.setAttempts(edit.attempt);
+                    stats.taskStatusChange(oldStatus, task.getStatus());
                     return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
@@ -349,6 +352,7 @@ public class BrokerStatus {
                     if (!Objects.equals(workerId, task.getWorkerId())) {
                         throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
                     }
+                    int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);
                     task.setResult(edit.result);
                     if (task.getSlot() != null) {
@@ -359,6 +363,9 @@ public class BrokerStatus {
                             }
                         }
                     }
+
+                    stats.taskStatusChange(oldStatus, edit.taskStatus);
+
                     return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_BEGIN_TRANSACTION: {
@@ -377,6 +384,7 @@ public class BrokerStatus {
                     }
                     for (Task task : transaction.getPreparedTasks()) {
                         tasks.put(task.getTaskId(), task);
+                        stats.taskStatusChange(-1, task.getStatus());
                     }
                     transactions.remove(edit.transactionId);
                     return new ModificationResult(num, transaction.getPreparedTasks(), null);
@@ -413,6 +421,8 @@ public class BrokerStatus {
                     task.setExecutionDeadline(edit.executionDeadline);
                     task.setSlot(edit.slot);
                     tasks.put(edit.taskId, task);
+                    stats.taskStatusChange(-1, task.getStatus());
+
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
                         slotsManager.assignSlot(edit.slot);
@@ -495,6 +505,10 @@ public class BrokerStatus {
 
     }
 
+    public BrokerStatusStats getStats() {
+        return stats;
+    }
+
     public void recover() {
 
         lock.writeLock().lock();
@@ -507,6 +521,7 @@ public class BrokerStatus {
             this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
             for (Task task : snapshot.getTasks()) {
                 this.tasks.put(task.getTaskId(), task);
+                stats.taskStatusChange(-1, task.getStatus());
             }
             for (WorkerStatus worker : snapshot.getWorkers()) {
                 this.workers.put(worker.getWorkerId(), worker);
@@ -516,7 +531,7 @@ public class BrokerStatus {
                         applyEdit(logSeqNumber, edit);
                     });
             newTaskId.set(maxTaskId + 1);
-            newTaskId.set(maxTransactionId + 1);
+            newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
         } finally {

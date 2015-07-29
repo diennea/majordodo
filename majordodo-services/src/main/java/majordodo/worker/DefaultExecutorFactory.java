@@ -22,6 +22,8 @@ package majordodo.worker;
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorFactory;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * default exefutor factory, executes goorvy scripts
@@ -31,9 +33,11 @@ import java.util.Map;
 public class DefaultExecutorFactory implements TaskExecutorFactory {
 
     public static final String TASKTYPE_GROOVYSCRIPT = "script";
+    private static final Logger LOGGER = Logger.getLogger(DefaultExecutorFactory.class.getName());
 
     @Override
     public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
+        LOGGER.log(Level.FINE, "createTaskExecutor {0}", parameters);
         if (taskType.equals(TASKTYPE_GROOVYSCRIPT)) {
             return new GroovyScriptTaskExecutor(parameters);
         } else {

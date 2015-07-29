@@ -17,47 +17,27 @@
  under the License.
 
  */
-package majordodo.broker.http;
+package majordodo.broker;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
- * Result of the submission
+ * Standard HTTP API
  *
  * @author enrico.olivelli
  */
-public class ClientSubmitTaskResult {
-
-    private ClientTask task;
-    private boolean ok;
-    private String error;
-
-    public ClientSubmitTaskResult(ClientTask task, boolean ok, String error) {
-        this.task = task;
-        this.ok = ok;
-        this.error = error;
+public class StandaloneHttpAPIServlet extends HttpServlet {
+  @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        majordodo.client.HttpAPIImplementation.doGet(req, resp);
     }
 
-    public ClientTask getTask() {
-        return task;
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        majordodo.client.HttpAPIImplementation.doPost(req, resp);
     }
-
-    public void setTask(ClientTask task) {
-        this.task = task;
-    }
-
-    public boolean isOk() {
-        return ok;
-    }
-
-    public void setOk(boolean ok) {
-        this.ok = ok;
-    }
-
-    public String getError() {
-        return error;
-    }
-
-    public void setError(String error) {
-        this.error = error;
-    }
-
 }

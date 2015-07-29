@@ -17,50 +17,33 @@
  under the License.
 
  */
-package majordodo.broker.http;
+package majordodo.client;
 
 /**
- * Status of a worker, to be reported to clients
+ * Response to the submission of a task
  *
- * @author enrico
+ * @author enrico.olivelli
  */
-public class WorkerStatus {
+public class SubmitTaskResponse {
 
-    private String id;
-    private String processId;
-    private String status;
-    private String location;
+    private String taskId;
 
-    public String getId() {
-        return id;
+    /**
+     * Task ID maybe null in case of task not accepted due to "busy-slot"
+     *
+     * @return
+     */
+    public String getTaskId() {
+        return taskId;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
     }
 
-    public String getProcessId() {
-        return processId;
+    @Override
+    public String toString() {
+        return "SubmitTaskResponse{" + "taskId=" + taskId + '}';
     }
-
-    public void setProcessId(String processId) {
-        this.processId = processId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
+    
 }

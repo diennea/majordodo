@@ -57,7 +57,7 @@ public class Workers {
             WorkerManager manager = getWorkerManager(workerId);
             LOGGER.log(Level.INFO, "Booting workerManager for workerId:" + status.getWorkerId());
             for (Task task : tasksAtBoot) {
-                if (workerId.equals(task.getWorkerId())) {
+                if (workerId.equals(task.getWorkerId()) && task.getStatus() == Task.STATUS_RUNNING) {
                     LOGGER.log(Level.INFO, "Booting workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId());
                     manager.taskShouldBeRunning(task.getTaskId());
                 }

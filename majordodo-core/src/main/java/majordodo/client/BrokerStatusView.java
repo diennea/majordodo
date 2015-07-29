@@ -29,6 +29,62 @@ public class BrokerStatusView {
     private String clusterMode;
     private long currentLedgerId;
     private long currentSequenceNumber;
+    private long tasks;
+    private long pendingTasks;
+    private long waitingTasks;
+    private long errorTasks;
+    private long finishedTasks;
+    private long runningTasks;
+
+    public long getWaitingTasks() {
+        return waitingTasks;
+    }
+
+    public void setWaitingTasks(long waitingTasks) {
+        this.waitingTasks = waitingTasks;
+    }
+
+    public long getErrorTasks() {
+        return errorTasks;
+    }
+
+    public void setErrorTasks(long errorTasks) {
+        this.errorTasks = errorTasks;
+    }
+
+    public long getFinishedTasks() {
+        return finishedTasks;
+    }
+
+    public void setFinishedTasks(long finishedTasks) {
+        this.finishedTasks = finishedTasks;
+    }
+
+    public long getRunningTasks() {
+        return runningTasks;
+    }
+
+    public void setRunningTasks(long runningTasks) {
+        this.runningTasks = runningTasks;
+    }
+    
+
+    public long getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(long tasks) {
+        this.tasks = tasks;
+    }
+
+    public long getPendingTasks() {
+        return pendingTasks;
+    }
+
+    public void setPendingTasks(long pendingTasks) {
+        this.pendingTasks = pendingTasks;
+    }
+    
 
     public long getCurrentLedgerId() {
         return currentLedgerId;
@@ -55,5 +111,7 @@ public class BrokerStatusView {
     public void setClusterMode(String clusterMode) {
         this.clusterMode = clusterMode;
     }
+
+    
 
 }

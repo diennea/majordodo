@@ -7,11 +7,12 @@
     <packaging>pom</packaging>
     <name>Majordodo</name>
     <modules>
+        <module>./majordodo-client</module>
         <module>./majordodo-net</module>
         <module>./majordodo-core</module>
         <module>./majordodo-services</module>                
         <module>./majordodo-packager</module>
-        <module>./majordodo-embedded</module>
+        <module>./majordodo-embedded</module>        
     </modules>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

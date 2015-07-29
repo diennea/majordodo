@@ -321,6 +321,12 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         }
         res.setCurrentLedgerId(log.getCurrentLedgerId());
         res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
+        res.setTasks(brokerStatus.getStats().getTasks());
+        res.setPendingTasks(brokerStatus.getStats().getPendingTasks());
+        res.setRunningTasks(brokerStatus.getStats().getRunningTasks());
+        res.setWaitingTasks(brokerStatus.getStats().getWaitingTasks());
+        res.setErrorTasks(brokerStatus.getStats().getErrorTasks());
+        res.setFinishedTasks(brokerStatus.getStats().getFinishedTasks());
         return res;
     }
 
@@ -401,7 +407,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 }
 
                 // submit for new execution
-                LOGGER.log(Level.INFO, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
+                LOGGER.log(Level.FINER, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
                 StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
                 this.brokerStatus.applyModification(edit);
                 this.tasksHeap.insertTask(taskId, task.getType(), task.getUserId());

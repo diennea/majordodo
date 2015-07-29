@@ -88,13 +88,13 @@ public class WorkerManager {
             if (lastActivity < connection.getLastReceivedMessageTs()) {
                 lastActivity = connection.getLastReceivedMessageTs();
             }
-            LOGGER.log(Level.FINE, "wakeup {0}, lastActivity {1} ", new Object[]{workerId, new java.util.Date(lastActivity)});
+            LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1} ", new Object[]{workerId, new java.util.Date(lastActivity)});
             if (connection != null) {
                 int max = 100;
                 while (max-- > 0) {
                     Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
                     if (taskToBeSubmitted != null) {
-                        LOGGER.log(Level.INFO, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
+                        LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
                         Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
                         if (task == null) {
                             // task disappeared ?

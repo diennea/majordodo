@@ -24,8 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.logging.Logger;
 
 /**
  * Chooses tasks
@@ -157,6 +156,8 @@ public class TasksChooser {
             return result;
         }
     }
+
+    private static final Logger LOGGER = Logger.getLogger(TasksChooser.class.getName());
 
     boolean accept(int position, TasksHeap.TaskEntry entry) {
         final int idgroup = entry.groupid;

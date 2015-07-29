@@ -69,10 +69,10 @@ public class FileCommitLog extends StatusChangesLog {
         DataOutputStream out;
 
         private CommitFileWriter(long ledgerId) throws IOException {
-            Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION);
+            Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
             // in case of IOException the stream is not opened, not need to close it
-            LOGGER.log(Level.INFO, "starting new file {0} ", filename);
-            this.out = new DataOutputStream(Files.newOutputStream(filename));
+            LOGGER.log(Level.SEVERE, "starting new file {0} ", filename);
+            this.out = new DataOutputStream(Files.newOutputStream(filename, StandardOpenOption.CREATE_NEW));
         }
 
         public void writeEntry(long seqnumber, StatusEdit edit) throws IOException {
@@ -173,11 +173,11 @@ public class FileCommitLog extends StatusChangesLog {
     public FileCommitLog(Path snapshotsDirectory, Path logDirectory) {
         this.snapshotsDirectory = snapshotsDirectory;
         this.logDirectory = logDirectory;
-        LOGGER.log(Level.INFO, "snapshotdirectory:{0}, logdirectory:{1}", new Object[]{snapshotsDirectory.toAbsolutePath(), logDirectory.toAbsolutePath()});
+        LOGGER.log(Level.SEVERE, "snapshotdirectory:{0}, logdirectory:{1}", new Object[]{snapshotsDirectory.toAbsolutePath(), logDirectory.toAbsolutePath()});
     }
 
     @Override
-    public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {        
+    public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
         writeLock.lock();
         try {
             if (writer == null) {
@@ -200,7 +200,7 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
-        LOGGER.log(Level.INFO, "recovery, snapshotSequenceNumber: {0}", snapshotSequenceNumber);
+        LOGGER.log(Level.SEVERE, "recovery, snapshotSequenceNumber: {0}", snapshotSequenceNumber);
         // no lock is needed, we are at boot time
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
             List<Path> names = new ArrayList<>();
@@ -211,9 +211,9 @@ public class FileCommitLog extends StatusChangesLog {
             }
             names.sort(Comparator.comparing(Path::toString));
             for (Path p : names) {
-                LOGGER.log(Level.INFO, "logfile is {0}", p.toAbsolutePath());
+                LOGGER.log(Level.SEVERE, "logfile is {0}", p.toAbsolutePath());
                 String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
-                long ledgerId = Long.parseLong(name);
+                long ledgerId = Long.parseLong(name, 16);
                 if (ledgerId > currentLedgerId) {
                     currentLedgerId = ledgerId;
                 }
@@ -222,16 +222,16 @@ public class FileCommitLog extends StatusChangesLog {
                     while (n != null) {
 
                         if (n.logSequenceNumber.after(snapshotSequenceNumber)) {
-                            LOGGER.log(Level.INFO, "RECOVER ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
+                            LOGGER.log(Level.FINE, "RECOVER ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
                             consumer.accept(n.logSequenceNumber, n.statusEdit);
                         } else {
-                            LOGGER.log(Level.INFO, "SKIP ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
+                            LOGGER.log(Level.FINE, "SKIP ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
                         }
                         n = reader.nextEntry();
                     }
                 }
             }
-            LOGGER.log(Level.INFO, "Max ledgerId is ", new Object[]{currentLedgerId});
+            LOGGER.log(Level.SEVERE, "Max ledgerId is {0}", new Object[]{currentLedgerId});
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
@@ -258,6 +258,7 @@ public class FileCommitLog extends StatusChangesLog {
     private void ensureDirectories() throws LogNotAvailableException {
         try {
             if (!Files.isDirectory(snapshotsDirectory)) {
+                LOGGER.log(Level.SEVERE, "directory " + snapshotsDirectory + " does not exist. creating");
                 Files.createDirectories(snapshotsDirectory);
             }
         } catch (IOException err) {
@@ -265,6 +266,7 @@ public class FileCommitLog extends StatusChangesLog {
         }
         try {
             if (!Files.isDirectory(logDirectory)) {
+                LOGGER.log(Level.SEVERE, "directory " + logDirectory + " does not exist. creating");
                 Files.createDirectories(logDirectory);
             }
         } catch (IOException err) {

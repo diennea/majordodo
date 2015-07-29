@@ -161,7 +161,17 @@ public class TasksHeap {
     }
 
     public void scan(Consumer<TaskEntry> consumer) {
-        Stream.of(actuallist).forEach(consumer);
+        lock.readLock().lock();
+        try {
+            for (int i = minValidPosition; i < actualsize; i++) {
+                TaskEntry entry = this.actuallist[i];
+                if (entry.taskid > 0) {
+                    consumer.accept(entry);
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public void recomputeGroups() {
@@ -243,7 +253,7 @@ public class TasksHeap {
             try {
                 for (int i = minValidPosition; i < actualsize; i++) {
                     TaskEntry entry = this.actuallist[i];
-                    if (entry.taskid > 0) {
+                    if (entry.taskid > 0) {                        
                         if (chooser.accept(i, entry)) {
                             break;
                         }

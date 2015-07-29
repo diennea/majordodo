@@ -21,8 +21,9 @@ package majordodo.worker;
 
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorStatus;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Real execution of the task
@@ -35,6 +36,7 @@ public class ExecutorRunnable implements Runnable {
     private Long taskId;
     private Map<String, Object> parameters;
     private TaskExecutionCallback callback;
+    private static final Logger LOGGER = Logger.getLogger(ExecutorRunnable.class.getName());
 
     public ExecutorRunnable(WorkerCore core, Long taskId, Map<String, Object> parameters, TaskExecutionCallback callback) {
         this.core = core;
@@ -57,6 +59,7 @@ public class ExecutorRunnable implements Runnable {
             String result = executor.executeTask(parameters);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, result, null);
         } catch (Throwable t) {
+            LOGGER.log(Level.SEVERE, "error while executing task " + parameters, t);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, null, t);
         }
     }

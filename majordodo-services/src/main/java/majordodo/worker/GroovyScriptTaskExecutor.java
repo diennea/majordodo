@@ -37,14 +37,15 @@ class GroovyScriptTaskExecutor extends TaskExecutor {
 
     @Override
     public String executeTask(Map<String, Object> parameters) throws Exception {
-        System.out.println("executeTask: parameters=" + parameters);
         ScriptEngineManager manager = new ScriptEngineManager();
         ScriptEngine groovy = manager.getEngineByName("groovy");
+        if (groovy == null) {
+            throw new Exception("groovy not found on classpath");
+        }
         groovy.put("parameters", parameters);
-        String code = parameters.get("code") + "";
+        String code = parameters.get("parameter") + "";
         Object res = groovy.eval(code);
         String result = res != null ? res.toString() : "";
-        System.out.println("executeTask finished: parameters=" + parameters + " result=" + result);
         return result;
     }
 

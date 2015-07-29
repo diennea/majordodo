@@ -113,15 +113,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
             });
 
-            if (availableSpace.isEmpty()) {
-                return;
-            }
             int maxnewthreads = config.getMaxThreads() - runningTasks.size();
-            if (maxnewthreads <= 0) {
+            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups());
+            if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
             try {
-                LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups());
                 _channel.sendMessageWithReply(
                         Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), availableSpace, maxnewthreads),
                         config.getTasksRequestTimeout()
@@ -130,10 +127,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
                     LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
-                    err.printStackTrace();
                 }
                 return;
             }
+        } else {
+            LOGGER.log(Level.FINER, "requestNewTasks not connected");
         }
     }
 
@@ -273,21 +271,23 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     LOGGER.log(Level.SEVERE, "[WORKER] no broker available:" + retry);
                 }
 
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
-                    break;
-                }
-
                 if (channel == null) {
                     try {
+                        LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
                         Thread.sleep(5000);
                     } catch (InterruptedException exit) {
                         LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
                         break;
                     }
                     continue;
+                } else {
+                    try {
+                        LOGGER.log(Level.FINEST, "waiting 500 ms");
+                        Thread.sleep(500);
+                    } catch (InterruptedException exit) {
+                        LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                        break;
+                    }
                 }
 
                 FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();

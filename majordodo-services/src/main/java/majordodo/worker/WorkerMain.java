@@ -62,8 +62,11 @@ public class WorkerMain implements AutoCloseable {
                     try (FileReader reader = new FileReader(configFile)) {
                         configuration.load(reader);
                     }
+                } else {
+                    throw new Exception("Cannot find " + configFile.getAbsolutePath());
                 }
             }
+            System.out.println("Configuration:" + configuration);
 
             Runtime.getRuntime().addShutdownHook(new Thread("ctrlc-hook") {
 
@@ -92,13 +95,12 @@ public class WorkerMain implements AutoCloseable {
     }
 
     public void start() throws Exception {
-
         BrokerLocator brokerLocator;
         String mode = configuration.getProperty("clustering.mode", "singleserver");
         switch (mode) {
             case "singleserver":
                 String host = configuration.getProperty("broker.host", "localhost");
-                int port = Integer.parseInt(configuration.getProperty("broker.port", "1234"));
+                int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
                 brokerLocator = new NettyBrokerLocator(host, port);
                 break;
             case "clustered":
@@ -111,7 +113,11 @@ public class WorkerMain implements AutoCloseable {
                 throw new RuntimeException("invalid clustering.mode=" + mode);
         }
 
-        String workerid = configuration.getProperty("worker.id", "localhost");
+        String hostname = InetAddress.getLocalHost().getCanonicalHostName();
+        String workerid = configuration.getProperty("worker.id", hostname);
+        if (workerid.isEmpty()) {
+            workerid = hostname;
+        }
         String groups = configuration.getProperty("worker.groups", Task.GROUP_ANY + "");
         String executorFactory = configuration.getProperty("worker.executorfactory", "majordodo.worker.DefaultExecutorFactory");
         String processid = ManagementFactory.getRuntimeMXBean().getName();

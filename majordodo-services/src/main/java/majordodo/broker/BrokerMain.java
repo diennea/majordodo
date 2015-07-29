@@ -19,7 +19,6 @@
  */
 package majordodo.broker;
 
-import majordodo.broker.http.HttpAPI;
 import majordodo.task.FileCommitLog;
 import majordodo.task.GroupMapperFunction;
 import majordodo.task.MemoryCommitLog;
@@ -43,7 +42,6 @@ import majordodo.replication.ReplicatedCommitLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.glassfish.jersey.server.ServerProperties;
 
 /**
  * Created by enrico.olivelli on 23/03/2015.
@@ -113,6 +111,8 @@ public class BrokerMain implements AutoCloseable {
                     try (FileReader reader = new FileReader(configFile)) {
                         configuration.load(reader);
                     }
+                } else {
+                    throw new Exception("Cannot find " + configFile.getAbsolutePath());
                 }
             }
 
@@ -188,7 +188,7 @@ public class BrokerMain implements AutoCloseable {
         Map<String, Object> props = new HashMap<>();
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
         config.read(props);
-        broker = new Broker(config, new MemoryCommitLog(), new TasksHeap(taskheapsize, mapper));
+        broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
         broker.start();
 
         System.out.println("Listening for workers connections on " + host + ":" + port);
@@ -201,10 +201,9 @@ public class BrokerMain implements AutoCloseable {
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
         httpserver.setHandler(context);
-        ServletHolder jerseyServlet = new ServletHolder(new org.glassfish.jersey.servlet.ServletContainer());
-        jerseyServlet.setInitParameter(ServerProperties.PROVIDER_CLASSNAMES, HttpAPI.class.getCanonicalName());
+        ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
         jerseyServlet.setInitOrder(0);
-        context.addServlet(jerseyServlet, "/*");
+        context.addServlet(jerseyServlet, "/majordodo");
         System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport);
         httpserver.start();
         System.out.println("Broker starter");
