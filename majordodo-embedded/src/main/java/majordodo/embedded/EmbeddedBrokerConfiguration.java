@@ -27,6 +27,7 @@ package majordodo.embedded;
 public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfiguration {
 
     public static String KEY_LOGSDIRECTORY = "logsdirectory";
+    public static String KEY_LOGSMAXFILESIZE = "logsmaxfilesize";
     public static String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
     public static String KEY_HOST = "broker.host";
     public static String KEY_PORT = "broker.port";

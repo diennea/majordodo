@@ -51,7 +51,7 @@ public class FileCommitLogSimpleTest {
 
     @Test
     public void test() throws Exception {
-        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath());) {
+        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath(), 1024 * 1024);) {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                 fail();
@@ -60,7 +60,7 @@ public class FileCommitLogSimpleTest {
             assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
             assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
             assertTrue(snapshot.getTasks().isEmpty());
-            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0,null);
+            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0, null);
             StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
             StatusEdit edit3 = StatusEdit.ASSIGN_TASK_TO_WORKER(1, "worker1", 1);
             StatusEdit edit4 = StatusEdit.TASK_STATUS_CHANGE(1, "node1", Task.STATUS_FINISHED, "theresult");
@@ -69,7 +69,7 @@ public class FileCommitLogSimpleTest {
             LogSequenceNumber logStatusEdit3 = log.logStatusEdit(edit3);
             LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
         }
-        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath());) {
+        try (FileCommitLog log = new FileCommitLog(folderSnapshots.getRoot().toPath(), folderLogs.getRoot().toPath(), 1024 * 1024);) {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             System.out.println("snapshot:" + snapshot);
             // no snapshot was taken...

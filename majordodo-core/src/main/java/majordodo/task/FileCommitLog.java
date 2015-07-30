@@ -19,6 +19,7 @@
  */
 package majordodo.task;
 
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -55,6 +56,8 @@ public class FileCommitLog extends StatusChangesLog {
 
     long currentLedgerId = 0;
     long currentSequenceNumber = 0;
+    long maxLogFileSize = 1024 * 1024;
+    long writtenBytes = 0;
 
     CommitFileWriter writer;
 
@@ -67,12 +70,18 @@ public class FileCommitLog extends StatusChangesLog {
     private class CommitFileWriter implements AutoCloseable {
 
         DataOutputStream out;
+        Path filename;
 
         private CommitFileWriter(long ledgerId) throws IOException {
-            Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
+            filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
             // in case of IOException the stream is not opened, not need to close it
             LOGGER.log(Level.SEVERE, "starting new file {0} ", filename);
-            this.out = new DataOutputStream(Files.newOutputStream(filename, StandardOpenOption.CREATE_NEW));
+            this.out = new DataOutputStream(
+                    new BufferedOutputStream(
+                            Files.newOutputStream(filename, StandardOpenOption.CREATE_NEW)
+                    )
+            );
+            writtenBytes = 0;
         }
 
         public void writeEntry(long seqnumber, StatusEdit edit) throws IOException {
@@ -82,6 +91,7 @@ public class FileCommitLog extends StatusChangesLog {
             this.out.writeInt(serialize.length);
             this.out.write(serialize);
             this.out.writeByte(ENTRY_END);
+            writtenBytes += (1 + 8 + 4 + serialize.length + 1);
         }
 
         public void flush() throws LogNotAvailableException {
@@ -159,6 +169,10 @@ public class FileCommitLog extends StatusChangesLog {
     private void openNewLedger() throws LogNotAvailableException {
         writeLock.lock();
         try {
+            if (writer != null) {
+                LOGGER.log(Level.SEVERE, "closing actual file {0}", writer.filename);
+                writer.close();
+            }
             ensureDirectories();
             currentLedgerId++;
             currentSequenceNumber = 0;
@@ -170,10 +184,11 @@ public class FileCommitLog extends StatusChangesLog {
         }
     }
 
-    public FileCommitLog(Path snapshotsDirectory, Path logDirectory) {
-        this.snapshotsDirectory = snapshotsDirectory;
-        this.logDirectory = logDirectory;
-        LOGGER.log(Level.SEVERE, "snapshotdirectory:{0}, logdirectory:{1}", new Object[]{snapshotsDirectory.toAbsolutePath(), logDirectory.toAbsolutePath()});
+    public FileCommitLog(Path snapshotsDirectory, Path logDirectory, long maxLogFileSize) {
+        this.maxLogFileSize = maxLogFileSize;
+        this.snapshotsDirectory = snapshotsDirectory.toAbsolutePath();
+        this.logDirectory = logDirectory.toAbsolutePath();
+        LOGGER.log(Level.SEVERE, "snapshotdirectory:{0}, logdirectory:{1},maxLogFileSize {2} bytes", new Object[]{snapshotsDirectory, logDirectory, maxLogFileSize});
     }
 
     @Override
@@ -185,6 +200,9 @@ public class FileCommitLog extends StatusChangesLog {
             }
             long newSequenceNumber = ++currentSequenceNumber;
             writer.writeEntry(newSequenceNumber, edit);
+            if (writtenBytes > maxLogFileSize) {
+                openNewLedger();
+            }
             return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
@@ -294,6 +312,35 @@ public class FileCommitLog extends StatusChangesLog {
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
+            writeLock.lock();
+            try {
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
+                    List<Path> names = new ArrayList<>();
+                    for (Path path : stream) {
+                        if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
+                            names.add(path);
+                        }
+                    }
+                    names.sort(Comparator.comparing(Path::toString));
+                    for (Path p : names) {
+
+                        String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
+                        long ledgerId = Long.parseLong(name, 16);
+
+                        if (ledgerId < snapshotData.actualLogSequenceNumber.ledgerId) {
+                            LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be removed (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                            Files.deleteIfExists(p);
+                        } else {
+                            LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be kept (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                        }
+                    }
+                } catch (IOException err) {
+                    throw new LogNotAvailableException(err);
+                }
+
+            } finally {
+                writeLock.unlock();
+            }
         } finally {
             snapshotLock.unlock();
         }
@@ -341,9 +388,11 @@ public class FileCommitLog extends StatusChangesLog {
         } else {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
+
             try (InputStream in = Files.newInputStream(snapshotfilename)) {
 
-                snapshotdata = mapper.readValue(in, Map.class);
+                snapshotdata = mapper.readValue(in, Map.class
+                );
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;

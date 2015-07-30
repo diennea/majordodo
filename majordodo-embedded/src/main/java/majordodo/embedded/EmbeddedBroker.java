@@ -79,6 +79,7 @@ public class EmbeddedBroker {
         String zkAdress = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKADDRESS, "localhost:1281");
         String zkPath = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKPATH, "/majordodo");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
+        long maxFileSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_LOGSMAXFILESIZE, 1024 * 1024);
 
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY: {
@@ -94,7 +95,7 @@ public class EmbeddedBroker {
                 if (!Files.isDirectory(_snapshotsDirectory)) {
                     Files.createDirectory(_snapshotsDirectory);
                 }
-                statusChangesLog = new FileCommitLog(_logDirectory, _snapshotsDirectory);
+                statusChangesLog = new FileCommitLog(_logDirectory, _snapshotsDirectory, maxFileSize);
                 break;
             }
             case EmbeddedBrokerConfiguration.MODE_CLUSTERED: {

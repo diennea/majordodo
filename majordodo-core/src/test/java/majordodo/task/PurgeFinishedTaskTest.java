@@ -152,7 +152,7 @@ public class PurgeFinishedTaskTest {
         BrokerConfiguration bc = new BrokerConfiguration();
         bc.setFinishedTasksRetention(0);
         bc.setFinishedTasksPurgeSchedulerPeriod(1000);
-        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();

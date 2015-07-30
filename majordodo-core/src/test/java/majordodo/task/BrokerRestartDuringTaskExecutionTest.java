@@ -19,19 +19,11 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
-import majordodo.client.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -48,8 +40,6 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -184,7 +174,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                 // startAsWritable a broker and submit some work
                 BrokerConfiguration brokerConfig = new BrokerConfiguration();
                 brokerConfig.setMaxWorkerIdleTime(5000);
-                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker.startAsWritable();
                     taskId = broker.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0,0,null).getTaskId();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
@@ -199,7 +189,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                 }
 
                 // restart the broker
-                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir), new TasksHeap(1000, createGroupMapperFunction()));) {
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker.startAsWritable();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);

@@ -169,7 +169,8 @@ public class BrokerMain implements AutoCloseable {
             case "singleserver": {
                 String logsdir = configuration.getProperty("logs.dir", "txlog");
                 String snapdir = configuration.getProperty("data.dir", "data");
-                log = new FileCommitLog(Paths.get(snapdir), Paths.get(logsdir));
+                long maxFileSize = Long.parseLong(configuration.getProperty("logs.maxfilesize", (1024 * 1024) + ""));
+                log = new FileCommitLog(Paths.get(snapdir), Paths.get(logsdir), maxFileSize);
                 break;
             }
             case "clustered": {

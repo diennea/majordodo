@@ -188,14 +188,13 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
             } catch (Throwable uncaught) {
                 LOGGER.log(Level.SEVERE, "fatal error", uncaught);
                 uncaught.printStackTrace();
-                close();
-
+                shutdown();
             }
         }
 
     };
 
-    public void stop() {
+    private void shutdown() {
         stopped = true;
         JVMBrokersRegistry.unregisterBroker(brokerId);
         this.finishedTaskCollectorScheduler.stop();
@@ -203,6 +202,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.groupMapperScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
+    }
+
+    public void stop() {
+        shutdown();
         try {
             brokerLifeThread.join();
         } catch (InterruptedException exit) {
