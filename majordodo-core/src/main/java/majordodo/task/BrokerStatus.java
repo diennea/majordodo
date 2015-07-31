@@ -194,7 +194,7 @@ public class BrokerStatus {
         this.log.checkpoint(snapshot);
     }
 
-    private BrokerStatusSnapshot createSnapshot() {
+    public BrokerStatusSnapshot createSnapshot() {
         BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, lastLogSequenceNumber);
         for (Task task : tasks.values()) {
             snap.tasks.add(task.cloneForSnapshot());

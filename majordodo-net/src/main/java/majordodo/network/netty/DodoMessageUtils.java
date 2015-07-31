@@ -49,6 +49,7 @@ public class DodoMessageUtils {
     private static final byte OPCODE_INT_VALUE = 10;
     private static final byte OPCODE_NULL_VALUE = 11;
     private static final byte OPCODE_LIST_VALUE = 12;
+    private static final byte OPCODE_BYTEARRAY_VALUE = 13;
 
     private static void writeUTF8String(ByteBuf buf, String s) {
         byte[] asarray = s.getBytes(StandardCharsets.UTF_8);
@@ -113,6 +114,11 @@ public class DodoMessageUtils {
                 writeEncodedSimpleValue(encoded, o2);
             }
 
+        } else if (o instanceof byte[]) {
+            byte[] set = (byte[]) o;
+            encoded.writeByte(OPCODE_BYTEARRAY_VALUE);
+            encoded.writeInt(set.length);
+            encoded.writeBytes(set);
         } else if (o instanceof Map) {
             Map set = (Map) o;
             encoded.writeByte(OPCODE_MAP_VALUE);
@@ -161,6 +167,12 @@ public class DodoMessageUtils {
                     Object o = readEncodedSimpleValue(encoded);
                     ret.add(o);
                 }
+                return ret;
+            }
+            case OPCODE_BYTEARRAY_VALUE: {
+                int len = encoded.readInt();
+                byte[] ret = new byte[len];
+                encoded.readBytes(ret);
                 return ret;
             }
             case OPCODE_LONG_VALUE:

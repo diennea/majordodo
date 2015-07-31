@@ -150,12 +150,14 @@ public class NettyChannel extends Channel {
 
     @Override
     public void close() {
-        try {
-            socket.close().await();
-        } catch (InterruptedException err) {
-            Thread.currentThread().interrupt();
-        } finally {
-            socket = null;
+        if (socket != null) {
+            try {
+                socket.close().await();
+            } catch (InterruptedException err) {
+                Thread.currentThread().interrupt();
+            } finally {
+                socket = null;
+            }
         }
 
         pendingReplyMessages.forEach((key, callback) -> {

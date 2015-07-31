@@ -19,6 +19,10 @@
  */
 package majordodo.task;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
@@ -33,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Connection to a node from the broker side
@@ -180,6 +185,26 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             case Message.TYPE_WORKER_SHUTDOWN:
                 /// ignore
                 break;
+            case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
+                LOGGER.log(Level.SEVERE, "creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from " + this.channel);
+                try {
+                    BrokerStatusSnapshot snapshot = broker.getBrokerStatus().createSnapshot();
+                    Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshot);
+                    ObjectMapper mapper = new ObjectMapper();
+                    byte[] data;
+                    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                        mapper.writeValue(out, filedata);
+                        data = out.toByteArray();
+                    } catch (IOException err) {
+                        throw new LogNotAvailableException(err);
+                    }
+                    LOGGER.log(Level.SEVERE, "sending snapshot data..." + data.length + " bytes");
+                    channel.sendReplyMessage(message, Message.SNAPSHOT_DOWNLOAD_RESPONSE(data));
+                } catch (Exception error) {
+                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+                }
+                break;
+
             default:
                 channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
 
@@ -195,11 +220,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         broker.getWorkers().wakeUp();
     }
 
-    void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex) {
+    void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex
+    ) {
         channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
     }
 
-    void answerConnectionAccepted(Message connectionRequestMessage) {
+    void answerConnectionAccepted(Message connectionRequestMessage
+    ) {
         channel.sendReplyMessage(connectionRequestMessage, Message.ACK(workerProcessId));
     }
 

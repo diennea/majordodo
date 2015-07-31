@@ -157,7 +157,8 @@ public class BrokerStatusSnapshot {
         return task;
     }
 
-    public static Map<String, Object> serializeSnaphsot(LogSequenceNumber actualLogSequenceNumber, BrokerStatusSnapshot snapshotData) {
+    public static Map<String, Object> serializeSnapshot(BrokerStatusSnapshot snapshotData) {
+        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
         Map<String, Object> filedata = new HashMap<>();
         filedata.put("ledgerid", actualLogSequenceNumber.ledgerId);
         filedata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);

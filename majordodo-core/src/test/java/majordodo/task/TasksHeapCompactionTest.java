@@ -68,7 +68,7 @@ public class TasksHeapCompactionTest {
         instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
 
         List<TasksHeap.TaskEntry> entries = new ArrayList<>();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });
@@ -81,7 +81,7 @@ public class TasksHeapCompactionTest {
 
         System.out.println("after take first");
         entries.clear();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });
@@ -92,7 +92,7 @@ public class TasksHeapCompactionTest {
         System.out.println("compaction...");
         instance.runCompaction();
         entries.clear();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });
@@ -123,7 +123,7 @@ public class TasksHeapCompactionTest {
         instance.insertTask(task6, TASKTYPE_MYTASK2, USERID1);
 
         List<TasksHeap.TaskEntry> entries = new ArrayList<>();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });
@@ -142,7 +142,7 @@ public class TasksHeapCompactionTest {
 
         System.out.println("after take first");
         entries.clear();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });
@@ -157,7 +157,7 @@ public class TasksHeapCompactionTest {
         System.out.println("compaction...");
         instance.runCompaction();
         entries.clear();
-        instance.scan(entry -> {
+        instance.scanFull(entry -> {
             System.out.println("entry:" + entry);
             entries.add(entry);
         });

@@ -19,8 +19,6 @@
  */
 package majordodo.replication;
 
-import majordodo.replication.ReplicatedCommitLog;
-import majordodo.replication.ZKBrokerLocator;
 import majordodo.task.StatusChangesLog;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.BrokerLocator;
@@ -37,7 +35,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
 import org.junit.Test;
 
 /**

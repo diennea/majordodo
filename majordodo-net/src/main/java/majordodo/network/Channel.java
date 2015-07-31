@@ -30,7 +30,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @author enrico.olivelli
  */
-public abstract class Channel {
+public abstract class Channel implements AutoCloseable {
 
     protected ChannelEventListener messagesReceiver;
 
@@ -51,6 +51,7 @@ public abstract class Channel {
 
     public abstract void sendMessageWithAsyncReply(Message message, ReplyCallback callback);
 
+    @Override
     public abstract void close();
 
     public Message sendMessageWithReply(Message message, long timeout) throws InterruptedException, TimeoutException {

@@ -98,29 +98,43 @@ public class ZKClusterManager implements AutoCloseable {
         this.connectionTimeout = zkTimeout; // TODO: specific configuration ?
     }
 
-    public List<Long> getActualLedgersList() throws LogNotAvailableException {
+    public LedgersInfo getActualLedgersList() throws LogNotAvailableException {
         try {
-            byte[] actualLedgers = zk.getData(ledgersPath, false, null);
-            String list = new String(actualLedgers, "utf-8");
-            return Stream.of(list.split(",")).filter(s -> !s.isEmpty()).map(s -> Long.parseLong(s)).collect(Collectors.toList());
+            Stat stat = new Stat();
+            byte[] actualLedgers = zk.getData(ledgersPath, false, stat);
+            return LedgersInfo.deserialize(actualLedgers, stat.getVersion());
         } catch (KeeperException.NoNodeException firstboot) {
-            return new ArrayList<>();
+            return LedgersInfo.deserialize(null, -1); // -1 is a special ZK version
         } catch (Exception error) {
             throw new LogNotAvailableException(error);
         }
     }
 
-    public void saveActualLedgersList(List<Long> ids) throws LogNotAvailableException {
-        // TODO: handle connectionloss
-        byte[] actualLedgers = ids.stream().map(l -> l.toString()).collect(Collectors.joining(",")).getBytes(StandardCharsets.UTF_8);
+    public void saveActualLedgersList(LedgersInfo info) throws LogNotAvailableException {
+        byte[] actualLedgers = info.serialize();
         try {
-            try {
-                zk.setData(ledgersPath, actualLedgers, -1);
-            } catch (KeeperException.NoNodeException firstboot) {
-                zk.create(ledgersPath, actualLedgers, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            while (true) {
+                try {
+                    try {
+                        Stat newStat = zk.setData(ledgersPath, actualLedgers, info.getZkVersion());
+                        info.setZkVersion(newStat.getVersion());
+                        LOGGER.log(Level.SEVERE, "save new ledgers list " + info);
+                        return;
+                    } catch (KeeperException.NoNodeException firstboot) {
+                        zk.create(ledgersPath, actualLedgers, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                    } catch (KeeperException.BadVersionException fenced) {
+                        throw new LogNotAvailableException(new Exception("ledgers actual list was fenced, expecting version " + info.getZkVersion() + " " + fenced, fenced).fillInStackTrace());
+                    }
+                } catch (KeeperException.ConnectionLossException anyError) {
+                    LOGGER.log(Level.SEVERE, "temporary error", anyError);
+                    Thread.sleep(10000);
+                } catch (Exception anyError) {
+                    throw new LogNotAvailableException(anyError);
+                }
             }
-        } catch (Exception anyError) {
-            throw new LogNotAvailableException(anyError);
+        } catch (InterruptedException stop) {
+            LOGGER.log(Level.SEVERE, "fatal error", stop);
+            throw new LogNotAvailableException(stop);
         }
     }
 
@@ -205,6 +219,14 @@ public class ZKClusterManager implements AutoCloseable {
 
     private void takeLeaderShip() {
         listener.leadershipAcquired();
+    }
+
+    public byte[] getActualMaster() throws Exception {
+        try {
+            return zk.getData(leaderpath, false, new Stat());
+        } catch (KeeperException.NoNodeException noMaster) {
+            return null;
+        }
     }
 
     private final AsyncCallback.StringCallback masterCreateCallback = new AsyncCallback.StringCallback() {

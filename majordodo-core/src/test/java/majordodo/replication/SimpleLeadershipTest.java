@@ -19,8 +19,6 @@
  */
 package majordodo.replication;
 
-import majordodo.replication.ZKClusterManager;
-import majordodo.replication.LeaderShipChangeListener;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertTrue;

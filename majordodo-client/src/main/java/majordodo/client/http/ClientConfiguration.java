@@ -58,8 +58,8 @@ public class ClientConfiguration {
         return this;
     }
 
-    public ClientConfiguration addBroker(InetSocketAddress broker) {
-        this.brokers.add(broker);
+    public ClientConfiguration addBroker(String host, int port) {
+        this.brokers.add(new InetSocketAddress(host, port));
         return this;
     }
 

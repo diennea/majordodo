@@ -305,7 +305,7 @@ public class FileCommitLog extends StatusChangesLog {
             Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
             LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnaphsot(actualLogSequenceNumber, snapshotData);
+            Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
 
             try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
                 mapper.writeValue(out, filedata);

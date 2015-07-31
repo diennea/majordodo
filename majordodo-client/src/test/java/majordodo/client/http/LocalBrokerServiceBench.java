@@ -37,7 +37,7 @@ public class LocalBrokerServiceBench {
     public void test() throws Exception {
         ClientConfiguration config = ClientConfiguration
                 .defaultConfiguration()
-                .addBroker(new InetSocketAddress("localhost", 7364));
+                .addBroker("localhost", 7364);
         try (Client client = new Client(config);) {
 
             try (ClientConnection con = client.openConnection()) {
@@ -54,7 +54,7 @@ public class LocalBrokerServiceBench {
                     request.setSlot(null);
                     request.setTimeToLive(240000);
                     SubmitTaskResponse submitTask = con.submitTask(request);
-                    System.out.println("submitTask:#" +i+" "+submitTask);
+                    System.out.println("submitTask:#" + i + " " + submitTask);
                 }
                 long _stop = System.currentTimeMillis();
                 long delta = _stop - _start;
@@ -63,7 +63,7 @@ public class LocalBrokerServiceBench {
                 status = con.getBrokerStatus();
                 System.out.println("status:" + status);
                 TaskStatus t = con.getTaskStatus("1");
-                System.out.println("t:"+t);
+                System.out.println("t:" + t);
 
             }
         }

@@ -37,6 +37,16 @@ public final class Message {
         return new Message(workerProcessId, TYPE_WORKER_SHUTDOWN, null);
     }
 
+    public static Message SNAPSHOT_DOWNLOAD_REQUEST() {
+        return new Message(null, TYPE_SNAPSHOT_DOWNLOAD_REQUEST, null);
+    }
+
+    public static Message SNAPSHOT_DOWNLOAD_RESPONSE(byte[] data) {
+        HashMap<String, Object> parameters = new HashMap<>();
+        parameters.put("data", data);
+        return new Message(null, TYPE_SNAPSHOT_DOWNLOAD_RESPONSE, parameters);
+    }
+
     public static Message TYPE_TASK_ASSIGNED(String workerProcessId, Map<String, Object> taskParameters) {
         return new Message(workerProcessId, TYPE_TASK_ASSIGNED, taskParameters);
     }
@@ -115,11 +125,17 @@ public final class Message {
     public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
     public static final int TYPE_TASK_ASSIGNED = 7;
     public static final int TYPE_WORKER_TASKS_REQUEST = 8;
+    public static final int TYPE_SNAPSHOT_DOWNLOAD_REQUEST = 9;
+    public static final int TYPE_SNAPSHOT_DOWNLOAD_RESPONSE = 10;
 
     public static String typeToString(int type) {
         switch (type) {
             case TYPE_TASK_FINISHED:
                 return "TYPE_TASK_FINISHED";
+            case TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
+                return "TYPE_SNAPSHOT_DOWNLOAD_REQUEST";
+            case TYPE_SNAPSHOT_DOWNLOAD_RESPONSE:
+                return "TYPE_SNAPSHOT_DOWNLOAD_RESPONSE";
             case TYPE_KILL_WORKER:
                 return "TYPE_KILL_WORKER";
             case TYPE_ERROR:
