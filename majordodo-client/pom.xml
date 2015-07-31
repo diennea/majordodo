@@ -8,7 +8,25 @@
     <version>0.1.2</version>
     <groupId>majordodo</groupId>
     <artifactId>majordodo-client</artifactId>
-    <build>        
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>2.4.3</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
     <dependencies>       
         <dependency>
@@ -31,5 +49,18 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
     </properties>
+    <distributionManagement>
+        <repository>            
+            <id>maven.mag-news.it</id>
+            <name>MagNews Public Repository</name>
+            <url>https://maven.mag-news.it/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>maven.mag-news.it</id>
+            <name>MagNews Public Repository</name>
+            <url>https://maven.mag-news.it/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>  
 </project>
