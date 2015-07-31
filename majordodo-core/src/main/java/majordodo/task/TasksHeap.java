@@ -24,11 +24,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 /**
  * Heap of tasks to be executed. Tasks are not arranged in a queue but in an
@@ -241,7 +241,7 @@ public class TasksHeap {
         }
     }
 
-    public List<Long> takeTasks(int max, List<Integer> groups, Map<String, Integer> availableSpace) {
+    public List<Long> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace) {
         Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
         lock.readLock().lock();
         try {
@@ -260,7 +260,7 @@ public class TasksHeap {
         }
 
         while (true) {
-            TasksChooser chooser = new TasksChooser(groups, availableSpaceByTaskTaskId, max);
+            TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, max);
             lock.readLock().lock();
             try {
                 for (int i = minValidPosition; i < actualsize; i++) {

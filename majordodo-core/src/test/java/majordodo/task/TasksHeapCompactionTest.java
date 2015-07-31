@@ -24,6 +24,7 @@ import majordodo.task.TasksHeap;
 import majordodo.task.GroupMapperFunction;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task2, entries.get(1).taskid);
 
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), availableSpace);
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
         assertEquals(1, taskids.size());
         assertEquals(task1, taskids.get(0).longValue());
 
@@ -134,7 +135,7 @@ public class TasksHeapCompactionTest {
         assertEquals(task5, entries.get(4).taskid);
         assertEquals(task6, entries.get(5).taskid);
 
-        List<Long> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY), availableSpace);
+        List<Long> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
         assertEquals(3, taskids.size());
         assertEquals(task2, taskids.get(0).longValue());
         assertEquals(task4, taskids.get(1).longValue());

@@ -114,13 +114,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             });
 
             int maxnewthreads = config.getMaxThreads() - runningTasks.size();
-            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups());
+            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups()+" excludedGroups"+config.getExcludedGroups());
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
             try {
                 _channel.sendMessageWithReply(
-                        Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), availableSpace, maxnewthreads),
+                        Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
                         config.getTasksRequestTimeout()
                 );
                 LOGGER.log(Level.FINER, "requestNewTasks finished");

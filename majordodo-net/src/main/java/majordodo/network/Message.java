@@ -92,13 +92,14 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Map<String, Integer> availableSpace, int max) {
+    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace, int max) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);
         params.put("groups", groups);
         params.put("availableSpace", availableSpace);
         params.put("max", max);
+        params.put("excludedGroups", excludedGroups);
         return new Message(processId, TYPE_WORKER_TASKS_REQUEST, params);
     }
 

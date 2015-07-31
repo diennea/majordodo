@@ -226,8 +226,8 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         return started;
     }
 
-    public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, String workerId) throws LogNotAvailableException {
-        List<Long> tasks = tasksHeap.takeTasks(max, groups, availableSpace);
+    public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId) throws LogNotAvailableException {
+        List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
         long now = System.currentTimeMillis();
         Set<Long> expired = null;
         for (long taskId : tasks) {

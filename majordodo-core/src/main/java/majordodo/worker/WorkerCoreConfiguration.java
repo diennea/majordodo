@@ -22,8 +22,10 @@ package majordodo.worker;
 import majordodo.task.Task;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import majordodo.utils.ReflectionUtils;
 
 /**
@@ -39,6 +41,7 @@ public class WorkerCoreConfiguration {
     private Map<String, Integer> maxThreadsByTaskType;
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
+    private Set<Integer> excludedGroups;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
@@ -47,6 +50,7 @@ public class WorkerCoreConfiguration {
         location = "unknown";
         groups = new ArrayList<>();
         groups.add(0);
+        excludedGroups = new HashSet<>();
     }
 
     public void read(Map<String, Object> properties) {
@@ -107,7 +111,8 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * User groups, in order of priority
+     * User groups, in order of priority. Group = 0 measns "any group except
+     * from excludedGroups"
      *
      * @return
      */
@@ -117,6 +122,19 @@ public class WorkerCoreConfiguration {
 
     public void setGroups(List<Integer> groups) {
         this.groups = groups;
+    }
+
+    /**
+     * List of excluded groups from the "any group" special group
+     *
+     * @return
+     */
+    public Set<Integer> getExcludedGroups() {
+        return excludedGroups;
+    }
+
+    public void setExcludedGroups(Set<Integer> excludedGroups) {
+        this.excludedGroups = excludedGroups;
     }
 
     /**

@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -34,6 +35,7 @@ import java.util.logging.Logger;
 public class TasksChooser {
 
     private final List<Integer> groups;
+    private final Set<Integer> excludedGroups;
     private final Map<Integer, Integer> availableSpace;
     private final Map<Integer, Integer> priorityByGroup = new HashMap<>();
     private final boolean matchAllGroups;
@@ -111,9 +113,10 @@ public class TasksChooser {
 
     };
 
-    TasksChooser(List<Integer> groups, Map<Integer, Integer> availableSpace, int max) {
+    TasksChooser(List<Integer> groups, Set<Integer> excludedGroups, Map<Integer, Integer> availableSpace, int max) {
         this.availableSpace = new HashMap<>(availableSpace);
         this.groups = groups;
+        this.excludedGroups = excludedGroups;
         this.max = max;
         availableSpace.keySet().stream().forEach((tasktype) -> {
             if (tasktype > 0) {
@@ -161,7 +164,7 @@ public class TasksChooser {
 
     boolean accept(int position, TasksHeap.TaskEntry entry) {
         final int idgroup = entry.groupid;
-        if (matchAllGroups || groups.contains(idgroup)) {
+        if ((matchAllGroups && !excludedGroups.contains(idgroup)) || groups.contains(idgroup)) {
             int tasktype = entry.tasktype;
             Integer availableSpaceForTaskType = availableSpace.get(tasktype);
             if (availableSpaceForTaskType == null) {

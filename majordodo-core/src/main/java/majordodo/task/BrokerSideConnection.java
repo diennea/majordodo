@@ -172,9 +172,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             case Message.TYPE_WORKER_TASKS_REQUEST:
                 Map<String, Integer> availableSpace = (Map<String, Integer>) message.parameters.get("availableSpace");
                 List<Integer> groups = (List<Integer>) message.parameters.get("groups");
+                Set<Integer> excludedGroups = (Set<Integer>) message.parameters.get("excludedGroups");
                 Integer max = (Integer) message.parameters.get("max");
                 try {
-                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, workerId);
+                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups,excludedGroups, workerId);
                     taskIds.forEach(manager::taskAssigned);
                     // worker will wait for an ack before requesting new tasks again
                     channel.sendReplyMessage(message, Message.ACK(workerProcessId));

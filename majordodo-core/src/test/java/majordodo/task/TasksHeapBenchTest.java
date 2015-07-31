@@ -23,6 +23,7 @@ import majordodo.task.Task;
 import majordodo.task.TasksHeap;
 import majordodo.task.GroupMapperFunction;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
@@ -74,7 +75,7 @@ public class TasksHeapBenchTest {
             Map<String, Integer> availableSpace = new HashMap<>();
             availableSpace.put(TASKTYPE_MYTASK1, 1);
             for (int i = 0; i < 1000; i++) {
-                instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), availableSpace);
+                instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
 //                instance.scan(entry -> {
 //                    System.out.println("entry:" + entry);
 //                });

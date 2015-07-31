@@ -30,6 +30,8 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.network.netty.NettyChannelAcceptor;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -42,7 +44,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * @author enrico.olivelli
  */
-public class SimpleBrokerStatusReplicationTest {
+public class BrokerStatusReplicationWithLedgerDeletionTest {
 
     @Before
     public void setupLogger() throws Exception {
@@ -109,15 +111,39 @@ public class SimpleBrokerStatusReplicationTest {
             BrokerConfiguration brokerConfig = new BrokerConfiguration();
             brokerConfig.setMaxWorkerIdleTime(5000);
 
-            try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port)), new TasksHeap(1000, createGroupMapperFunction()));) {
+            try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port));
+                    Broker broker1 = new Broker(brokerConfig, log1, new TasksHeap(1000, createGroupMapperFunction()));) {
                 broker1.startAsWritable();
-                try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(),host, port)) {
+                try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {
-                        broker2.start();
+                    taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
 
-                        taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+                    log1.setLedgersRetentionPeriod(1);
+                    log1.setMaxLogicalLogFileSize(10);
+
+                    System.out.println("ledgers:" + log1.getActualLedgersList());
+                    broker1.checkpoint();
+                    broker1.noop();
+                    broker1.noop();
+                    broker1.noop();
+                    System.out.println("ledgers:" + log1.getActualLedgersList());
+                    broker1.checkpoint();
+                    broker1.noop();
+                    broker1.noop();
+                    broker1.noop();
+                    System.out.println("ledgers:" + log1.getActualLedgersList());
+                    broker1.checkpoint();
+                    broker1.noop();
+                    broker1.noop();
+                    broker1.noop();
+                    System.out.println("ledgers:" + log1.getActualLedgersList());
+                    assertEquals(1, log1.getActualLedgersList().getActiveLedgers().size());
+                    assertFalse(log1.getActualLedgersList().getActiveLedgers().contains(log1.getActualLedgersList().getFirstLedger()));
+
+                    try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2));
+                            Broker broker2 = new Broker(brokerConfig, log2, new TasksHeap(1000, createGroupMapperFunction()));) {
+                        broker2.start();
 
                         // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                         broker1.noop();

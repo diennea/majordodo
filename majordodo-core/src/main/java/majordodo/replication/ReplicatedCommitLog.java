@@ -83,6 +83,21 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private int ensemble = 1;
     private int writeQuorumSize = 1;
     private int ackQuorumSize = 1;
+    private long ledgersRetentionPeriod = 1000 * 60 * 60 * 24;
+    private long maxLogicalLogFileSize = 1024 * 1024 * 256;
+    private long writtenBytes = 0;
+
+    public long getMaxLogicalLogFileSize() {
+        return maxLogicalLogFileSize;
+    }
+
+    public void setMaxLogicalLogFileSize(long maxLogicalLogFileSize) {
+        this.maxLogicalLogFileSize = maxLogicalLogFileSize;
+    }
+
+    public LedgersInfo getActualLedgersList() {
+        return actualLedgersList;
+    }
 
     private byte[] downloadSnapshotFromMaster(byte[] actualMaster) throws Exception {
         InetSocketAddress hostdata = Broker.parseHostdata(actualMaster);
@@ -121,11 +136,12 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     private class CommitFileWriter implements AutoCloseable {
 
-        LedgerHandle out;
+        private LedgerHandle out;
 
         private CommitFileWriter() throws LogNotAvailableException {
             try {
                 this.out = bookKeeper.createLedger(ensemble, writeQuorumSize, ackQuorumSize, BookKeeper.DigestType.MAC, magic);
+                writtenBytes = 0;
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
             }
@@ -138,13 +154,21 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException {
             try {
                 byte[] serialize = edit.serialize();
-                return this.out.addEntry(serialize);
+                writtenBytes += serialize.length;
+                long res = this.out.addEntry(serialize);
+                if (writtenBytes > maxLogicalLogFileSize) {
+                    LOGGER.log(Level.SEVERE, "{0} bytes written to ledger. need to open a new one", writtenBytes);
+                    openNewLedger();
+                }
+                return res;
             } catch (BKException.BKLedgerClosedException err) {
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw err;
             } catch (BKException.BKLedgerFencedException err) {
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw err;
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger", err);
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
             }
         }
@@ -154,6 +178,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 out.close();
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
+            } finally {
+                out = null;
             }
         }
     }
@@ -213,14 +239,22 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         this.ackQuorumSize = ackQuorumSize;
     }
 
+    public long getLedgersRetentionPeriod() {
+        return ledgersRetentionPeriod;
+    }
+
+    public void setLedgersRetentionPeriod(long ledgersRetentionPeriod) {
+        this.ledgersRetentionPeriod = ledgersRetentionPeriod;
+    }
+
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
-        writeLock.lock();
-        try {
-            if (writer == null) {
-                throw new LogNotAvailableException(new Exception("no ledger opened for writing"));
-            }
-            while (true) {
+        while (true) {
+            writeLock.lock();
+            try {
+                if (writer == null) {
+                    throw new LogNotAvailableException(new Exception("no ledger opened for writing"));
+                }
                 try {
                     long newSequenceNumber = writer.writeEntry(edit);
                     lastSequenceNumber = newSequenceNumber;
@@ -235,12 +269,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     close();
                     throw new LogNotAvailableException(fenced);
                 }
+            } catch (InterruptedException err) {
+                throw new LogNotAvailableException(err);
+            } finally {
+                writeLock.unlock();
             }
-        } catch (InterruptedException err) {
-            throw new LogNotAvailableException(err);
-        } finally {
-            writeLock.unlock();
         }
+
     }
 
     private void openNewLedger() throws LogNotAvailableException {
@@ -255,7 +290,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             if (actualLedgersList.getFirstLedger() < 0) {
                 actualLedgersList.setFirstLedger(currentLedgerId);
             }
-            actualLedgersList.getActiveLedgers().add(currentLedgerId);
+            actualLedgersList.addLedger(currentLedgerId);
             zKClusterManager.saveActualLedgersList(actualLedgersList);
         } finally {
             writeLock.unlock();
@@ -353,6 +388,46 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         } finally {
             snapshotLock.unlock();
+        }
+        if (zKClusterManager.isLeader()) {
+            dropOldLedgers();
+        }
+    }
+
+    private void dropOldLedgers() throws LogNotAvailableException {
+        if (ledgersRetentionPeriod > 0) {
+            long min_timestamp = System.currentTimeMillis() - ledgersRetentionPeriod;
+            List<Long> oldLedgers;
+            writeLock.lock();
+            try {
+                oldLedgers = actualLedgersList.getOldLedgers(min_timestamp);
+                oldLedgers.remove(this.currentLedgerId);
+            } finally {
+                writeLock.unlock();
+            }
+            if (oldLedgers.isEmpty()) {
+                return;
+            }
+            LOGGER.log(Level.SEVERE, "dropping ledgers before ", new java.sql.Timestamp(min_timestamp) + ": " + oldLedgers);
+            for (long ledgerId : oldLedgers) {
+                writeLock.lock();
+                try {
+                    LOGGER.log(Level.SEVERE, "dropping ledger {0}", ledgerId);
+                    actualLedgersList.removeLedger(ledgerId);
+                    bookKeeper.deleteLedger(ledgerId);
+                    zKClusterManager.saveActualLedgersList(actualLedgersList);
+                    LOGGER.log(Level.SEVERE, "dropping ledger {0}, finished", ledgerId);
+                } catch (BKException | InterruptedException error) {
+                    LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                    throw new LogNotAvailableException(error);
+                } catch (LogNotAvailableException error) {
+                    LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                    throw error;
+                } finally {
+                    writeLock.unlock();
+                }
+            }
+
         }
     }
 
@@ -460,26 +535,36 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private volatile boolean closed = false;
 
     @Override
-    public final void close() {
-        LOGGER.severe("closing");
-        if (writer != null) {
-            try {
-                writer.close();
-            } catch (Exception err) {
-                err.printStackTrace();
-            } finally {
-                writer = null;
+    public final void close() {        
+        writeLock.lock();
+        try {
+            if (closed) {
+                return;
             }
-        }
-        if (zKClusterManager != null) {
-            try {
-                zKClusterManager.close();
-            } finally {
-                zKClusterManager = null;
+            if (writer != null) {
+
+                try {
+                    writer.close();
+                } catch (Exception err) {
+                    err.printStackTrace();
+                } finally {
+                    writer = null;
+                }
             }
+            if (zKClusterManager != null) {
+                try {
+                    zKClusterManager.close();
+                } finally {
+                    zKClusterManager = null;
+                }
+            }
+            closed = true;
+            LOGGER.severe("closed");
+        } finally {
+            writer = null;
+            writeLock.unlock();
         }
-        closed = true;
-        LOGGER.severe("closed");
+
     }
 
     @Override

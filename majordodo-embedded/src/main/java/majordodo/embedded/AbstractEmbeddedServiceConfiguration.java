@@ -60,4 +60,12 @@ public abstract class AbstractEmbeddedServiceConfiguration {
         }
         return Integer.parseInt(value.toString());
     }
+
+    public long getLongProperty(String key, long defaultValue) {
+        Object value = properties.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Long.parseLong(value.toString());
+    }
 }

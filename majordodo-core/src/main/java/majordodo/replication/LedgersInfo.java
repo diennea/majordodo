@@ -35,12 +35,21 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class LedgersInfo {
 
     private List<Long> activeLedgers = new ArrayList<>();
+    private List<Long> ledgersTimestamps = new ArrayList<>();
     private long firstLedger = -1;
     private int zkVersion;
 
     @Override
     public String toString() {
         return "LedgersInfo{" + "activeLedgers=" + activeLedgers + ", firstLedger=" + firstLedger + ", zkVersion=" + zkVersion + '}';
+    }
+
+    public List<Long> getLedgersTimestamps() {
+        return ledgersTimestamps;
+    }
+
+    public void setLedgersTimestamps(List<Long> ledgersTimestamps) {
+        this.ledgersTimestamps = ledgersTimestamps;
     }
 
     public int getZkVersion() {
@@ -77,6 +86,41 @@ public class LedgersInfo {
             throw new RuntimeException(impossible);
         }
 
+    }
+
+    public void addLedger(long id) {
+        activeLedgers.add(id);
+        ledgersTimestamps.add(System.currentTimeMillis());
+        if (firstLedger < 0) {
+            firstLedger = id;
+        }
+    }
+
+    public void removeLedger(long id) throws IllegalArgumentException {
+        int index = -1;
+        for (int i = 0; i < activeLedgers.size(); i++) {
+            if (activeLedgers.get(i) == id) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) {
+            throw new IllegalArgumentException("ledger " + id + " not in list " + activeLedgers);
+        }
+        activeLedgers.remove(index);
+        ledgersTimestamps.remove(index);
+    }
+
+    public List<Long> getOldLedgers(long timestamp) throws IllegalArgumentException {
+        List<Long> res = new ArrayList<>();
+        for (int i = 0; i < activeLedgers.size(); i++) {
+            long id = activeLedgers.get(i);
+            long ledgerTimestamp = ledgersTimestamps.get(i);
+            if (ledgerTimestamp < timestamp) {
+                res.add(id);
+            }
+        }
+        return res;
     }
 
     public List<Long> getActiveLedgers() {

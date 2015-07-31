@@ -19,15 +19,11 @@
  */
 package majordodo.replication;
 
-import majordodo.replication.ReplicatedCommitLog;
-import com.sun.javafx.scene.control.skin.VirtualFlow;
 import majordodo.task.BrokerStatusSnapshot;
-import majordodo.task.FileCommitLog;
 import majordodo.task.LogSequenceNumber;
 import majordodo.task.StatusEdit;
 import majordodo.task.Task;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
