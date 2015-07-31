@@ -21,7 +21,6 @@ package majordodo.broker;
 
 import majordodo.task.FileCommitLog;
 import majordodo.task.GroupMapperFunction;
-import majordodo.task.MemoryCommitLog;
 import majordodo.task.StatusChangesLog;
 import majordodo.task.TasksHeap;
 import majordodo.network.netty.NettyChannelAcceptor;
@@ -38,6 +37,7 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.daemons.PidFileLocker;
 import majordodo.replication.ReplicatedCommitLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -52,6 +52,7 @@ public class BrokerMain implements AutoCloseable {
     private Server httpserver;
     private NettyChannelAcceptor server;
     private final Properties configuration;
+    private final PidFileLocker pidFileLocker;
 
     private static BrokerMain runningInstance;
 
@@ -61,6 +62,7 @@ public class BrokerMain implements AutoCloseable {
 
     public BrokerMain(Properties configuration) {
         this.configuration = configuration;
+        this.pidFileLocker = new PidFileLocker(Paths.get(System.getProperty("user.dir", ".")).toAbsolutePath());
     }
 
     @Override
@@ -93,11 +95,13 @@ public class BrokerMain implements AutoCloseable {
                 broker = null;
             }
         }
+        pidFileLocker.close();
         running.countDown();
     }
 
     public static void main(String... args) {
         try {
+
             Properties configuration = new Properties();
             File configFile;
             if (args.length > 0) {
@@ -148,6 +152,7 @@ public class BrokerMain implements AutoCloseable {
     }
 
     public void start() throws Exception {
+        pidFileLocker.lock();
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
@@ -200,6 +205,10 @@ public class BrokerMain implements AutoCloseable {
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
         config.read(props);
         broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
+        broker.setExternalProcessChecker(() -> {
+            pidFileLocker.check();
+            return null;
+        });
         broker.start();
 
         System.out.println("Listening for workers connections on " + host + ":" + port);

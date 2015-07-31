@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -64,6 +65,23 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
+    private Callable<Void> externalProcessChecker; // PIDFILECHECKER
+
+    public KillWorkerHandler getKillWorkerHandler() {
+        return killWorkerHandler;
+    }
+
+    public void setKillWorkerHandler(KillWorkerHandler killWorkerHandler) {
+        this.killWorkerHandler = killWorkerHandler;
+    }
+
+    public Callable<Void> getExternalProcessChecker() {
+        return externalProcessChecker;
+    }
+
+    public void setExternalProcessChecker(Callable<Void> externalProcessChecker) {
+        this.externalProcessChecker = externalProcessChecker;
+    }
 
     public void die() {
         LOGGER.log(Level.SEVERE, "Die!");
@@ -114,7 +132,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             });
 
             int maxnewthreads = config.getMaxThreads() - runningTasks.size();
-            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups()+" excludedGroups"+config.getExcludedGroups());
+            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
@@ -309,7 +327,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 });
                 disconnect();
             }
-
+            if (externalProcessChecker != null) {
+                try {
+                    externalProcessChecker.call();
+                } catch (Exception err) {
+                    err.printStackTrace();
+                    killWorkerHandler.killWorker(WorkerCore.this);
+                }
+            }
         }
     }
 

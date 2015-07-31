@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.client.BrokerStatusView;
@@ -48,6 +49,15 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
+    private Callable<Void> externalProcessChecker; // PIDFILECHECKER
+
+    public Callable<Void> getExternalProcessChecker() {
+        return externalProcessChecker;
+    }
+
+    public void setExternalProcessChecker(Callable<Void> externalProcessChecker) {
+        this.externalProcessChecker = externalProcessChecker;
+    }
 
     public String getBrokerId() {
         return brokerId;
@@ -181,7 +191,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 try {
                     while (!stopped) {
                         noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
-                        Thread.sleep(1000);
+                        if (externalProcessChecker != null) {
+                            externalProcessChecker.call();
+                        }
+                        Thread.sleep(10000);
                     }
                 } catch (InterruptedException exit) {
                 }

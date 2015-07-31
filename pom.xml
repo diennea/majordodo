@@ -10,8 +10,7 @@
         <module>./majordodo-client</module>
         <module>./majordodo-net</module>
         <module>./majordodo-core</module>
-        <module>./majordodo-services</module>                
-        <module>./majordodo-packager</module>
+        <module>./majordodo-services</module>                        
         <module>./majordodo-embedded</module>        
     </modules>
     <properties>

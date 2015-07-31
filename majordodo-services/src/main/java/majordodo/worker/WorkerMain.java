@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.daemons.PidFileLocker;
 import majordodo.replication.ZKBrokerLocator;
 
 /**
@@ -46,6 +48,7 @@ public class WorkerMain implements AutoCloseable {
     private static WorkerMain runningInstance;
     private final Properties configuration;
     private WorkerCore workerCore;
+    private final PidFileLocker pidFileLocker;
 
     public static void main(String... args) throws Exception {
         try {
@@ -92,9 +95,11 @@ public class WorkerMain implements AutoCloseable {
 
     public WorkerMain(Properties configuration) {
         this.configuration = configuration;
+        this.pidFileLocker = new PidFileLocker(Paths.get(System.getProperty("user.dir", ".")).toAbsolutePath());
     }
 
     public void start() throws Exception {
+        pidFileLocker.lock();
         BrokerLocator brokerLocator;
         String mode = configuration.getProperty("clustering.mode", "singleserver");
         switch (mode) {
@@ -163,6 +168,11 @@ public class WorkerMain implements AutoCloseable {
 
         workerCore = new WorkerCore(config, processid, brokerLocator, listener);
         workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
+        workerCore.setExternalProcessChecker(() -> {
+            pidFileLocker.check();
+            return null;
+        });
+        workerCore.setKillWorkerHandler(KillWorkerHandler.SHUTDOWN_JVM);
         workerCore.start();
         System.out.println("Started worker, maxthread " + maxthreads + " maxThreadPerTaskType:" + maximumThreadPerTaskType + ", groups=" + groups);
         System.out.println("WorkerID:" + workerid + ", processid:" + processid + " location:" + location);
@@ -190,6 +200,8 @@ public class WorkerMain implements AutoCloseable {
                 workerCore = null;
             }
         }
+        pidFileLocker.close();
         running.countDown();
+
     }
 }
