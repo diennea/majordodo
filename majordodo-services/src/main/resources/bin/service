@@ -51,17 +51,9 @@ case "$SERVICE" in
   worker)
     MAINCLASS=majordodo.worker.WorkerMain
     ;;
-
-  zookeeper)
-    MAINCLASS=majordodo.daemons.ZookeeperMain
-    ;;
-
-  bookkeeper)
-    MAINCLASS=majordodo.daemons.BookkeeperMain
-    ;;
-    
+      
   *)
-    echo $"Usage: $0 [broker|worker|zookeeper|bookkeeper] {start|stop|restart|console|kill|stacktrace|status}"
+    echo $"Usage: $0 [broker|worker] {start|stop|restart|console|kill|stacktrace|status}"
     RETVAL=1
     exit $RETVAL
 esac
