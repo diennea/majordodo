@@ -1,6 +1,6 @@
 # [Majordodo](http://majordodo.org/)
 
-MMajordodo is a Distributed Resource Manager, essentially consisting of brokers which coordinate a pool of workers.
+Majordodo is a Distributed Resource Manager, essentially consisting of brokers which coordinate a pool of workers.
 
 There is no single point of failure, brokers replicate state using Apache BookKeeper. Workers are handled in a very elastic way: you can add and remove workers at runtime, they can crash at any time and the system will continue to be available. You can also add workers to distinct groups to handle different type of works or priorities.
 
