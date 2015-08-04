@@ -31,17 +31,26 @@ import majordodo.task.MemoryCommitLog;
 import majordodo.task.StatusChangesLog;
 import majordodo.task.TasksHeap;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Utility to embed a Majordodo Broker
  *
  * @author enrico.olivelli
  */
-public class EmbeddedBroker {
+public class EmbeddedBroker implements AutoCloseable {
 
     private Broker broker;
     private BrokerConfiguration brokerConfiguration;
-    private GroupMapperFunction groupMapperFunction;
+    private GroupMapperFunction groupMapperFunction = new GroupMapperFunction() {
+
+        @Override
+        public int getGroup(long taskid, String taskType, String userid) {
+            return 1;
+        }
+    };
     private StatusChangesLog statusChangesLog;
     private NettyChannelAcceptor server;
     private final EmbeddedBrokerConfiguration configuration;
@@ -71,6 +80,10 @@ public class EmbeddedBroker {
     }
 
     public void start() throws Exception {
+        String id = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_BROKERID, "");
+        if (id.isEmpty()) {
+            id = UUID.randomUUID().toString();
+        }
         String host = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_HOST, "localhost");
         int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
         String mode = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_MODE, EmbeddedBrokerConfiguration.MODE_SIGLESERVER);
@@ -78,9 +91,12 @@ public class EmbeddedBroker {
         String snapshotsDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SNAPSHOTSDIRECTORY, "snapshots");
         String zkAdress = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKADDRESS, "localhost:1281");
         String zkPath = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKPATH, "/majordodo");
+        String clientapiurl = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_CLIENTAPIURL, "");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
         long maxFileSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_LOGSMAXFILESIZE, 1024 * 1024);
-
+        Map<String, String> additionalInfo = new HashMap<>();
+        additionalInfo.put("client.api.url", clientapiurl);
+        additionalInfo.put("broker.id", id);
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY: {
                 statusChangesLog = new MemoryCommitLog();
@@ -103,7 +119,7 @@ public class EmbeddedBroker {
                 if (!Files.isDirectory(_snapshotsDirectory)) {
                     Files.createDirectory(_snapshotsDirectory);
                 }
-                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port));
+                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port, additionalInfo));
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
                 int writeQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_WRITEQUORUMSIZE, _statusChangesLog.getWriteQuorumSize());
@@ -120,7 +136,7 @@ public class EmbeddedBroker {
         brokerConfiguration = new BrokerConfiguration();
         brokerConfiguration.read(configuration.getProperties());
         broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), groupMapperFunction));
-        broker.setBrokerId("embedded");
+        broker.setBrokerId(id);
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY:
                 break;
@@ -142,6 +158,11 @@ public class EmbeddedBroker {
         if (broker != null) {
             broker.stop();
         }
+    }
+
+    @Override
+    public void close() {
+        stop();
     }
 
 }

@@ -19,6 +19,7 @@
  */
 package majordodo.client.http;
 
+import majordodo.client.ClientConnection;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
@@ -28,7 +29,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerStatus;
+import majordodo.client.ClientException;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
@@ -48,7 +51,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.codehaus.jackson.map.ObjectMapper;
 
-public class ClientConnection implements AutoCloseable {
+public class HTTPClientConnection implements ClientConnection {
 
     private String transactionId;
     private boolean transacted;
@@ -58,9 +61,9 @@ public class ClientConnection implements AutoCloseable {
     private CloseableHttpClient httpclient;
     private ClientConfiguration configuration;
     private static boolean debug = Boolean.getBoolean("majordodo.client.debug");
-    private InetSocketAddress broker;
+    private BrokerAddress broker;
 
-    public ClientConnection(CloseableHttpClient client, ClientConfiguration configuration, InetSocketAddress broker) {
+    public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerAddress broker) {
         this.httpclient = client;
         this.configuration = configuration;
         this.broker = broker;
@@ -68,8 +71,8 @@ public class ClientConnection implements AutoCloseable {
 
     private HttpClientContext getContext() {
         if (context == null) {
-            String scheme = configuration.isUsessl() ? "https" : "http";
-            HttpHost targetHost = new HttpHost(broker.getAddress().getHostAddress(), broker.getPort(), scheme);
+            String scheme = broker.getProtocol();
+            HttpHost targetHost = new HttpHost(broker.getAddress(), broker.getPort(), scheme);
 
             context = HttpClientContext.create();
             if (configuration.getUsername() != null && !configuration.getUsername().isEmpty()) {
@@ -102,7 +105,8 @@ public class ClientConnection implements AutoCloseable {
         return m;
     }
 
-    public final void commit() throws IOException {
+    @Override
+    public final void commit() throws ClientException {
         if (transactionId == null) {
             return;
         }
@@ -110,7 +114,8 @@ public class ClientConnection implements AutoCloseable {
         transactionId = null;
     }
 
-    public final void rollback() throws IOException {
+    @Override
+    public final void rollback() throws ClientException {
         if (transactionId == null) {
             return;
         }
@@ -118,18 +123,20 @@ public class ClientConnection implements AutoCloseable {
         transactionId = null;
     }
 
+    @Override
     public final boolean isTransacted() {
         return transacted;
     }
 
+    @Override
     public final void setTransacted(boolean transacted) {
         if (transactionId != null) {
-            throw new IllegalStateException("cannot change transaction modo during transaction");
+            throw new IllegalStateException("cannot change transaction mode during transaction");
         }
         this.transacted = transacted;
     }
 
-    private Map<String, Object> request(String method, Map<String, Object> data) throws IOException {
+    private Map<String, Object> request(String method, Map<String, Object> data) throws ClientException {
 
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -156,20 +163,20 @@ public class ClientConnection implements AutoCloseable {
             }
             return rr;
         } catch (Exception err) {
-            throw new IOException(err);
+            throw new ClientException(err);
         }
     }
 
-    protected void beginTransaction() throws IOException {
+    protected void beginTransaction() throws ClientException {
         Map<String, Object> res = request("POST", map("action", "beginTransaction"));
         this.transactionId = res.get("transaction") + "";
     }
 
-    protected void commitTransaction(String id) throws IOException {
+    protected void commitTransaction(String id) throws ClientException {
         request("POST", map("action", "commitTransaction", "transaction", id));
     }
 
-    protected void rollbackTransaction(String id) throws IOException {
+    protected void rollbackTransaction(String id) throws ClientException {
         request("POST", map("action", "rollbackTransaction", "transaction", id));
     }
 
@@ -179,15 +186,16 @@ public class ClientConnection implements AutoCloseable {
      * @return
      * @throws IOException
      */
-    public SubmitTaskResponse submitTask(SubmitTaskRequest request) throws IOException {
+    @Override
+    public SubmitTaskResponse submitTask(SubmitTaskRequest request) throws ClientException {
         if (request.getUserid() == null || request.getUserid().isEmpty()) {
-            throw new IOException("invalid userid " + request.getUserid());
+            throw new ClientException("invalid userid " + request.getUserid());
         }
         if (request.getTasktype() == null || request.getTasktype().isEmpty()) {
-            throw new IOException("invalid tasktype " + request.getTasktype());
+            throw new ClientException("invalid tasktype " + request.getTasktype());
         }
         if (request.getMaxattempts() < 0) {
-            throw new IOException("invalid Maxattempts " + request.getMaxattempts());
+            throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
         }
         ensureTransaction();
         Map<String, Object> reqdata = new HashMap<>();
@@ -217,13 +225,15 @@ public class ClientConnection implements AutoCloseable {
 
     }
 
-    public TaskStatus getTaskStatus(String id) throws IOException {
-        Map<String, Object> data = request("GET", map("view", "task","taskId",id));
-        Map<String, Object> task = (Map<String, Object>) data.get("task");        
+    @Override
+    public TaskStatus getTaskStatus(String id) throws ClientException {
+        Map<String, Object> data = request("GET", map("view", "task", "taskId", id));
+        Map<String, Object> task = (Map<String, Object>) data.get("task");
         return deserializeTaskStatus(task);
     }
 
-    public BrokerStatus getBrokerStatus() throws IOException {
+    @Override
+    public BrokerStatus getBrokerStatus() throws ClientException {
         Map<String, Object> data = request("GET", map("view", "status"));
         BrokerStatus res = new BrokerStatus();
         res.setVersion(data.get("version") + "");
@@ -255,32 +265,32 @@ public class ClientConnection implements AutoCloseable {
         return res;
     }
 
-    protected final void ensureTransaction() throws IOException {
+    protected final void ensureTransaction() throws ClientException {
         if (transacted && transactionId == null) {
             beginTransaction();
         }
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws ClientException {
         try {
             if (transactionId != null) {
                 rollback();
             }
         } finally {
-            httpclient.close();
+            try {
+                httpclient.close();
+            } catch (IOException err) {
+                throw new ClientException(err);
+            }
 
         }
     }
 
     private String getBaseUrl() {
-        if (configuration.isUsessl()) {
-            String base = "https://" + broker.getHostName() + ":" + broker.getPort() + "" + configuration.getClientApiPath();
-            return base;
-        } else {
-            String base = "http://" + broker.getHostName() + ":" + broker.getPort() + "" + configuration.getClientApiPath();
-            return base;
-        }
+        String base = broker.getProtocol()+"://" + broker.getAddress() + ":" + broker.getPort() + "" + configuration.getClientApiPath();
+        return base;
+
     }
 
     private Map<String, Object> post(String contentType, byte[] content) throws IOException {
@@ -324,8 +334,8 @@ public class ClientConnection implements AutoCloseable {
     }
 
     private TaskStatus deserializeTaskStatus(Map<String, Object> task) {
-        
-        if (task.get("taskId")== null) {
+
+        if (task.get("taskId") == null) {
             return null;
         }
         TaskStatus t = new TaskStatus();

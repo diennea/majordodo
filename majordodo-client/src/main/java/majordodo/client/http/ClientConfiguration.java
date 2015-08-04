@@ -20,8 +20,9 @@
 package majordodo.client.http;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
+import majordodo.client.BrokerDiscoveryService;
+import majordodo.client.discovery.StaticBrokerDiscoveryService;
 
 /**
  * Client configuration
@@ -35,8 +36,7 @@ public class ClientConfiguration {
     private int maxConnPerRoute = 10;
     private int sotimeout = 240000;
     private int keepAlive = 30000;
-    private boolean usessl;
-    private List<InetSocketAddress> brokers = new ArrayList<>();
+    private BrokerDiscoveryService brokerDiscoveryService = new StaticBrokerDiscoveryService(null);
     private String username;
     private String password;
     private int connectionTimeout = 30000;
@@ -58,26 +58,12 @@ public class ClientConfiguration {
         return this;
     }
 
-    public ClientConfiguration addBroker(String host, int port) {
-        this.brokers.add(new InetSocketAddress(host, port));
-        return this;
+    public BrokerDiscoveryService getBrokerDiscoveryService() {
+        return brokerDiscoveryService;
     }
 
-    public boolean isUsessl() {
-        return usessl;
-    }
-
-    public ClientConfiguration setUsessl(boolean usessl) {
-        this.usessl = usessl;
-        return this;
-    }
-
-    public List<InetSocketAddress> getBrokers() {
-        return brokers;
-    }
-
-    public ClientConfiguration setBrokers(List<InetSocketAddress> brokers) {
-        this.brokers = brokers;
+    public ClientConfiguration setBrokerDiscoveryService(BrokerDiscoveryService brokerDiscoveryService) {
+        this.brokerDiscoveryService = brokerDiscoveryService;
         return this;
     }
 

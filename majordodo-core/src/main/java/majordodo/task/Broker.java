@@ -26,6 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,11 +72,15 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         return "0.1.2";
     }
 
-    public static byte[] formatHostdata(String host, int port) {
+    public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
         try {
             Map<String, String> data = new HashMap<>();
             data.put("host", host);
             data.put("port", port + "");
+            data.put("version", VERSION());
+            if (additional != null) {
+                data.putAll(additional);
+            }
             ByteArrayOutputStream oo = new ByteArrayOutputStream();
             new ObjectMapper().writeValue(oo, data);
             return oo.toByteArray();
@@ -237,6 +242,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     public boolean isRunning() {
         return started;
+    }
+    
+    public boolean isWritable(){
+        return log.isWritable();
     }
 
     public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId) throws LogNotAvailableException {

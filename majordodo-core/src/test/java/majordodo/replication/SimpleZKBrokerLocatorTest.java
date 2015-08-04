@@ -56,7 +56,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port));
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port,null));
     }
 
     @Override

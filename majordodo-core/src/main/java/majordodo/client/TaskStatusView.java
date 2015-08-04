@@ -20,6 +20,7 @@
 package majordodo.client;
 
 import java.util.Map;
+import majordodo.task.Task;
 
 /**
  * Visible status of a task for clients
@@ -35,11 +36,32 @@ public class TaskStatusView {
     private long createdTimestamp;
     private String data;
     private String result;
-    private String type;    
-    private String slot;    
-    private int attempts;    
-    private int maxattempts;       
+    private String type;
+    private String slot;
+    private int attempts;
+    private int maxattempts;
     private long executionDeadline;
+
+    public static String convertTaskStatusForClient(int taskStatus) {
+        String status;
+        switch (taskStatus) {
+            case Task.STATUS_ERROR:
+                status = "error";
+                break;
+            case Task.STATUS_FINISHED:
+                status = "finished";
+                break;
+            case Task.STATUS_RUNNING:
+                status = "running";
+                break;
+            case Task.STATUS_WAITING:
+                status = "waiting";
+                break;
+            default:
+                status = "?" + taskStatus;
+        }
+        return status;
+    }
 
     @Override
     public String toString() {
@@ -85,8 +107,6 @@ public class TaskStatusView {
     public void setType(String type) {
         this.type = type;
     }
-    
-    
 
     public long getTaskId() {
         return taskId;

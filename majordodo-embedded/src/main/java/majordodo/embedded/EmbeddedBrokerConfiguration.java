@@ -31,6 +31,8 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
     public static String KEY_HOST = "broker.host";
     public static String KEY_PORT = "broker.port";
+    public static String KEY_CLIENTAPIURL = "broker.clientapiurl";
+    public static String KEY_BROKERID = "broker.id";
 
     public static String KEY_BK_ENSEMBLE_SIZE = "bookeeper.ensemblesize";
     public static String KEY_BK_WRITEQUORUMSIZE = "bookeeper.writequorumsize";

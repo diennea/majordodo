@@ -19,11 +19,12 @@
  */
 package majordodo.client.http;
 
-import java.net.InetSocketAddress;
+import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerStatus;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
+import majordodo.client.discovery.StaticBrokerDiscoveryService;
 import org.junit.Test;
 
 /**
@@ -37,10 +38,10 @@ public class LocalBrokerServiceBench {
     public void test() throws Exception {
         ClientConfiguration config = ClientConfiguration
                 .defaultConfiguration()
-                .addBroker("localhost", 7364);
+                .setBrokerDiscoveryService(new StaticBrokerDiscoveryService(BrokerAddress.http("localhost", 7364)));
         try (Client client = new Client(config);) {
 
-            try (ClientConnection con = client.openConnection()) {
+            try (HTTPClientConnection con = client.openConnection()) {
                 BrokerStatus status = con.getBrokerStatus();
                 System.out.println("status:" + status);
                 long _start = System.currentTimeMillis();

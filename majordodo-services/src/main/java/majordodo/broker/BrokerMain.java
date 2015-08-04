@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -153,6 +154,10 @@ public class BrokerMain implements AutoCloseable {
 
     public void start() throws Exception {
         pidFileLocker.lock();
+        String id = configuration.getProperty("broker.id", "");
+        if (id.isEmpty()) {
+            id = UUID.randomUUID().toString();
+        }
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
@@ -168,6 +173,11 @@ public class BrokerMain implements AutoCloseable {
             mapper = (GroupMapperFunction) Class.forName(assigner).newInstance();
             System.out.println("GroupMapperFunction Mapper:" + mapper);
         }
+        String httppath = "/majordodo";
+        Map<String, String> additionalInfo = new HashMap<>();
+        String clientapiurl = "http://" + host + ":" + httpport + httppath;
+        additionalInfo.put("client.api.url", clientapiurl);
+        additionalInfo.put("broker.id", id);
 
         StatusChangesLog log;
         switch (clusteringmode) {
@@ -184,7 +194,7 @@ public class BrokerMain implements AutoCloseable {
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 String snapdir = configuration.getProperty("data.dir", "data");
 
-                ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir), Broker.formatHostdata(host, port));
+                ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir), Broker.formatHostdata(host, port, additionalInfo));
                 log = _log;
                 int ensemble = Integer.parseInt(configuration.getProperty("bookeeper.ensemblesize", _log.getEnsemble() + ""));
                 int writeQuorumSize = Integer.parseInt(configuration.getProperty("bookeeper.writequorumsize", _log.getWriteQuorumSize() + ""));
@@ -205,6 +215,7 @@ public class BrokerMain implements AutoCloseable {
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
         config.read(props);
         broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
+        broker.setBrokerId(id);
         broker.setExternalProcessChecker(() -> {
             pidFileLocker.check();
             return null;
@@ -223,10 +234,20 @@ public class BrokerMain implements AutoCloseable {
         httpserver.setHandler(context);
         ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
         jerseyServlet.setInitOrder(0);
-        context.addServlet(jerseyServlet, "/majordodo");
-        System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport);
+        context.addServlet(jerseyServlet, httppath);
+        System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport + " base client url " + clientapiurl);
         httpserver.start();
         System.out.println("Broker starter");
+    }
+
+    public void waitForLeadership() throws Exception {
+        for (int i = 0; i < 100; i++) {
+            System.out.println("Waiting for leadership");            
+            if (broker.isWritable()) {
+                return;
+            }
+            Thread.sleep(1000);
+        }
     }
 
 }

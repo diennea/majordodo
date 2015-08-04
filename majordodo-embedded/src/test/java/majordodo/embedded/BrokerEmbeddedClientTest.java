@@ -3,36 +3,24 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package majordodo.broker;
+package majordodo.embedded;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Properties;
+import majordodo.client.ClientConnection;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
-import majordodo.client.http.Client;
-import majordodo.client.http.ClientConfiguration;
-import majordodo.client.http.ClientConnection;
-import org.apache.commons.io.IOUtils;
-import org.codehaus.jackson.map.ObjectMapper;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
-public class BrokerClientTest {
+public class BrokerEmbeddedClientTest {
 
     @Test
     public void test() throws Exception {
-        try (BrokerMain main = new BrokerMain(new Properties());) {
+        try (EmbeddedBroker main = new EmbeddedBroker(new EmbeddedBrokerConfiguration());) {            
             main.start();
-            ClientConfiguration configuration = ClientConfiguration
-                    .defaultConfiguration()
-                    .addBroker("127.0.0.1", 7364);
-            try (Client client = new Client(configuration);
+            
+            try (EmbeddedClient client = new EmbeddedClient();
                     ClientConnection con = client.openConnection()) {
                 SubmitTaskRequest req = new SubmitTaskRequest();
                 req.setTasktype("mytype");

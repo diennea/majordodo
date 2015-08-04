@@ -85,6 +85,7 @@ public class ZKClusterManager implements AutoCloseable {
     private final String basePath;
     private final byte[] localhostdata;
     private final String leaderpath;
+    private final String discoverypath;
     private final String ledgersPath;
     private final int connectionTimeout;
 
@@ -94,6 +95,7 @@ public class ZKClusterManager implements AutoCloseable {
         this.listener = listener;
         this.localhostdata = localhostdata;
         this.leaderpath = basePath + "/leader";
+        this.discoverypath = basePath + "/discoverypath";
         this.ledgersPath = basePath + "/ledgers";
         this.connectionTimeout = zkTimeout; // TODO: specific configuration ?
     }
@@ -141,13 +143,24 @@ public class ZKClusterManager implements AutoCloseable {
     public void start() throws Exception {
         try {
             if (this.zk.exists(basePath, false) == null) {
-                LOGGER.log(Level.INFO, "creating base path " + basePath);
+                LOGGER.log(Level.SEVERE, "creating base path " + basePath);
                 try {
                     this.zk.create(basePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
                 } catch (KeeperException anyError) {
                     throw new Exception("Could not init Zookeeper space at path " + basePath, anyError);
                 }
             }
+            if (this.zk.exists(discoverypath, false) == null) {
+                LOGGER.log(Level.SEVERE, "creating discoverypath path " + discoverypath);
+                try {
+                    this.zk.create(discoverypath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                } catch (KeeperException anyError) {
+                    throw new Exception("Could not init Zookeeper space at path " + discoverypath, anyError);
+                }
+            }
+            String newPath = zk.create(discoverypath + "/brokers", localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+            LOGGER.log(Level.SEVERE, "my own discoverypath path is " + newPath);
+            
         } catch (KeeperException error) {
             throw new Exception("Could not init Zookeeper space at path " + basePath, error);
         }

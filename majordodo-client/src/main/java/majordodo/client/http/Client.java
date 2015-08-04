@@ -27,6 +27,7 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import majordodo.client.BrokerAddress;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.config.Registry;
@@ -82,15 +83,16 @@ public class Client implements AutoCloseable {
         createClient();
     }
 
-    public ClientConnection openConnection() throws IOException {
+    public HTTPClientConnection openConnection() throws IOException {
         CloseableHttpClient _client = httpclient;
         if (_client == null) {
             throw new IOException("shared connection pool is closed");
         }
-        if (configuration.getBrokers().isEmpty()) {
-            throw new IOException("no broker configured");
+        BrokerAddress address = configuration.getBrokerDiscoveryService().getLeaderBroker();
+        if (address == null) {
+              throw new IOException("no broker available");
         }
-        return new ClientConnection(_client, configuration, configuration.getBrokers().get(0));
+        return new HTTPClientConnection(_client, configuration, address);
     }
 
     public void close() {

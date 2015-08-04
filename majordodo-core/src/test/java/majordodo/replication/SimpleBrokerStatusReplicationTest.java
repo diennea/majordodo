@@ -109,12 +109,12 @@ public class SimpleBrokerStatusReplicationTest {
             BrokerConfiguration brokerConfig = new BrokerConfiguration();
             brokerConfig.setMaxWorkerIdleTime(5000);
 
-            try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port)), new TasksHeap(1000, createGroupMapperFunction()));) {
+            try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port, null)), new TasksHeap(1000, createGroupMapperFunction()));) {
                 broker1.startAsWritable();
-                try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(),host, port)) {
+                try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2)), new TasksHeap(1000, createGroupMapperFunction()));) {
+                    try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2, null)), new TasksHeap(1000, createGroupMapperFunction()));) {
                         broker2.start();
 
                         taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();

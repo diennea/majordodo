@@ -192,23 +192,8 @@ public class HttpAPIImplementation {
         map.put("result", t.getResult());
         map.put("slot", t.getSlot());
         map.put("data", t.getData());
-        String status;
-        switch (t.getStatus()) {
-            case Task.STATUS_ERROR:
-                status = "error";
-                break;
-            case Task.STATUS_FINISHED:
-                status = "finished";
-                break;
-            case Task.STATUS_RUNNING:
-                status = "running";
-                break;
-            case Task.STATUS_WAITING:
-                status = "waiting";
-                break;
-            default:
-                status = "?" + t.getStatus();
-        }
+        int taskStatus = t.getStatus();
+        String status = TaskStatusView.convertTaskStatusForClient(taskStatus);
         map.put("status", status);
         return map;
     }
