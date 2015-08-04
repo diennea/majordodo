@@ -137,6 +137,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                     broker1.noop();
                     broker1.noop();
                     broker1.noop();
+                    broker1.checkpoint();
                     System.out.println("ledgers:" + log1.getActualLedgersList());
                     assertEquals(1, log1.getActualLedgersList().getActiveLedgers().size());
                     assertFalse(log1.getActualLedgersList().getActiveLedgers().contains(log1.getActualLedgersList().getFirstLedger()));
