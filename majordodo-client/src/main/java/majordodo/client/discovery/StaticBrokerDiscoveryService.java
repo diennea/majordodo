@@ -21,7 +21,6 @@ package majordodo.client.discovery;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;

@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
+import majordodo.client.BrokerDiscoveryService;
 import majordodo.client.BrokerStatus;
 import majordodo.client.ClientException;
 import majordodo.client.SubmitTaskRequest;
@@ -62,11 +63,13 @@ public class HTTPClientConnection implements ClientConnection {
     private ClientConfiguration configuration;
     private static boolean debug = Boolean.getBoolean("majordodo.client.debug");
     private BrokerAddress broker;
+    private final BrokerDiscoveryService discoveryService;
 
-    public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerAddress broker) {
+    public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerAddress broker, BrokerDiscoveryService discoveryService) {
         this.httpclient = client;
         this.configuration = configuration;
         this.broker = broker;
+        this.discoveryService = discoveryService;
     }
 
     private HttpClientContext getContext() {
@@ -163,6 +166,7 @@ public class HTTPClientConnection implements ClientConnection {
             }
             return rr;
         } catch (Exception err) {
+            discoveryService.brokerFailed(broker);
             throw new ClientException(err);
         }
     }
@@ -273,22 +277,13 @@ public class HTTPClientConnection implements ClientConnection {
 
     @Override
     public void close() throws ClientException {
-        try {
-            if (transactionId != null) {
-                rollback();
-            }
-        } finally {
-            try {
-                httpclient.close();
-            } catch (IOException err) {
-                throw new ClientException(err);
-            }
-
+        if (transactionId != null) {
+            rollback();
         }
     }
 
     private String getBaseUrl() {
-        String base = broker.getProtocol()+"://" + broker.getAddress() + ":" + broker.getPort() + "" + configuration.getClientApiPath();
+        String base = broker.getProtocol() + "://" + broker.getAddress() + ":" + broker.getPort() + "" + broker.getPath();
         return base;
 
     }

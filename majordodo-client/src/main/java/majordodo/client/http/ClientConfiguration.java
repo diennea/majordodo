@@ -40,22 +40,12 @@ public class ClientConfiguration {
     private String username;
     private String password;
     private int connectionTimeout = 30000;
-    private String clientApiPath = "/majordodo";
-
-    public String getClientApiPath() {
-        return clientApiPath;
-    }
 
     public static ClientConfiguration defaultConfiguration() {
         return new ClientConfiguration();
     }
 
     private ClientConfiguration() {
-    }
-
-    public ClientConfiguration setClientApiPath(String clientApiPath) {
-        this.clientApiPath = clientApiPath;
-        return this;
     }
 
     public BrokerDiscoveryService getBrokerDiscoveryService() {

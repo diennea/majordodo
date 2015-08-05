@@ -45,6 +45,7 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     private final Supplier<ZooKeeper> client;
     private String zkPath = "/majordodo";
+    private BrokerAddress leaderBrokerCache;
 
     public ZookeeperDiscoveryService(Supplier<ZooKeeper> client) {
         this.client = client;
@@ -65,6 +66,10 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     @Override
     public BrokerAddress getLeaderBroker() {
+        if (leaderBrokerCache != null) {
+            return leaderBrokerCache;
+        }
+
         String leaderPath = zkPath + "/leader";
         ZooKeeper zk = client.get();
         if (zk == null) {
@@ -73,13 +78,19 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
         }
         try {
             byte[] data = zk.getData(leaderPath, false, null);
-            return parseBrokerAddress(data);
+            leaderBrokerCache = parseBrokerAddress(data);
+            return leaderBrokerCache;
         } catch (KeeperException.NoNodeException nobroker) {
             return null;
         } catch (KeeperException | InterruptedException | IOException err) {
             LOGGER.log(Level.SEVERE, "zookeeper client error", err);
             return null;
         }
+    }
+
+    @Override
+    public void brokerFailed(BrokerAddress address) {
+        leaderBrokerCache = null;
     }
 
     private BrokerAddress parseBrokerAddress(byte[] data) throws IOException {

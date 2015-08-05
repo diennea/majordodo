@@ -92,7 +92,7 @@ public class Client implements AutoCloseable {
         if (address == null) {
               throw new IOException("no broker available");
         }
-        return new HTTPClientConnection(_client, configuration, address);
+        return new HTTPClientConnection(_client, configuration, address,configuration.getBrokerDiscoveryService());
     }
 
     public void close() {

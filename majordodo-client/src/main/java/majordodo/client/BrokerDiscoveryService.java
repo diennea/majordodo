@@ -32,4 +32,7 @@ public interface BrokerDiscoveryService {
 
     public List<BrokerAddress> discoverBrokers();
 
+    public default void brokerFailed(BrokerAddress address) {
+    }
+
 }
