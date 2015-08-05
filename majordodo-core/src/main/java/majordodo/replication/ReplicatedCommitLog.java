@@ -493,7 +493,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else if (_actualLedgersList.getActiveLedgers().contains(_actualLedgersList.getFirstLedger())) {
-            LOGGER.log(Level.SEVERE, "No valid snapshot present, But the first ledger of history " + _actualLedgersList.getFirstLedger() + ", is stil present in active ledgers list. I can use an empty snapshot in order to boot");
+            LOGGER.log(Level.SEVERE, "No valid snapshot present, But the first ledger of history " + _actualLedgersList.getFirstLedger() + ", is still present in active ledgers list. I can use an empty snapshot in order to boot");
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
             LOGGER.log(Level.SEVERE, "No valid snapshot present, I will try to download a snapshot from the actual master");
@@ -535,7 +535,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private volatile boolean closed = false;
 
     @Override
-    public final void close() {        
+    public final void close() {
         writeLock.lock();
         try {
             if (closed) {

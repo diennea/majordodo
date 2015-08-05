@@ -27,7 +27,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
 /**
- *
+ * Utilities
  * @author enrico.olivelli
  */
 public class FileUtils {

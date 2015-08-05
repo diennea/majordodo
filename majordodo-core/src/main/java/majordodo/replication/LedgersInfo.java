@@ -37,7 +37,7 @@ public class LedgersInfo {
     private List<Long> activeLedgers = new ArrayList<>();
     private List<Long> ledgersTimestamps = new ArrayList<>();
     private long firstLedger = -1;
-    private int zkVersion;
+    private int zkVersion = -1;
 
     @Override
     public String toString() {
