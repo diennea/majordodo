@@ -339,6 +339,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     @Override
     public void startWriting() throws LogNotAvailableException {
+        actualLedgersList = zKClusterManager.getActualLedgersList();
         openNewLedger();
     }
 

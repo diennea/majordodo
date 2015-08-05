@@ -28,6 +28,7 @@ import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
 import java.lang.management.ManagementFactory;
 import java.util.UUID;
+import majordodo.network.jvm.JVMBrokersRegistry;
 
 /**
  * Tools for embedded Majordod worker
@@ -80,7 +81,7 @@ public class EmbeddedWorker {
 
         switch (mode) {
             case EmbeddedWorkerConfiguration.MODE_JVMONLY:
-                brokerLocator = new JVMBrokerLocator("embedded");
+                brokerLocator = new JVMBrokerLocator(null);
                 break;
             case EmbeddedWorkerConfiguration.MODE_SIGLESERVER:
                 brokerLocator = new NettyBrokerLocator(host, port);

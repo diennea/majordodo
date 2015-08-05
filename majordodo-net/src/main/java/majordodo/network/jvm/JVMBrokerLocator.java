@@ -40,7 +40,11 @@ public class JVMBrokerLocator implements BrokerLocator {
 
     public JVMBrokerLocator(String brokerId) {
         this.brokerId = brokerId;
-        this.broker = JVMBrokersRegistry.lookupBroker(brokerId);
+        if (brokerId != null) {
+            this.broker = JVMBrokersRegistry.lookupBroker(brokerId);
+        } else {
+            this.broker = JVMBrokersRegistry.getDefaultBroker();
+        }
     }
 
     @Override
