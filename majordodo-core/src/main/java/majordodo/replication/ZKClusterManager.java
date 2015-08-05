@@ -101,15 +101,28 @@ public class ZKClusterManager implements AutoCloseable {
     }
 
     public LedgersInfo getActualLedgersList() throws LogNotAvailableException {
-        try {
-            Stat stat = new Stat();
-            byte[] actualLedgers = zk.getData(ledgersPath, false, stat);
-            return LedgersInfo.deserialize(actualLedgers, stat.getVersion());
-        } catch (KeeperException.NoNodeException firstboot) {
-            return LedgersInfo.deserialize(null, -1); // -1 is a special ZK version
-        } catch (Exception error) {
-            throw new LogNotAvailableException(error);
+        while (zk.getState() != ZooKeeper.States.CLOSED) {
+            try {
+                Stat stat = new Stat();
+                byte[] actualLedgers = zk.getData(ledgersPath, false, stat);
+                return LedgersInfo.deserialize(actualLedgers, stat.getVersion());
+            } catch (KeeperException.NoNodeException firstboot) {
+                LOGGER.log(Level.SEVERE, "no node found at " + ledgersPath, firstboot);
+                return LedgersInfo.deserialize(null, -1); // -1 is a special ZK version
+            } catch (KeeperException.ConnectionLossException error) {
+                LOGGER.log(Level.SEVERE, "error while loading actual ledgers list at " + ledgersPath, error);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException err) {
+                    // maybe stopping
+                    throw new LogNotAvailableException(err);
+                }
+            } catch (Exception error) {
+                LOGGER.log(Level.SEVERE, "error while loading actual ledgers list at " + ledgersPath, error);
+                throw new LogNotAvailableException(error);
+            }
         }
+        throw new LogNotAvailableException(new Exception("zk client closed"));
     }
 
     public void saveActualLedgersList(LedgersInfo info) throws LogNotAvailableException {
@@ -160,7 +173,7 @@ public class ZKClusterManager implements AutoCloseable {
             }
             String newPath = zk.create(discoverypath + "/brokers", localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
             LOGGER.log(Level.SEVERE, "my own discoverypath path is " + newPath);
-            
+
         } catch (KeeperException error) {
             throw new Exception("Could not init Zookeeper space at path " + basePath, error);
         }
