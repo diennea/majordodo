@@ -29,21 +29,43 @@ public class BrokerHTTPClientTest {
                     .setBrokerDiscoveryService(new StaticBrokerDiscoveryService(BrokerAddress.http("127.0.0.1", 7364)));
             try (Client client = new Client(configuration);
                     ClientConnection con = client.openConnection()) {
-                SubmitTaskRequest req = new SubmitTaskRequest();
-                req.setTasktype("mytype");
-                req.setUserid("myuser");
-                req.setData("test1");
+                {
+                    SubmitTaskRequest req = new SubmitTaskRequest();
+                    req.setTasktype("mytype");
+                    req.setUserid("myuser");
+                    req.setData("test1");
 
-                SubmitTaskResponse resp = con.submitTask(req);
-                assertFalse(resp.getTaskId().isEmpty());
-                String taskId = resp.getTaskId();
+                    SubmitTaskResponse resp = con.submitTask(req);
+                    assertFalse(resp.getTaskId().isEmpty());
+                    String taskId = resp.getTaskId();
 
-                TaskStatus task = con.getTaskStatus(taskId);
-                assertEquals("mytype", task.getTasktype());
-                assertEquals(taskId, task.getTaskId());
-                assertEquals("test1", task.getData());
-                assertEquals("myuser", task.getUserId());
-                assertEquals("waiting", task.getStatus());
+                    TaskStatus task = con.getTaskStatus(taskId);
+                    assertEquals("mytype", task.getTasktype());
+                    assertEquals(taskId, task.getTaskId());
+                    assertEquals("test1", task.getData());
+                    assertEquals("myuser", task.getUserId());
+                    assertEquals("waiting", task.getStatus());
+                }
+
+                con.setTransacted(true);
+                {
+                    SubmitTaskRequest req = new SubmitTaskRequest();
+                    req.setTasktype("mytype");
+                    req.setUserid("myuser");
+                    req.setData("test1");
+
+                    SubmitTaskResponse resp = con.submitTask(req);
+                    assertFalse(resp.getTaskId().isEmpty());
+                    String taskId = resp.getTaskId();
+                    con.commit();
+                    TaskStatus task = con.getTaskStatus(taskId);
+                    assertEquals("mytype", task.getTasktype());
+                    assertEquals(taskId, task.getTaskId());
+                    assertEquals("test1", task.getData());
+                    assertEquals("myuser", task.getUserId());
+                    assertEquals("waiting", task.getStatus());
+                }
+
             }
 
         }

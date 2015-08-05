@@ -265,7 +265,7 @@ public class HttpAPIImplementation {
                         error = err + "";
                     }
                     resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error != null && transactionId > 0);
+                    resultMap.put("ok", error == null && transactionId > 0);
                     resultMap.put("error", error);
                     break;
                 }
@@ -280,7 +280,7 @@ public class HttpAPIImplementation {
                     }
                     resultMap.put("ok", true);
                     resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error != null && transactionId > 0);
+                    resultMap.put("ok", error == null && transactionId > 0);
                     break;
                 }
                 case "rollbackTransaction": {
@@ -294,7 +294,7 @@ public class HttpAPIImplementation {
                     }
                     resultMap.put("ok", true);
                     resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error != null && transactionId > 0);
+                    resultMap.put("ok", error == null && transactionId > 0);
                     break;
                 }
                 default: {
