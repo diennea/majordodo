@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.client.BrokerStatusView;
@@ -109,6 +111,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     private final ClientFacade client;
     private volatile boolean started;
     private volatile boolean stopped;
+    private final CountDownLatch stopperLatch=new CountDownLatch(1);
 
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
@@ -199,7 +202,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
                         }
-                        Thread.sleep(10000);
+                        stopperLatch.await(10, TimeUnit.SECONDS);
                     }
                 } catch (InterruptedException exit) {
                 }
@@ -211,8 +214,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         }
 
     };
+    
 
     private void shutdown() {
+        stopperLatch.countDown();
         stopped = true;
         JVMBrokersRegistry.unregisterBroker(brokerId);
         this.finishedTaskCollectorScheduler.stop();
