@@ -287,7 +287,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.brokerStatus.applyModifications(edits);
 
         long end = System.currentTimeMillis();
-        LOGGER.log(Level.SEVERE, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
+        LOGGER.log(Level.FINER, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
         return tasks;
     }
 
