@@ -19,6 +19,8 @@
  */
 package majordodo.task;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
@@ -62,6 +64,14 @@ public abstract class StatusChangesLog implements AutoCloseable {
     public abstract boolean isWritable();
 
     public void requestLeadership() throws LogNotAvailableException {
+    }
+
+    public List<LogSequenceNumber> logStatusEditBatch(List<StatusEdit> edits) throws LogNotAvailableException {
+        List<LogSequenceNumber> batch = new ArrayList<>();
+        for (StatusEdit edit : edits) {
+            batch.add(logStatusEdit(edit));
+        }
+        return batch;
     }
 
 }

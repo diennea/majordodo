@@ -34,9 +34,11 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -44,16 +46,16 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import javax.xml.ws.Holder;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
-import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
-import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.network.netty.NettyChannel;
 import majordodo.network.netty.NettyConnector;
 import majordodo.task.Broker;
 import majordodo.utils.FileUtils;
+import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
@@ -182,6 +184,66 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 out = null;
             }
         }
+
+        private List<Long> writeEntries(List<StatusEdit> edits) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException {
+
+            try {
+                Holder<Exception> exception = new Holder<>();
+                CountDownLatch latch = new CountDownLatch(edits.size());
+                List<Long> res = new ArrayList<>(edits.size());
+                for (StatusEdit edit : edits) {
+                    res.add(null);
+                }
+                for (int i = 0; i < edits.size(); i++) {
+                    StatusEdit edit = edits.get(i);
+                    byte[] serialize = edit.serialize();
+                    writtenBytes += serialize.length;
+                    this.out.asyncAddEntry(serialize, new AsyncCallback.AddCallback() {
+                        @Override
+                        public void addComplete(int rc, LedgerHandle lh, long entryId, Object i) {
+                            int index = (Integer) i;
+                            if (rc != BKException.Code.OK) {
+                                BKException error = BKException.create(rc);
+                                exception.value = error;
+                                res.set(index, null);
+                                for (int j = 0; j < edits.size(); j++) {
+                                    // early exit
+                                    latch.countDown();
+                                }
+                            } else {
+                                res.set(index, entryId);
+                                latch.countDown();
+                            }
+
+                        }
+                    }, i);
+                }
+                latch.await();
+                if (exception.value != null) {
+                    throw exception.value;
+                }
+                for (Long l : res) {
+                    if (l == null) {
+                        throw new RuntimeException("bug ! " + res);
+                    }
+                }
+                if (writtenBytes > maxLogicalLogFileSize) {
+                    LOGGER.log(Level.SEVERE, "{0} bytes written to ledger. need to open a new one", writtenBytes);
+                    openNewLedger();
+                }
+                return res;
+            } catch (BKException.BKLedgerClosedException err) {
+                // corner case, if some entry has been written ?? it will be duplicated on retry
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                throw err;
+            } catch (BKException.BKLedgerFencedException err) {
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                throw err;
+            } catch (Exception err) {
+                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                throw new LogNotAvailableException(err);
+            }
+        }
     }
 
     private final LeaderShipChangeListener leaderShiplistener = new LeaderShipChangeListener() {
@@ -245,6 +307,43 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     public void setLedgersRetentionPeriod(long ledgersRetentionPeriod) {
         this.ledgersRetentionPeriod = ledgersRetentionPeriod;
+    }
+
+    @Override
+    public List<LogSequenceNumber> logStatusEditBatch(List<StatusEdit> edits) throws LogNotAvailableException {
+        if (edits.isEmpty()) {
+            return Collections.emptyList();
+        }
+        while (true) {
+            writeLock.lock();
+            try {
+                if (writer == null) {
+                    throw new LogNotAvailableException(new Exception("no ledger opened for writing"));
+                }
+                try {
+                    List<Long> newSequenceNumbers = writer.writeEntries(edits);
+                    lastSequenceNumber = newSequenceNumbers.get(newSequenceNumbers.size() - 1);
+                    List<LogSequenceNumber> res = new ArrayList<>();
+                    for (Long newSequenceNumber : newSequenceNumbers) {
+                        res.add(new LogSequenceNumber(currentLedgerId, newSequenceNumber));
+                    }
+                    return res;
+                } catch (BKException.BKLedgerClosedException closed) {
+                    LOGGER.log(Level.SEVERE, "ledger has been closed, need to open a new ledger", closed);
+                    Thread.sleep(1000);
+                    openNewLedger();
+                } catch (BKException.BKLedgerFencedException fenced) {
+                    LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
+                    zKClusterManager.close();
+                    close();
+                    throw new LogNotAvailableException(fenced);
+                }
+            } catch (InterruptedException err) {
+                throw new LogNotAvailableException(err);
+            } finally {
+                writeLock.unlock();
+            }
+        }
     }
 
     @Override

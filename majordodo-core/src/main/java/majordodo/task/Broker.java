@@ -199,10 +199,6 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 for (Map.Entry<Long, String> task : deadWorkerTasks.entrySet()) {
                     taskNeedsRecoveryDueToWorkerDeath(task.getKey(), task.getValue());
                 }
-                for (String workerConnectedAtBoot : workersConnectedAtBoot) {
-                    LOGGER.log(Level.SEVERE, "Worker " + workerConnectedAtBoot + " was connected at leader broker stop/crash. Declaring disconnected");
-                    declareWorkerDisconnected(brokerId, System.currentTimeMillis());
-                }
                 started = true;
                 finishedTaskCollectorScheduler.start();
                 try {
@@ -266,6 +262,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
         long now = System.currentTimeMillis();
         Set<Long> expired = null;
+        List<StatusEdit> edits = new ArrayList<>();
         for (long taskId : tasks) {
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
@@ -277,18 +274,20 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                     expired.add(taskId);
                     LOGGER.log(Level.SEVERE, "task {0} deadline expired {1}", new Object[]{taskId, (new java.sql.Timestamp(deadline)).toString()});
                     StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
-                    this.brokerStatus.applyModification(edit);
+                    edits.add(edit);
                 } else {
                     StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
-                    this.brokerStatus.applyModification(edit);
+                    edits.add(edit);
                 }
             }
         }
         if (expired != null) {
             tasks.removeAll(expired);
         }
+        this.brokerStatus.applyModifications(edits);
+
         long end = System.currentTimeMillis();
-        LOGGER.log(Level.SEVERE, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size() + expired.size())});
+        LOGGER.log(Level.SEVERE, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
         return tasks;
     }
 

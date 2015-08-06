@@ -292,6 +292,23 @@ public class BrokerStatus {
 
     }
 
+    void applyModifications(List<StatusEdit> edits) throws LogNotAvailableException {
+        for (StatusEdit edit : edits) {
+            if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
+                    && edit.slot != null) {
+                throw new RuntimeException("slot based edits not supported for batches");
+            }
+        }
+
+        List<LogSequenceNumber> num = log.logStatusEditBatch(edits);
+        int max = edits.size();
+        for (int i = 0; i < max; i++) {
+            LogSequenceNumber n = num.get(i);
+            StatusEdit edit = edits.get(i);
+            applyEdit(n, edit);
+        }
+    }
+
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
         LOGGER.log(Level.FINEST, "applyModification {0}", edit);
         if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)

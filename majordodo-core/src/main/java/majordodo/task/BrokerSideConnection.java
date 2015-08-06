@@ -130,24 +130,25 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     });
                     return;
                 }
-                this.workerId = (String) message.parameters.get("workerId");
-                if (this.workerId == null) {
+                String _workerId = (String) message.parameters.get("workerId");                
+                if (_workerId == null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
                     return;
                 }
                 if (!broker.isWritable()) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not leader"));
+                    answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not yet writable"));
+                    return;
+                }                
+                Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
+                LOGGER.log(Level.FINE, "registering connection workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
+                BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
+                if (actual != null) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId+", processId "+this.workerProcessId+", location:"+location));
                     return;
                 }
+                this.workerId = _workerId;
                 this.workerProcessId = (String) message.parameters.get("processId");
                 this.location = (String) message.parameters.get("location");
-                Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
-                LOGGER.log(Level.FINE, "registering connection workerId:" + workerId + ", processId=" + workerProcessId + ", location=" + location);
-                BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(workerId);
-                if (actual != null) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + workerId));
-                    return;
-                }
                 try {
                     this.broker.workerConnected(workerId, workerProcessId, location, actualRunningTasks, System.currentTimeMillis());
                 } catch (LogNotAvailableException error) {
