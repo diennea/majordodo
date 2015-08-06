@@ -118,7 +118,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();
-        LOGGER.log(Level.FINE, "[BROKER] receivedMessageFromWorker " + message);
+        LOGGER.log(Level.FINE, "[BROKER] receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
@@ -133,6 +133,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 this.workerId = (String) message.parameters.get("workerId");
                 if (this.workerId == null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
+                    return;
+                }
+                if (!broker.isWritable()) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not leader"));
                     return;
                 }
                 this.workerProcessId = (String) message.parameters.get("processId");
@@ -175,7 +179,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.get("excludedGroups");
                 Integer max = (Integer) message.parameters.get("max");
                 try {
-                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups,excludedGroups, workerId);
+                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
                     taskIds.forEach(manager::taskAssigned);
                     // worker will wait for an ack before requesting new tasks again
                     channel.sendReplyMessage(message, Message.ACK(workerProcessId));

@@ -30,6 +30,19 @@ public final class WorkerStatus {
     public static final int STATUS_DEAD = 1;
     public static final int STATUS_DISCONNECTED = 2;
 
+    public static String statusToString(int status) {
+        switch (status) {
+            case STATUS_CONNECTED:
+                return "CONNECTED";
+            case STATUS_DEAD:
+                return "DEAD";
+            case STATUS_DISCONNECTED:
+                return "DISCONNECTED";
+            default:
+                return "?" + status;
+        }
+    }
+
     private String workerId;
     private int status;
     private String workerLocation;

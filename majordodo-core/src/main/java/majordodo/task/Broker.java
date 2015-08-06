@@ -26,7 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -111,7 +111,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     private final ClientFacade client;
     private volatile boolean started;
     private volatile boolean stopped;
-    private final CountDownLatch stopperLatch=new CountDownLatch(1);
+    private final CountDownLatch stopperLatch = new CountDownLatch(1);
 
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
@@ -193,7 +193,16 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                             break;
                     }
                 }
-                workers.start(brokerStatus);
+                Map<Long, String> deadWorkerTasks = new HashMap<>();
+                List<String> workersConnectedAtBoot = new ArrayList<>();
+                workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot);
+                for (Map.Entry<Long, String> task : deadWorkerTasks.entrySet()) {
+                    taskNeedsRecoveryDueToWorkerDeath(task.getKey(), task.getValue());
+                }
+                for (String workerConnectedAtBoot : workersConnectedAtBoot) {
+                    LOGGER.log(Level.SEVERE, "Worker " + workerConnectedAtBoot + " was connected at leader broker stop/crash. Declaring disconnected");
+                    declareWorkerDisconnected(brokerId, System.currentTimeMillis());
+                }
                 started = true;
                 finishedTaskCollectorScheduler.start();
                 try {
@@ -214,7 +223,6 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         }
 
     };
-    
 
     private void shutdown() {
         stopperLatch.countDown();
@@ -248,12 +256,13 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     public boolean isRunning() {
         return started;
     }
-    
-    public boolean isWritable(){
+
+    public boolean isWritable() {
         return log.isWritable();
     }
 
     public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId) throws LogNotAvailableException {
+        long start = System.currentTimeMillis();
         List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
         long now = System.currentTimeMillis();
         Set<Long> expired = null;
@@ -266,7 +275,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                         expired = new HashSet<>();
                     }
                     expired.add(taskId);
-                    LOGGER.log(Level.INFO, "task {0} deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
+                    LOGGER.log(Level.SEVERE, "task {0} deadline expired {1}", new Object[]{taskId, (new java.sql.Timestamp(deadline)).toString()});
                     StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
                     this.brokerStatus.applyModification(edit);
                 } else {
@@ -278,6 +287,8 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         if (expired != null) {
             tasks.removeAll(expired);
         }
+        long end = System.currentTimeMillis();
+        LOGGER.log(Level.SEVERE, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size() + expired.size())});
         return tasks;
     }
 

@@ -19,9 +19,9 @@
  */
 package majordodo.task;
 
-import majordodo.task.Broker;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -49,19 +49,27 @@ public class Workers {
         this.workersActivityThread = new Thread(new Life(), "workers-life");
     }
 
-    public void start(BrokerStatus statusAtBoot) {
+    public void start(BrokerStatus statusAtBoot, Map<Long, String> deadWorkerTasks, List<String> connectedAtBoot) {
         Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
         Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
         for (WorkerStatus status : workersAtBoot) {
             String workerId = status.getWorkerId();
             WorkerManager manager = getWorkerManager(workerId);
-            LOGGER.log(Level.INFO, "Booting workerManager for workerId:" + status.getWorkerId());
+            if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
+                connectedAtBoot.add(workerId);
+            }
+            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:" + status.getWorkerId() + ", actual status: " + status.getStatus() + " " + WorkerStatus.statusToString(status.getStatus()));
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId()) && task.getStatus() == Task.STATUS_RUNNING) {
                     LOGGER.log(Level.INFO, "Booting workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId());
                     manager.taskShouldBeRunning(task.getTaskId());
+                } else {
+                    if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
+                        LOGGER.log(Level.SEVERE, "workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId() + ", but worker is DEAD");
+                        deadWorkerTasks.put(task.getTaskId(), workerId);
+                    }
                 }
-            }
+            }            
         }
         workersActivityThread.start();
     }

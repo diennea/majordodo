@@ -48,9 +48,24 @@ public class Task {
         }
     }
 
+    public static String statusToString(int status) {
+        switch (status) {
+            case STATUS_ERROR:
+                return "ERROR";
+            case STATUS_FINISHED:
+                return "FINISHED";
+            case STATUS_RUNNING:
+                return "RUNNING";
+            case STATUS_WAITING:
+                return "WAITING";
+            default:
+                return "?" + status;
+        }
+    }
+
     @Override
     public String toString() {
-        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + ", taskId=" + taskId + ", tenantInfo=" + userId + ", workerId=" + workerId + '}';
+        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + " " + statusToString(status) + ", taskId=" + taskId + ", tenantInfo=" + userId + ", workerId=" + workerId + '}';
     }
 
     private String type;

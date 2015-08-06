@@ -350,7 +350,7 @@ public class BrokerStatus {
                         workerId = null;
                     }
                     if (!Objects.equals(workerId, task.getWorkerId())) {
-                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId());
+                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus()));
                     }
                     int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);
