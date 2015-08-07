@@ -44,6 +44,9 @@ public class WorkerManager {
     private long lastActivity = System.currentTimeMillis();
 
     public WorkerManager(String workerId, Broker broker) {
+        if (workerId == null) {
+            throw new NullPointerException();
+        }
         this.workerId = workerId;
         this.broker = broker;
         this.maxWorkerIdleTime = broker.getConfiguration().getMaxWorkerIdleTime();

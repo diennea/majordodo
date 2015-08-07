@@ -61,7 +61,9 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
 
     void connectionClosed(BrokerSideConnection con) {
         connections.remove(con.getConnectionId());
-        workersConnections.remove(con.getWorkerId(), con); // to ber remove only if the connection is the current connection
+        if (con.getWorkerId() != null) {
+            workersConnections.remove(con.getWorkerId(), con); // to be remove only if the connection is the current connection
+        }
     }
 
 }

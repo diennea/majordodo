@@ -45,10 +45,10 @@ public class BrokerConfiguration {
         this.maxWorkerIdleTime = maxWorkerIdleTime;
     }
 
-    private int checkpointTime = 1000 * 60 * 60;
+    private int checkpointTime = 1000 * 60 * 10;
 
     /**
-     * Maximum time to wait for a checkpoint. Defaults to 1 hour
+     * Maximum time to wait for a checkpoint. Defaults to 10 minutes
      *
      * @return
      */
@@ -60,10 +60,10 @@ public class BrokerConfiguration {
         this.checkpointTime = checkpointTime;
     }
 
-    private int finishedTasksRetention = 1000 * 60 * 60;
+    private int finishedTasksRetention = 1000 * 60 * 10;
 
     /**
-     * Retention for finished tasks. Defaults to one hour
+     * Retention for finished tasks. Defaults to 10 minutes
      *
      * @return
      */

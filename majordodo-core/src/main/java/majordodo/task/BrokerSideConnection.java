@@ -196,7 +196,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
                     taskIds.forEach(manager::taskAssigned);
                     // worker will wait for an ack before requesting new tasks again
-                    channel.sendReplyMessage(message, Message.ACK(workerProcessId));
+                    channel.sendReplyMessage(message, Message.ACK(workerProcessId).setParameter("countAssigned", taskIds.size()));
                 } catch (LogNotAvailableException error) {
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
@@ -234,14 +234,20 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     @Override
     public void channelClosed() {
         channel = null;
-        broker.getWorkers().getWorkerManager(workerId).deactivateConnection(this);
+        if (workerId != null) {
+            broker.getWorkers().getWorkerManager(workerId).deactivateConnection(this);
+        }
         broker.getAcceptor().connectionClosed(this);
-        broker.getWorkers().wakeUp();
+        if (workerId != null) {
+            broker.getWorkers().wakeUp();
+        }
     }
 
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex
     ) {
         channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
+        channel.close();
+        channelClosed();
     }
 
     void answerConnectionAccepted(Message connectionRequestMessage

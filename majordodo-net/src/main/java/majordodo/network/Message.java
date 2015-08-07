@@ -65,7 +65,7 @@ public final class Message {
     }
 
     public static Message ACK(String workerProcessId) {
-        return new Message(workerProcessId, TYPE_ACK, null);
+        return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
     public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, Set<Long> actualRunningTasks) {
@@ -77,12 +77,11 @@ public final class Message {
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
-    public static Message TASK_FINISHED(String processId, List<Map<String,Object>> tasksData) {
+    public static Message TASK_FINISHED(String processId, List<Map<String, Object>> tasksData) {
         Map<String, Object> params = new HashMap<>();
         params.put("processId", processId);
         params.put("tasksData", tasksData);;
-        
-        
+
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
@@ -172,4 +171,8 @@ public final class Message {
         return this;
     }
 
+    public Message setParameter(String key, Object value) {        
+        this.parameters.put(key, value);
+        return this;
+    }
 }

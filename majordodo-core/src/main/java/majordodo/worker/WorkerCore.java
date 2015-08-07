@@ -42,6 +42,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -134,16 +135,18 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             });
 
             int maxnewthreads = config.getMaxThreads() - runningTasks.size();
+            long _start = System.currentTimeMillis();
             LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
             try {
-                _channel.sendMessageWithReply(
+                Message reply = _channel.sendMessageWithReply(
                         Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
                         config.getTasksRequestTimeout()
                 );
-                LOGGER.log(Level.FINER, "requestNewTasks finished");
+                Integer count = (Integer) reply.parameters.get("countAssigned");
+                LOGGER.log(Level.SEVERE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
                     LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
@@ -312,17 +315,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         break;
                     }
                     continue;
-                } else {
-                    try {
-                        LOGGER.log(Level.FINEST, "waiting 500 ms");
-                        Thread.sleep(500);
-                    } catch (InterruptedException exit) {
-                        LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
-                        break;
-                    }
                 }
 
-                FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
+                FinishedTaskNotification notification;
+                try {
+                    notification = pendingFinishedTaskNotifications.poll(500, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException exit) {
+                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    break;
+                }
                 if (notification != null) {
                     int max = 1000;
                     List<FinishedTaskNotification> batch = new ArrayList<>();
@@ -332,13 +333,16 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         batch.add(notification);
                         notification = pendingFinishedTaskNotifications.poll();
                     }
-                    LOGGER.log(Level.SEVERE, "pending notifications sending {0} remaining {1}", new Object[]{batch.size(), pendingFinishedTaskNotifications.size()});
+                    long _start = System.currentTimeMillis();
                     notifyTasksFinished(batch);
+                    long _stop = System.currentTimeMillis();
+                    LOGGER.log(Level.SEVERE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
                 }
 
                 requestNewTasks();
             }
 
+            LOGGER.log(Level.SEVERE, "shutting down");
             Channel _channel = channel;
             if (_channel != null) {
                 _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId), new SendResultCallback() {
