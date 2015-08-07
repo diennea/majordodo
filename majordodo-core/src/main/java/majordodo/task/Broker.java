@@ -459,7 +459,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 continue;
             }
             if (task.getStatus() != Task.STATUS_RUNNING) {
-                LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status", new Object[]{taskId, Task.statusToString(task.getStatus())});
+                LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
                 continue;
             }
             switch (finalstatus) {

@@ -145,10 +145,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
-                LOGGER.log(Level.SEVERE, "registering connection workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
+                LOGGER.log(Level.SEVERE, "registering connection " + connectionId + ", workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
                 if (actual != null) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + this.workerProcessId + ", location:" + location));
+                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
                     return;
                 }
                 this.workerId = _workerId;
