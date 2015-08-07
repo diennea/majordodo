@@ -117,8 +117,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     @Override
     public void messageReceived(Message message) {
-        lastReceivedMessageTs = System.currentTimeMillis();
-        LOGGER.log(Level.FINE, "[BROKER] receivedMessageFromWorker {0}", message);
+        lastReceivedMessageTs = System.currentTimeMillis();        
+        if (channel == null) {
+            LOGGER.log(Level.SEVERE, "receivedMessageFromWorker {0}, but channel is closed", message);
+            return;
+        }
+        LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {

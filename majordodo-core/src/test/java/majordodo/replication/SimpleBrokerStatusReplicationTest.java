@@ -19,7 +19,7 @@
  */
 package majordodo.replication;
 
-import majordodo.client.TaskStatusView;
+import majordodo.clientfacade.TaskStatusView;
 import majordodo.task.GroupMapperFunction;
 import majordodo.task.TasksHeap;
 import majordodo.task.Broker;
@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
+import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.netty.NettyChannelAcceptor;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -117,7 +118,7 @@ public class SimpleBrokerStatusReplicationTest {
                     try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2, null)), new TasksHeap(1000, createGroupMapperFunction()));) {
                         broker2.start();
 
-                        taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+                        taskId = broker1.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
 
                         // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                         broker1.noop();

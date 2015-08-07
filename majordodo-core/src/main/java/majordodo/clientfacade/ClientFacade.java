@@ -17,8 +17,9 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
+import java.util.ArrayList;
 import majordodo.task.AddTaskResult;
 import majordodo.task.Broker;
 import java.util.List;
@@ -40,13 +41,18 @@ public class ClientFacade {
         return this.broker.createBrokerStatusView();
     }
 
-    public SubmitTaskResult submitTask(String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
-        return submitTask(0, taskType, userId, parameter, maxattemps, deadline, slot);
+    public SubmitTaskResult submitTask(AddTaskRequest task) throws Exception {
+        AddTaskResult res = broker.addTask(task);
+        return new SubmitTaskResult(res.taskId, res.error);
     }
 
-    public SubmitTaskResult submitTask(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) throws Exception {
-        AddTaskResult res = broker.addTask(transaction, taskType, userId, parameter, maxattemps, deadline, slot);
-        return new SubmitTaskResult(res.taskId, res.error);
+    public List<SubmitTaskResult> submitTasks(List<AddTaskRequest> tasks) throws Exception {
+        List<AddTaskResult> addressult = broker.addTasks(tasks);
+        List<SubmitTaskResult> res = new ArrayList<>(tasks.size());
+        for (AddTaskResult a : addressult) {
+            res.add(new SubmitTaskResult(a.taskId, a.error));
+        }
+        return res;
     }
 
     public long beginTransaction() throws Exception {

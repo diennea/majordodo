@@ -17,10 +17,11 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -215,6 +216,7 @@ public class HttpAPIImplementation {
         } else {
             switch (action) {
                 case "submitTask": {
+                    String error = "";
                     String type = (String) data.get("tasktype");
                     String user = (String) data.get("userid");
                     String parameters = (String) data.get("data");
@@ -239,22 +241,81 @@ public class HttpAPIImplementation {
 
                     SubmitTaskResult result;
                     try {
-                        result = broker.getClient().submitTask(transaction, type, user, parameters, maxattempts, deadline, slot);
+                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                        long taskId = result.getTaskId();
+                        resultMap.put("taskId", taskId);
+                        resultMap.put("result", result.getOutcome());
                     } catch (Exception err) {
                         LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        throw new ServletException("error " + err);
+                        error = err + "";
                     }
-                    long taskId = result.getTaskId();
-                    String error = result.getError();
-                    if (error == null) {
-                        error = "";
-                    }
-
-                    resultMap.put("taskId", taskId);
                     resultMap.put("error", error);
-                    resultMap.put("ok", error.isEmpty() && taskId > 0);
+                    resultMap.put("ok", error.isEmpty());
                     break;
                 }
+                case "submitTasks": {
+                    String error = "";
+                    List<Map<String, Object>> results = new ArrayList<>();
+                    List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+                    if (tasks == null) {
+                        error = "tasks element not present in json";
+                    } else {
+                        List<AddTaskRequest> requests = new ArrayList<>();
+                        for (Map<String, Object> task : tasks) {
+                            String type = (String) task.get("tasktype");
+                            String user = (String) task.get("userid");
+                            String parameters = (String) task.get("data");
+                            String _maxattempts = (String) task.get("maxattempts");
+                            long transaction = 0;
+                            if (task.containsKey("transaction")) {
+                                transaction = Long.parseLong(task.get("transaction") + "");
+                            }
+                            int maxattempts = 1;
+                            if (_maxattempts != null) {
+                                maxattempts = Integer.parseInt(_maxattempts);
+                            }
+                            String _deadline = (String) task.get("deadline");
+                            long deadline = 0;
+                            if (_deadline != null) {
+                                deadline = Long.parseLong(_deadline);
+                            }
+                            String slot = (String) task.get("slot");
+                            if (slot != null && slot.trim().isEmpty()) {
+                                slot = null;
+                            }
+
+                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                        }
+                        try {
+                            List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);
+                            int i = 0;
+                            for (AddTaskRequest addreq : requests) {
+                                SubmitTaskResult result;
+
+                                result = addresults.get(i++);
+
+                                long taskId = result.getTaskId();
+                                Map<String, Object> resForTask = new HashMap<>();
+                                resForTask.put("taskId", taskId);
+                                if (addreq.transaction > 0) {
+                                    resForTask.put("transaction", addreq.transaction);
+                                }
+                                resForTask.put("result", result.getOutcome());
+                                results.add(resForTask);
+                            }
+                        } catch (Exception err) {
+                            // very bad error                            
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                        }
+
+                    }
+                    resultMap.put("results", results);
+                    resultMap.put("ok", error.isEmpty());
+                    resultMap.put("error", error);
+                    break;
+                }
+
                 case "beginTransaction": {
                     String error = null;
                     long transactionId = 0;

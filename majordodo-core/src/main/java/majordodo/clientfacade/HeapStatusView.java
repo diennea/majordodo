@@ -17,7 +17,7 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
 import java.util.ArrayList;
 import java.util.List;

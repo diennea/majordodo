@@ -26,6 +26,17 @@ package majordodo.client;
  */
 public class SubmitTaskResponse {
 
+    private String outcome;
+
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(String outcome) {
+        this.outcome = outcome;
+    }
+    
+    
     private String taskId;
 
     /**
@@ -43,7 +54,9 @@ public class SubmitTaskResponse {
 
     @Override
     public String toString() {
-        return "SubmitTaskResponse{" + "taskId=" + taskId + '}';
+        return "SubmitTaskResponse{" + "outcome=" + outcome + ", taskId=" + taskId + '}';
     }
+
+    
     
 }

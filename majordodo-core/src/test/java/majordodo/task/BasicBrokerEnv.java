@@ -25,7 +25,7 @@ import majordodo.task.StatusChangesLog;
 import majordodo.task.GroupMapperFunction;
 import majordodo.task.MemoryCommitLog;
 import majordodo.task.Broker;
-import majordodo.client.ClientFacade;
+import majordodo.clientfacade.ClientFacade;
 import majordodo.network.BrokerLocator;
 import majordodo.network.jvm.JVMBrokerLocator;
 import java.io.IOException;

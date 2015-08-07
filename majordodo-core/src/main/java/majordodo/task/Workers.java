@@ -69,7 +69,7 @@ public class Workers {
                         deadWorkerTasks.put(task.getTaskId(), workerId);
                     }
                 }
-            }            
+            }
         }
         workersActivityThread.start();
     }
@@ -80,7 +80,6 @@ public class Workers {
         try {
             workersActivityThread.join();
         } catch (InterruptedException exit) {
-            exit.printStackTrace();
         }
     }
 
@@ -103,8 +102,8 @@ public class Workers {
                     });
                 }
             } catch (Throwable exit) {
-                // exiting loop
-                exit.printStackTrace();
+                // exiting loop                
+                LOGGER.log(Level.SEVERE, "workers manager is dead", exit);
             }
         }
     }

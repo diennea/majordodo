@@ -20,10 +20,7 @@
 package majordodo.client;
 
 import java.io.IOException;
-import majordodo.client.BrokerStatus;
-import majordodo.client.SubmitTaskRequest;
-import majordodo.client.SubmitTaskResponse;
-import majordodo.client.TaskStatus;
+import java.util.List;
 
 /**
  * Generic Connection to the broker
@@ -47,11 +44,26 @@ public interface ClientConnection extends AutoCloseable {
     void setTransacted(boolean transacted);
 
     /**
+     * Submit a single task
      *
      * @param request
-     * @return
+     * @return the result of the submission. If using slots maybe the taskId
+     * would be null or empty, and outcome will describe the reason
+     * @throws majordodo.client.ClientException
      * @throws IOException
      */
     SubmitTaskResponse submitTask(SubmitTaskRequest request) throws ClientException;
+
+    /**
+     * Submit multiple task
+     *
+     * @param requests
+     * @param request
+     * @return the result of the submission. If using slots maybe the taskId
+     * would be null or empty, and outcome will describe the reason
+     * @throws majordodo.client.ClientException
+     * @throws IOException
+     */
+    List<SubmitTaskResponse> submitTasks(List<SubmitTaskRequest> requests) throws ClientException;
 
 }

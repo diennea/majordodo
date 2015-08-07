@@ -34,11 +34,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
+import majordodo.clientfacade.AddTaskRequest;
+import majordodo.clientfacade.SubmitTaskResult;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SimpleBrokerSuite extends BasicBrokerEnv {
+public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
     private static final String TASKTYPE_MYTYPE = "mytype";
     private static final String userId = "queue1";
@@ -91,7 +93,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -106,7 +108,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -168,9 +170,151 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
             todo.add(taskId);
         }
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 10);
+        WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setWorkerId("workerid");
+        config.setMaxThreadsByTaskType(tags);
+        config.setGroups(Arrays.asList(group));
+        try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                    return "";
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+
+            assertTrue(allTaskExecuted.await(60, TimeUnit.SECONDS));
+
+        }
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
+
+    @Test
+    public void manyTasks_max10_batch() throws Exception {
+        java.util.logging.LogManager.getLogManager().reset();
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").addHandler(ch);
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        List<AddTaskRequest> requests = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            requests.add(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null));
+        }
+        List<SubmitTaskResult> results = getClient().submitTasks(requests);
+        for (SubmitTaskResult result : results) {
+            long taskId = result.getTaskId();
+            assertTrue(taskId > 0);
+            assertTrue(result.getOutcome() == null);
+            todo.add(taskId);
+        }
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(todo.size());
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 10);
+        WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setWorkerId("workerid");
+        config.setMaxThreadsByTaskType(tags);
+        config.setGroups(Arrays.asList(group));
+        try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                    return "";
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+
+            assertTrue(allTaskExecuted.await(60, TimeUnit.SECONDS));
+
+        }
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
+
+    @Test
+    public void manyTasks_max10_batch_transaction() throws Exception {
+        java.util.logging.LogManager.getLogManager().reset();
+        ConsoleHandler ch = new ConsoleHandler();
+        ch.setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
+        java.util.logging.Logger.getLogger("").addHandler(ch);
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        List<AddTaskRequest> requests = new ArrayList<>();
+        long transaction = getClient().beginTransaction();
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            requests.add(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null));
+        }
+        List<SubmitTaskResult> results = getClient().submitTasks(requests);
+        for (SubmitTaskResult result : results) {
+            long taskId = result.getTaskId();
+            assertTrue(taskId > 0);
+            assertTrue(result.getOutcome() == null);
+            todo.add(taskId);
+        }
+        getClient().commitTransaction(transaction);
 
         CountDownLatch connectedLatch = new CountDownLatch(1);
         CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -226,7 +370,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -283,7 +427,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 20; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -353,7 +497,7 @@ public class SimpleBrokerSuite extends BasicBrokerEnv {
         long transaction = getClient().beginTransaction();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
             todo.add(taskId);
         }
         getClient().commitTransaction(transaction);

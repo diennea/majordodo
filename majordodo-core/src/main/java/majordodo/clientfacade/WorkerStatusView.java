@@ -17,7 +17,7 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
 /**
  * Status of a worker

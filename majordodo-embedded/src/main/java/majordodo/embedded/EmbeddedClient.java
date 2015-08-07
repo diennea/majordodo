@@ -19,13 +19,16 @@
  */
 package majordodo.embedded;
 
+import java.util.ArrayList;
+import java.util.List;
+import majordodo.clientfacade.AddTaskRequest;
 import majordodo.client.BrokerStatus;
-import majordodo.client.BrokerStatusView;
+import majordodo.clientfacade.BrokerStatusView;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
-import majordodo.client.SubmitTaskResult;
+import majordodo.clientfacade.SubmitTaskResult;
 import majordodo.client.TaskStatus;
-import majordodo.client.TaskStatusView;
+import majordodo.clientfacade.TaskStatusView;
 import majordodo.client.ClientConnection;
 import majordodo.client.ClientException;
 import majordodo.network.jvm.JVMBrokersRegistry;
@@ -153,14 +156,47 @@ public class EmbeddedClient implements AutoCloseable {
                 deadline = (System.currentTimeMillis() + request.getTimeToLive());
             }
             try {
-                SubmitTaskResult submitTask = broker.getClient().submitTask(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot());
-                if (submitTask.getError() != null) {
-                    throw new ClientException(submitTask.getError());
-                }
+                SubmitTaskResult submitTask = broker.getClient().submitTask(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
+                        request.getMaxattempts(), deadline, request.getSlot()));
                 SubmitTaskResponse resp = new SubmitTaskResponse();
                 resp.setTaskId(submitTask.getTaskId() + "");
+                if (submitTask.getOutcome() != null) {
+                    resp.setOutcome(submitTask.getOutcome());
+                } else {
+                    resp.setOutcome("");
+                }
                 return resp;
+            } catch (Exception err) {
+                throw new ClientException(err);
+            }
+        }
+
+        @Override
+        public List<SubmitTaskResponse> submitTasks(List<SubmitTaskRequest> requestlist) throws ClientException {
+            ensureTransaction();
+            List<AddTaskRequest> requests = new ArrayList<>(requestlist.size());
+            for (SubmitTaskRequest request : requestlist) {
+                long deadline = 0;
+                if (request.getTimeToLive() > 0) {
+                    deadline = (System.currentTimeMillis() + request.getTimeToLive());
+                }
+                requests.add(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
+                        request.getMaxattempts(), deadline, request.getSlot()));
+            }
+            try {
+                List<SubmitTaskResult> submitTasks = broker.getClient().submitTasks(requests);
+                List<SubmitTaskResponse> results = new ArrayList<>(requestlist.size());
+                for (SubmitTaskResult submitTask : submitTasks) {
+                    SubmitTaskResponse resp = new SubmitTaskResponse();
+                    resp.setTaskId(submitTask.getTaskId() + "");
+                    if (submitTask.getOutcome() != null) {
+                        resp.setOutcome(submitTask.getOutcome());
+                    } else {
+                        resp.setOutcome("");
+                    }
+                    results.add(resp);
+                }
+                return results;
             } catch (Exception err) {
                 throw new ClientException(err);
             }

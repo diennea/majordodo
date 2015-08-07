@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port,null));
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port, null));
     }
 
     @Override
@@ -109,7 +110,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
-        groupsMap.put(userId,group);
+        groupsMap.put(userId, group);
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
             core.start();
             assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
@@ -118,7 +119,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
                 @Override
                 public String executeTask(Map<String, Object> parameters) throws Exception {
-                    System.out.println("executeTask "+parameters);
+                    System.out.println("executeTask " + parameters);
                     allTaskExecuted.countDown();
                     return "";
                 }
@@ -127,8 +128,8 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
             String taskParams = "param";
             System.out.println("QUI");
-            long taskId = getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
-            System.out.println("QUA:"+taskId);
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            System.out.println("QUA:" + taskId);
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 

@@ -19,7 +19,7 @@
  */
 package majordodo.task;
 
-import majordodo.client.ClientFacade;
+import majordodo.clientfacade.ClientFacade;
 import majordodo.network.jvm.JVMBrokerSupportInterface;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import java.io.ByteArrayInputStream;
@@ -38,9 +38,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import majordodo.client.BrokerStatusView;
-import majordodo.client.HeapStatusView;
-import majordodo.client.HeapStatusView.TaskStatus;
+import majordodo.clientfacade.AddTaskRequest;
+import majordodo.clientfacade.BrokerStatusView;
+import majordodo.clientfacade.HeapStatusView;
+import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -387,28 +388,52 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         public void actionExecuted(StatusEdit action, ActionResult result);
     }
 
-    public AddTaskResult addTask(
-            long transaction,
-            String taskType,
-            String userId,
-            String parameter,
-            int maxattempts,
-            long deadline,
-            String slot) throws LogNotAvailableException {
+    public AddTaskResult addTask(AddTaskRequest request) throws LogNotAvailableException {
         Long taskId = brokerStatus.nextTaskId();
-        if (transaction > 0) {
-            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(transaction, taskId, taskType, parameter, userId, maxattempts, deadline, slot);
+        if (request.transaction > 0) {
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             return new AddTaskResult((Long) result.data, result.error);
         } else {
-            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, taskType, parameter, userId, maxattempts, deadline, slot);
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             taskId = (Long) result.data;
             if (taskId > 0 && result.error == null) {
-                this.tasksHeap.insertTask(taskId, taskType, userId);
+                this.tasksHeap.insertTask(taskId, request.taskType, request.userId);
             }
             return new AddTaskResult((Long) result.data, result.error);
         }
+    }
+
+    public List<AddTaskResult> addTasks(List<AddTaskRequest> requests) throws LogNotAvailableException {
+        int size = requests.size();
+        List<AddTaskResult> res = new ArrayList<>(size);
+        List<StatusEdit> edits = new ArrayList<>(size);
+        for (AddTaskRequest request : requests) {
+            Long taskId = brokerStatus.nextTaskId();
+            if (request.transaction > 0) {
+                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+                edits.add(addTask);
+            } else {
+                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+                edits.add(addTask);
+            }
+        }
+        List<BrokerStatus.ModificationResult> batch = this.brokerStatus.applyModifications(edits);
+        for (int i = 0; i < size; i++) {
+            StatusEdit addTask = edits.get(i);
+            BrokerStatus.ModificationResult result = batch.get(i);
+            if (addTask.editType == StatusEdit.TYPE_PREPARE_ADD_TASK) {
+                res.add(new AddTaskResult((Long) result.data, result.error));
+            } else {
+                Long taskId = (Long) result.data;
+                if (taskId != null && taskId > 0 && result.error == null) {
+                    this.tasksHeap.insertTask(taskId, addTask.taskType, addTask.userid);
+                }
+                res.add(new AddTaskResult((Long) result.data, result.error));
+            }
+        }
+        return res;
     }
 
     public void taskNeedsRecoveryDueToWorkerDeath(long taskId, String workerId) throws LogNotAvailableException {

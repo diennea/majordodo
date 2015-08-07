@@ -22,11 +22,12 @@ package majordodo.client.http;
 import majordodo.client.ClientConnection;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
@@ -184,12 +185,6 @@ public class HTTPClientConnection implements ClientConnection {
         request("POST", map("action", "rollbackTransaction", "transaction", id));
     }
 
-    /**
-     *
-     * @param request
-     * @return
-     * @throws IOException
-     */
     @Override
     public SubmitTaskResponse submitTask(SubmitTaskRequest request) throws ClientException {
         if (request.getUserid() == null || request.getUserid().isEmpty()) {
@@ -225,7 +220,74 @@ public class HTTPClientConnection implements ClientConnection {
                 response.setTaskId(taskId);
             }
         }
+        if (result.get("outcome") != null) {
+            response.setOutcome(result.get("outcome") + "");
+        } else {
+            response.setOutcome("");
+        }
         return response;
+
+    }
+
+    @Override
+    public List<SubmitTaskResponse> submitTasks(List<SubmitTaskRequest> requests) throws ClientException {
+
+        ensureTransaction();
+        Map<String, Object> fullreqdata = new HashMap<>();
+        fullreqdata.put("action", "submitTasks");
+        List<Map<String, Object>> tasks = new ArrayList<>();
+        fullreqdata.put("tasks", tasks);
+        for (SubmitTaskRequest request : requests) {
+            Map<String, Object> reqdata = new HashMap<>();
+            tasks.add(reqdata);
+
+            if (request.getUserid() == null || request.getUserid().isEmpty()) {
+                throw new ClientException("invalid userid " + request.getUserid());
+            }
+            if (request.getTasktype() == null || request.getTasktype().isEmpty()) {
+                throw new ClientException("invalid tasktype " + request.getTasktype());
+            }
+            if (request.getMaxattempts() < 0) {
+                throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
+            }
+
+            reqdata.put("userid", request.getUserid());
+            reqdata.put("tasktype", request.getTasktype());
+            reqdata.put("data", request.getData());
+            reqdata.put("maxattempts", request.getMaxattempts() + "");
+            if (request.getSlot() != null && !request.getSlot().isEmpty()) {
+                reqdata.put("slot", request.getSlot());
+            }
+            if (request.getTimeToLive() > 0) {
+                reqdata.put("deadline", (System.currentTimeMillis() + request.getTimeToLive()) + "");
+            }
+            if (transactionId != null) {
+                reqdata.put("transaction", transactionId);
+            }
+        }
+
+        Map<String, Object> results = request("POST", fullreqdata);
+        List<Map<String, Object>> resultlist = (List<Map<String, Object>>) results.get("results");
+        if (resultlist == null) {
+            throw new ClientException("no results (" + results + ")");
+        }
+        List<SubmitTaskResponse> responses = new ArrayList<>(resultlist.size());
+        for (Map<String, Object> result : resultlist) {
+            SubmitTaskResponse response = new SubmitTaskResponse();
+            if (result.get("taskId") != null) {
+                String taskId = result.get("taskId") + "";
+                if (!taskId.equals("0")) {
+                    response.setTaskId(taskId);
+                }
+            }
+            if (result.get("outcome") != null) {
+                response.setOutcome(result.get("outcome") + "");
+            } else {
+                response.setOutcome("");
+            }
+            responses.add(response);
+        }
+        return responses;
 
     }
 

@@ -17,29 +17,29 @@
  under the License.
 
  */
-package majordodo.embedded;
-
-import java.io.IOException;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+package majordodo.clientfacade;
 
 /**
- * Servlet per API Client Majordodo Broker
+ * REsult of an AddTask for the client
  *
  * @author enrico.olivelli
  */
-public class EmbeddedBrokerAPIServlet extends HttpServlet {
+public class SubmitTaskResult {
 
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.clientfacade.HttpAPIImplementation.doGet(req, resp);
+    private final long taskId;
+    private final String outcome;
+
+    public SubmitTaskResult(long taskId, String outcome) {
+        this.taskId = taskId;
+        this.outcome = outcome;
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.clientfacade.HttpAPIImplementation.doPost(req, resp);
+    public long getTaskId() {
+        return taskId;
+    }
+
+    public String getOutcome() {
+        return outcome;
     }
 
 }

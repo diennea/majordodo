@@ -25,7 +25,7 @@ import majordodo.task.LogSequenceNumber;
 import majordodo.task.Task;
 import majordodo.task.StatusEdit;
 import majordodo.task.MemoryCommitLog;
-import majordodo.client.TaskStatusView;
+import majordodo.clientfacade.TaskStatusView;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;

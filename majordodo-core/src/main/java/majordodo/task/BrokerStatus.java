@@ -19,15 +19,17 @@
  */
 package majordodo.task;
 
-import majordodo.client.TaskStatusView;
-import majordodo.client.WorkerStatusView;
+import majordodo.clientfacade.TaskStatusView;
+import majordodo.clientfacade.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -292,21 +294,37 @@ public class BrokerStatus {
 
     }
 
-    void applyModifications(List<StatusEdit> edits) throws LogNotAvailableException {
+    List<ModificationResult> applyModifications(List<StatusEdit> edits) throws LogNotAvailableException {
+        List<ModificationResult> results = new ArrayList<>();
+        Set<Integer> skip = new HashSet<>();
+        int index = 0;
+        List<StatusEdit> toLog = new ArrayList<>();
         for (StatusEdit edit : edits) {
             if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
                     && edit.slot != null) {
-                throw new RuntimeException("slot based edits not supported for batches");
+                if (!slotsManager.assignSlot(edit.slot)) {
+                    skip.add(index);
+                } else {
+                    toLog.add(edit);
+                }
+            } else {
+                toLog.add(edit);
+            }
+            index++;
+        }
+        List<LogSequenceNumber> num = log.logStatusEditBatch(toLog);
+        int max = edits.size();
+        int numberSequence = 0;
+        for (int i = 0; i < max; i++) {
+            StatusEdit edit = edits.get(i);
+            if (skip.contains(i)) {
+                results.add(new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned"));
+            } else {
+                LogSequenceNumber n = num.get(numberSequence++);
+                results.add(applyEdit(n, edit));
             }
         }
-
-        List<LogSequenceNumber> num = log.logStatusEditBatch(edits);
-        int max = edits.size();
-        for (int i = 0; i < max; i++) {
-            LogSequenceNumber n = num.get(i);
-            StatusEdit edit = edits.get(i);
-            applyEdit(n, edit);
-        }
+        return results;
     }
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {

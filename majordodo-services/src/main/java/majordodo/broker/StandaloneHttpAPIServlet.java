@@ -33,11 +33,11 @@ import javax.servlet.http.HttpServletResponse;
 public class StandaloneHttpAPIServlet extends HttpServlet {
   @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.client.HttpAPIImplementation.doGet(req, resp);
+        majordodo.clientfacade.HttpAPIImplementation.doGet(req, resp);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.client.HttpAPIImplementation.doPost(req, resp);
+        majordodo.clientfacade.HttpAPIImplementation.doPost(req, resp);
     }
 }

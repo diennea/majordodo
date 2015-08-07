@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
@@ -176,6 +177,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         public void close() throws LogNotAvailableException {
+            if (out == null) {
+                return;
+            }
             try {
                 out.close();
             } catch (Exception err) {
@@ -322,7 +326,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
                 try {
                     List<Long> newSequenceNumbers = writer.writeEntries(edits);
-                    lastSequenceNumber = newSequenceNumbers.get(newSequenceNumbers.size() - 1);
+                    lastSequenceNumber = newSequenceNumbers.stream().max(Comparator.naturalOrder()).get();
                     List<LogSequenceNumber> res = new ArrayList<>();
                     for (Long newSequenceNumber : newSequenceNumbers) {
                         res.add(new LogSequenceNumber(currentLedgerId, newSequenceNumber));

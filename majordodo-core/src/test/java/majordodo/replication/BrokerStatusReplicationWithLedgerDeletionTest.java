@@ -19,7 +19,7 @@
  */
 package majordodo.replication;
 
-import majordodo.client.TaskStatusView;
+import majordodo.clientfacade.TaskStatusView;
 import majordodo.task.GroupMapperFunction;
 import majordodo.task.TasksHeap;
 import majordodo.task.Broker;
@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
+import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.netty.NettyChannelAcceptor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -117,7 +118,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    taskId = broker1.getClient().submitTask(TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null).getTaskId();
+                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
 
                     log1.setLedgersRetentionPeriod(1);
                     log1.setMaxLogicalLogFileSize(10);

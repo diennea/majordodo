@@ -5,6 +5,8 @@
  */
 package majordodo.broker;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import majordodo.client.BrokerAddress;
 import majordodo.client.ClientConnection;
@@ -16,6 +18,7 @@ import majordodo.client.http.Client;
 import majordodo.client.http.ClientConfiguration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class BrokerHTTPClientTest {
@@ -64,6 +67,63 @@ public class BrokerHTTPClientTest {
                     assertEquals("test1", task.getData());
                     assertEquals("myuser", task.getUserId());
                     assertEquals("waiting", task.getStatus());
+                    con.setTransacted(false);
+                }
+                
+                {
+                    List<SubmitTaskRequest> multi = new ArrayList<>();
+                    for (int i = 0; i < 100; i++) {
+                        SubmitTaskRequest req = new SubmitTaskRequest();
+                        req.setTasktype("mytype");
+                        req.setUserid("myuser");
+                        req.setData("test1_" + i);
+                        multi.add(req);
+                    }
+                    List<SubmitTaskResponse> responses = con.submitTasks(multi);
+                    for (int i = 0; i < 100; i++) {
+                        SubmitTaskResponse resp = responses.get(i);
+                        System.out.println("resp:"+resp);
+                        assertFalse(resp.getTaskId().isEmpty());
+                        String taskId = resp.getTaskId();
+                        TaskStatus task = con.getTaskStatus(taskId);
+                        assertEquals("mytype", task.getTasktype());
+                        assertEquals(taskId, task.getTaskId());
+                        assertEquals("test1_" + i, task.getData());
+                        assertEquals("myuser", task.getUserId());
+                        assertEquals("waiting", task.getStatus());
+                    }
+                }
+
+                {
+                    con.setTransacted(true);
+                    List<SubmitTaskRequest> multi = new ArrayList<>();
+                    for (int i = 0; i < 100; i++) {
+                        SubmitTaskRequest req = new SubmitTaskRequest();
+                        req.setTasktype("mytype");
+                        req.setUserid("myuser");
+                        req.setData("test1_" + i);
+                        multi.add(req);
+                    }
+                    List<SubmitTaskResponse> responses = con.submitTasks(multi);
+                    for (int i = 0; i < 100; i++) {
+                        SubmitTaskResponse resp = responses.get(i);
+                        assertFalse(resp.getTaskId().isEmpty());
+                        String taskId = resp.getTaskId();
+                        TaskStatus task = con.getTaskStatus(taskId);
+                        assertNull(task);
+                    }
+                    con.commit();
+                    for (int i = 0; i < 100; i++) {
+                        SubmitTaskResponse resp = responses.get(i);
+                        assertFalse(resp.getTaskId().isEmpty());
+                        String taskId = resp.getTaskId();
+                        TaskStatus task = con.getTaskStatus(taskId);
+                        assertEquals("mytype", task.getTasktype());
+                        assertEquals(taskId, task.getTaskId());
+                        assertEquals("test1_" + i, task.getData());
+                        assertEquals("myuser", task.getUserId());
+                        assertEquals("waiting", task.getStatus());
+                    }
                 }
 
             }

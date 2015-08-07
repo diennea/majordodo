@@ -17,7 +17,7 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
 /**
  * General view of the status of the broker

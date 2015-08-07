@@ -17,28 +17,31 @@
  under the License.
 
  */
-package majordodo.client;
+package majordodo.clientfacade;
 
 /**
- * REsult of an AddTask for the client
+ * Task submission
+ *
  * @author enrico.olivelli
  */
-public class SubmitTaskResult {
-    private final long taskId;
-    private final String error;
+public class AddTaskRequest {
 
-    public SubmitTaskResult(long taskId, String error) {
-        this.taskId = taskId;
-        this.error = error;
+    public final long transaction;
+    public final String taskType ;
+    public final String userId;
+    public final String data;
+    public final int maxattempts;
+    public final long deadline;
+    public final String slot;
+
+    public AddTaskRequest(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) {
+        this.transaction = transaction;
+        this.taskType = taskType;
+        this.userId = userId;
+        this.data = parameter;
+        this.maxattempts = maxattemps;
+        this.deadline = deadline;
+        this.slot = slot;
     }
 
-    public long getTaskId() {
-        return taskId;
-    }
-
-    public String getError() {
-        return error;
-    }
-    
-    
 }
