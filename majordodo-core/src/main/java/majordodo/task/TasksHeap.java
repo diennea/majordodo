@@ -89,11 +89,11 @@ public class TasksHeap {
         this.maxFragmentation = maxFragmentation;
     }
 
-    public void removeExpiredTask(long taskid) {
+    public void removeExpiredTasks(Set<Long> taskid) {
         lock.writeLock().lock();
         try {
             for (TaskEntry entry : actuallist) {
-                if (entry.taskid == taskid) {
+                if (taskid.contains(entry.taskid)) {
                     entry.taskid = 0;
                     entry.tasktype = 0;
                     entry.userid = null;

@@ -190,7 +190,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void messageReceived(Message message) {
-        LOGGER.log(Level.FINER, "[BROKER->WORKER] received " + message);
+        LOGGER.log(Level.SEVERE, "received {0}", new Object[]{message});
         if (message.type == Message.TYPE_KILL_WORKER) {
             killWorkerHandler.killWorker(this);
             return;
@@ -211,11 +211,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
         public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
+            LOGGER.log(Level.SEVERE, "taskStatusChanged " + taskId + " " + parameters + " " + finalStatus + " " + results, error);
             switch (finalStatus) {
                 case TaskExecutorStatus.ERROR:
                 case TaskExecutorStatus.FINISHED:
                     runningTasks.remove(taskId);
-                    notifyTaskFinished(taskId, finalStatus, results, error);
+                    pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
                     break;
                 case TaskExecutorStatus.RUNNING:
                     break;
@@ -309,8 +310,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
 
                 FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
-                if (notification != null) {
+
+                while (notification != null) {
                     notifyTaskFinished(notification.taskId, notification.finalStatus, notification.results, notification.error);
+                    notification = pendingFinishedTaskNotifications.poll();
                 }
 
                 requestNewTasks();

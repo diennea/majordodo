@@ -61,7 +61,7 @@ public final class StatusEdit {
             case TYPE_ASSIGN_TASK_TO_WORKER:
                 return "ASSIGN_TASK_TO_WORKER";
             case TYPE_TASK_STATUS_CHANGE:
-                return "TASK_FINISHED";
+                return "TASK_STATUS_CHANGE";
             case TYPE_WORKER_DISCONNECTED:
                 return "TYPE_WORKER_DISCONNECTED";
             case TYPE_WORKER_DIED:

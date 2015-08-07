@@ -219,11 +219,11 @@ public class BrokerStatus {
 
     }
 
-    public List<Long> purgeFinishedTasksAndSignalExpiredTasks(int finishedTasksRetention, int maxExpiredPerCycle) {
+    public Set<Long> purgeFinishedTasksAndSignalExpiredTasks(int finishedTasksRetention, int maxExpiredPerCycle) {
         long now = System.currentTimeMillis();
         long finished_deadline = now - finishedTasksRetention;
 
-        List<Long> expired = new ArrayList<>();
+        Set<Long> expired = new HashSet<>();
         int expiredcount = 0;
         this.lock.writeLock().lock();
         try {
@@ -369,12 +369,15 @@ public class BrokerStatus {
                     Task task = tasks.get(taskId);
                     int oldStatus = task.getStatus();
                     task.setStatus(Task.STATUS_RUNNING);
+                    if (workerId == null || workerId.isEmpty()) {
+                        throw new RuntimeException("bug " + edit);
+                    }
                     task.setWorkerId(workerId);
                     task.setAttempts(edit.attempt);
                     stats.taskStatusChange(oldStatus, task.getStatus());
                     return new ModificationResult(num, null, null);
                 }
-                case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
+                case StatusEdit.TYPE_TASK_STATUS_CHANGE: {                    
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
@@ -384,8 +387,9 @@ public class BrokerStatus {
                     if (workerId != null && workerId.isEmpty()) {
                         workerId = null;
                     }
-                    if (!Objects.equals(workerId, task.getWorkerId())) {
-                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus()));
+                    // workerId is the id of the worker which causes the status change, it can be null if a system event occours (like deadline_expired)
+                    if (workerId != null && !Objects.equals(workerId, task.getWorkerId())) {
+                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus())+", edit "+edit);
                     }
                     int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);

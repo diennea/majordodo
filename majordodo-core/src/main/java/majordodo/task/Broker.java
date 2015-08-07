@@ -262,28 +262,13 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         long start = System.currentTimeMillis();
         List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
         long now = System.currentTimeMillis();
-        Set<Long> expired = null;
         List<StatusEdit> edits = new ArrayList<>();
         for (long taskId : tasks) {
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
-                long deadline = task.getExecutionDeadline();
-                if (deadline > 0 && deadline < now) {
-                    if (expired == null) {
-                        expired = new HashSet<>();
-                    }
-                    expired.add(taskId);
-                    LOGGER.log(Level.SEVERE, "task {0} deadline expired {1}", new Object[]{taskId, (new java.sql.Timestamp(deadline)).toString()});
-                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
-                    edits.add(edit);
-                } else {
-                    StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
-                    edits.add(edit);
-                }
+                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
+                edits.add(edit);
             }
-        }
-        if (expired != null) {
-            tasks.removeAll(expired);
         }
         this.brokerStatus.applyModifications(edits);
 
@@ -297,17 +282,22 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     void purgeTasks() {
-        List<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
-
+        Set<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
+        if (expired.isEmpty()) {
+            return;
+        }
+        List<StatusEdit> expirededits = new ArrayList<>();
         expired.stream().forEach((taskId) -> {
-            try {
-                StatusEdit change = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
-                this.brokerStatus.applyModification(change);
-                this.tasksHeap.removeExpiredTask(taskId);
-            } catch (LogNotAvailableException logNotAvailableException) {
-                LOGGER.log(Level.SEVERE, "error while expiring task " + taskId, logNotAvailableException);
-            }
+            StatusEdit change = StatusEdit.TASK_STATUS_CHANGE(taskId, null, Task.STATUS_ERROR, "deadline_expired");
+            expirededits.add(change);
+
         });
+        try {
+            this.tasksHeap.removeExpiredTasks(expired);
+            this.brokerStatus.applyModifications(expirededits);
+        } catch (LogNotAvailableException logNotAvailableException) {
+            LOGGER.log(Level.SEVERE, "error while expiring tasks " + expired, logNotAvailableException);
+        }
     }
 
     public void recomputeGroups() {

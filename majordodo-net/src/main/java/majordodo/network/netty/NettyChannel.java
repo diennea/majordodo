@@ -33,6 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Channel implemented on Netty
@@ -42,6 +44,7 @@ import java.util.concurrent.RejectedExecutionException;
 public class NettyChannel extends Channel {
 
     volatile SocketChannel socket;
+    private static final Logger LOGGER = Logger.getLogger(NettyChannel.class.getName());
 
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
@@ -63,7 +66,7 @@ public class NettyChannel extends Channel {
             try {
                 messagesReceiver.messageReceived(message);
             } catch (Throwable t) {
-                t.printStackTrace();
+                LOGGER.log(Level.SEVERE, "error", t);
                 close();
             }
         }
@@ -96,11 +99,12 @@ public class NettyChannel extends Channel {
 
             @Override
             public void operationComplete(Future future) throws Exception {
-
                 if (future.isSuccess()) {
                     callback.messageSent(message, null);
                 } else {
+                    LOGGER.log(Level.SEVERE, "error", future.cause());
                     callback.messageSent(message, future.cause());
+                    close();
                 }
             }
 
@@ -122,7 +126,7 @@ public class NettyChannel extends Channel {
             @Override
             public void messageSent(Message originalMessage, Throwable error) {
                 if (error != null) {
-                    error.printStackTrace();
+                    LOGGER.log(Level.SEVERE, "error", error);
                 }
             }
         });
