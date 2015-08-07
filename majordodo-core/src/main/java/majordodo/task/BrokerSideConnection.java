@@ -125,6 +125,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
+                LOGGER.log(Level.FINE, "connection request {0}", message);
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
@@ -144,7 +145,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
-                LOGGER.log(Level.FINE, "registering connection workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
+                LOGGER.log(Level.SEVERE, "registering connection workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
                 if (actual != null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + this.workerProcessId + ", location:" + location));
@@ -168,7 +169,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
             case Message.TYPE_TASK_FINISHED:
                 List<Map<String, Object>> tasksData = (List<Map<String, Object>>) message.parameters.get("tasksData");
-                LOGGER.log(Level.SEVERE, "tasksFinished {0} {1}", new Object[]{tasksData, message.parameters});
+                LOGGER.log(Level.FINEST, "tasksFinished {0} {1}", new Object[]{tasksData, message.parameters});
                 List<TaskFinishedData> finishedTasksInfo = new ArrayList<>(tasksData.size());
                 for (Map<String, Object> task : tasksData) {
                     long taskid = (Long) task.get("taskid");

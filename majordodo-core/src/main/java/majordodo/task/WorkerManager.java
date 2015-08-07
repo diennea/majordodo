@@ -56,7 +56,7 @@ public class WorkerManager {
     public void wakeUp() {
         WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
         if (status == null) {
-            // ???
+            LOGGER.log(Level.SEVERE, "wakeup {0} -> no status?", workerId);
             return;
         }
         if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
@@ -76,7 +76,7 @@ public class WorkerManager {
                         broker.declareWorkerDead(workerId, now);
 
                         LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
-                        broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker,workerId);
+                        broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker, workerId);
                     }
                 }
             } catch (LogNotAvailableException err) {

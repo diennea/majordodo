@@ -41,7 +41,7 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     private static final Logger LOGGER = Logger.getLogger(ZKBrokerLocator.class.getName());
 
-    private AsyncCallback.DataCallback leaderData = new AsyncCallback.DataCallback() {
+    private final AsyncCallback.DataCallback leaderData = new AsyncCallback.DataCallback() {
 
         @Override
         public void processResult(int rc, String path, Object param, byte[] data, Stat arg4) {

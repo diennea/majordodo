@@ -150,7 +150,7 @@ public class NettyChannel extends Channel {
             @Override
             public void messageSent(Message originalMessage, Throwable error) {
                 if (error != null) {
-                    error.printStackTrace();
+                    LOGGER.log(Level.SEVERE, this + ": error while sending reply message to " + originalMessage, error);
                 }
             }
         });
@@ -181,11 +181,7 @@ public class NettyChannel extends Channel {
     }
 
     void exceptionCaught(Throwable cause) {
-        submitCallback(() -> {
-            if (this.messagesReceiver != null) {
-                this.messagesReceiver.channelClosed();
-            }
-        });
+        LOGGER.log(Level.SEVERE, this + " io-error", cause);
     }
 
     void channelClosed() {

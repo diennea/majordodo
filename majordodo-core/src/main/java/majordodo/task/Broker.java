@@ -38,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.HeapStatusView;
@@ -507,6 +508,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     public void workerConnected(String workerId, String processId, String nodeLocation, Set<Long> actualRunningTasks, long timestamp) throws LogNotAvailableException {
         StatusEdit edit = StatusEdit.WORKER_CONNECTED(workerId, processId, nodeLocation, actualRunningTasks, timestamp);
         this.brokerStatus.applyModification(edit);
+
+        List<Long> tasksActuallyAssigned = brokerStatus.getRunningTasksAssignedToWorker(workerId);
+        LOGGER.log(Level.SEVERE, "tasks assigned to worker {0}, actuallyRunning {1} ", new Object[]{tasksActuallyAssigned, edit.actualRunningTasks});
+        tasksActuallyAssigned.removeAll(edit.actualRunningTasks);
+        tasksNeedsRecoveryDueToWorkerDeath(tasksActuallyAssigned, workerId);
     }
 
     public void declareWorkerDisconnected(String workerId, long timestamp) throws LogNotAvailableException {

@@ -192,7 +192,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void messageReceived(Message message) {
-        LOGGER.log(Level.SEVERE, "received {0}", new Object[]{message});
+        LOGGER.log(Level.FINEST, "received {0}", new Object[]{message});
         if (message.type == Message.TYPE_KILL_WORKER) {
             killWorkerHandler.killWorker(this);
             return;
@@ -213,7 +213,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
         public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
-            LOGGER.log(Level.SEVERE, "taskStatusChanged " + taskId + " " + parameters + " " + finalStatus + " " + results, error);
+            LOGGER.log(Level.FINEST, "taskStatusChanged {0} {1} {2} {3} {4}", new Object[]{taskId, parameters, finalStatus, results, error});
             switch (finalStatus) {
                 case TaskExecutorStatus.ERROR:
                 case TaskExecutorStatus.FINISHED:
@@ -228,7 +228,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     };
 
     private void notifyTasksFinished(List<FinishedTaskNotification> notifications) {
-        LOGGER.severe("notifyTasksFinished2 " + notifications);
+        LOGGER.log(Level.FINEST, "notifyTasksFinished {0}", notifications);
         Channel _channel = channel;
         if (_channel != null) {
             List<Map<String, Object>> tasksData = new ArrayList<>();
@@ -239,17 +239,20 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 params.put("result", not.results);
                 if (not.error != null) {
                     params.put("error", ErrorUtils.stacktrace(not.error));
+                    LOGGER.log(Level.SEVERE, "notifyTaskFinished " + params, not.error);
                 }
-                LOGGER.log(Level.SEVERE, "notifyTaskFinished " + params, not.error);
                 tasksData.add(params);
             });
             Message msg = Message.TASK_FINISHED(processId, tasksData);
-            try {
-                _channel.sendMessageWithReply(msg, 10000);
-            } catch (InterruptedException | TimeoutException err) {
-                LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker comunication failure", err);
-                pendingFinishedTaskNotifications.addAll(notifications);
-            };
+            _channel.sendOneWayMessage(msg, new SendResultCallback() {
+                @Override
+                public void messageSent(Message originalMessage, Throwable error) {
+                    if (error != null) {
+                        LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker comunication failure", error);
+                        pendingFinishedTaskNotifications.addAll(notifications);
+                    }
+                }
+            });
         } else {
             LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker connection failure");
             pendingFinishedTaskNotifications.addAll(notifications);
@@ -321,13 +324,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
                 FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
                 if (notification != null) {
+                    int max = 1000;
                     List<FinishedTaskNotification> batch = new ArrayList<>();
                     batch.add(notification);
                     notification = pendingFinishedTaskNotifications.poll();
-                    while (notification != null) {
+                    while (notification != null && max-- > 0) {
                         batch.add(notification);
                         notification = pendingFinishedTaskNotifications.poll();
                     }
+                    LOGGER.log(Level.SEVERE, "pending notifications sending {0} remaining {1}", new Object[]{batch.size(), pendingFinishedTaskNotifications.size()});
                     notifyTasksFinished(batch);
                 }
 

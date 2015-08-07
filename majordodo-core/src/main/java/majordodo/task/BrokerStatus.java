@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a
@@ -275,6 +276,15 @@ public class BrokerStatus {
         }
     }
 
+    List<Long> getRunningTasksAssignedToWorker(String workerId) {
+        this.lock.readLock().lock();
+        try {
+            return tasks.values().stream().filter(t -> t.getStatus() == Task.STATUS_RUNNING && workerId.equals(t.getWorkerId())).map(Task::getTaskId).collect(Collectors.toList());
+        } finally {
+            this.lock.readLock().unlock();
+        }
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
@@ -377,7 +387,7 @@ public class BrokerStatus {
                     stats.taskStatusChange(oldStatus, task.getStatus());
                     return new ModificationResult(num, null, null);
                 }
-                case StatusEdit.TYPE_TASK_STATUS_CHANGE: {                    
+                case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
@@ -389,7 +399,7 @@ public class BrokerStatus {
                     }
                     // workerId is the id of the worker which causes the status change, it can be null if a system event occours (like deadline_expired)
                     if (workerId != null && !Objects.equals(workerId, task.getWorkerId())) {
-                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus())+", edit "+edit);
+                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus()) + ", edit " + edit);
                     }
                     int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);
@@ -502,7 +512,6 @@ public class BrokerStatus {
                     if (node == null) {
                         node = new WorkerStatus();
                         node.setWorkerId(edit.workerId);
-
                         workers.put(edit.workerId, node);
                     }
                     node.setStatus(WorkerStatus.STATUS_CONNECTED);
