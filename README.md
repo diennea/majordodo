@@ -14,6 +14,7 @@ In the first release tasks are executed by Java-based workers: the implementatio
 ## Getting Involved
 
 Give us [feedback](https://dev.majordodo.org/jira/secure/Dashboard.jspa)
+
 Join the [mailing list](http://lists.majordodo.org/mailman/listinfo)
 
 ## License
