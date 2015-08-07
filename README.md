@@ -13,6 +13,8 @@ In the first release tasks are executed by Java-based workers: the implementatio
 
 ## Getting Involved
 
+See our [wiki](https://github.com/majordodo/Majordodo/wiki)
+
 Give us [feedback](https://dev.majordodo.org/jira/secure/Dashboard.jspa)
 
 Join the [mailing list](http://lists.majordodo.org/mailman/listinfo)
