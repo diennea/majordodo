@@ -11,6 +11,11 @@ You can also assign a task to a slot. A Slot is like a task with a shared lock: 
 In the first release tasks are executed by Java-based workers: the implementation of the actual work is to be coded using Java or any other language which can be run on a JVM (such as Scala, Groovy, JRuby, ...).
 
 
+## Getting Involved
+
+Give us [feedback](https://dev.majordodo.org/jira/secure/Dashboard.jspa)
+Join the [mailing list](http://lists.majordodo.org/mailman/listinfo)
+
 ## License
 
 Majordodo is under [Apache 2 license](http://www.apache.org/licenses/LICENSE-2.0.html).
