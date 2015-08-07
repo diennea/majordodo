@@ -5,7 +5,14 @@
     <artifactId>majordodo-parent</artifactId>
     <version>0.1.2</version>
     <packaging>pom</packaging>
-    <name>Majordodo</name>
+    <name>Majordodo</name>    
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
     <modules>
         <module>./majordodo-client</module>
         <module>./majordodo-net</module>
@@ -58,16 +65,11 @@
             <scope>test</scope>
         </dependency>
     </dependencies>  
-    <distributionManagement>
+    <distributionManagement>        
         <repository>            
-            <id>maven.mag-news.it</id>
-            <name>MagNews Public Repository</name>
-            <url>https://maven.mag-news.it/content/repositories/releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>maven.mag-news.it</id>
-            <name>MagNews Public Repository</name>
-            <url>https://maven.mag-news.it/content/repositories/snapshots/</url>
-        </snapshotRepository>
+            <id>dev.majordodo.org</id>
+            <name>Majordodo Public Repository</name>
+            <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
+        </repository>        
     </distributionManagement>  
 </project>
