@@ -319,6 +319,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             return Collections.emptyList();
         }
         while (true) {
+            if (closed) {
+                throw new LogNotAvailableException(new Exception("closed"));
+            }
             writeLock.lock();
             try {
                 if (writer == null) {
@@ -353,6 +356,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
         while (true) {
+            if (closed) {
+                throw new LogNotAvailableException(new Exception("closed"));
+            }
             writeLock.lock();
             try {
                 if (writer == null) {

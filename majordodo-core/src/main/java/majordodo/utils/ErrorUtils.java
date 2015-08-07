@@ -17,34 +17,22 @@
  under the License.
 
  */
-package majordodo.worker;
+package majordodo.utils;
 
-import java.util.Map;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 /**
- * Notification for the finish of a task. Notifications MUST be enqueued in case
- * of the broker is done
+ * Utility
  *
  * @author enrico.olivelli
  */
-public class FinishedTaskNotification {
+public class ErrorUtils {
 
-    public final long taskId;
-    public final String finalStatus;
-    public final String results;
-    public final Throwable error;
-
-    public FinishedTaskNotification(long taskId, String finalStatus, String results, Throwable error) {
-        this.taskId = taskId;
-        this.finalStatus = finalStatus;
-        this.results = results;
-        this.error = error;
+    public static String stacktrace(Throwable error) {
+        StringWriter r = new StringWriter();
+        PrintWriter t = new PrintWriter(r);
+        error.printStackTrace(t);
+        return r.toString();
     }
-
-    @Override
-    public String toString() {
-        return "FinishedTaskNotification{" + "taskId=" + taskId + ", finalStatus=" + finalStatus + ", results=" + results + ", error=" + error + '}';
-    }
-    
-
 }

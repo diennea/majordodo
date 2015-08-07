@@ -75,10 +75,8 @@ public class WorkerManager {
                         LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
                         broker.declareWorkerDead(workerId, now);
 
-                        for (long taskId : tasksRunningOnRemoteWorker) {
-                            LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for task {1}", new Object[]{workerId, taskId});
-                            broker.taskNeedsRecoveryDueToWorkerDeath(taskId, workerId);
-                        }
+                        LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
+                        broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker,workerId);
                     }
                 }
             } catch (LogNotAvailableException err) {

@@ -19,6 +19,7 @@
  */
 package majordodo.worker;
 
+import java.util.ArrayList;
 import majordodo.network.BrokerRejectedConnectionException;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerLocator;
@@ -44,6 +45,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.utils.ErrorUtils;
 
 /**
  * Core of the worker inside the JVM
@@ -225,25 +227,32 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     };
 
-    private void notifyTaskFinished(long taskId, String finalStatus, String results, Throwable error) {
-
-        LOGGER.log(Level.FINE, "notifyTaskFinished " + taskId + " " + finalStatus + " " + results + " " + error, error);
-
+    private void notifyTasksFinished(List<FinishedTaskNotification> notifications) {
+        LOGGER.severe("notifyTasksFinished2 " + notifications);
         Channel _channel = channel;
         if (_channel != null) {
-            _channel.sendOneWayMessage(Message.TASK_FINISHED(processId, taskId, finalStatus, results, error), new SendResultCallback() {
-
-                @Override
-                public void messageSent(Message originalMessage, Throwable sendingerror) {
-                    if (sendingerror != null) {
-                        LOGGER.log(Level.SEVERE, "enqueing notification of task finish, due to broker connection failure");
-                        pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
-                    }
+            List<Map<String, Object>> tasksData = new ArrayList<>();
+            notifications.stream().forEach((not) -> {
+                Map<String, Object> params = new HashMap<>();
+                params.put("taskid", not.taskId);
+                params.put("status", not.finalStatus);
+                params.put("result", not.results);
+                if (not.error != null) {
+                    params.put("error", ErrorUtils.stacktrace(not.error));
                 }
+                LOGGER.log(Level.SEVERE, "notifyTaskFinished " + params, not.error);
+                tasksData.add(params);
             });
+            Message msg = Message.TASK_FINISHED(processId, tasksData);
+            try {
+                _channel.sendMessageWithReply(msg, 10000);
+            } catch (InterruptedException | TimeoutException err) {
+                LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker comunication failure", err);
+                pendingFinishedTaskNotifications.addAll(notifications);
+            };
         } else {
-            LOGGER.log(Level.SEVERE, "enqueing notification of task finish, due to broker connection failure");
-            pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
+            LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker connection failure");
+            pendingFinishedTaskNotifications.addAll(notifications);
         }
     }
 
@@ -271,6 +280,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
         return executorFactory.createTaskExecutor(taskType, parameters);
+
     }
 
     private class ConnectionManager implements Runnable {
@@ -310,10 +320,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
 
                 FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
-
-                while (notification != null) {
-                    notifyTaskFinished(notification.taskId, notification.finalStatus, notification.results, notification.error);
+                if (notification != null) {
+                    List<FinishedTaskNotification> batch = new ArrayList<>();
+                    batch.add(notification);
                     notification = pendingFinishedTaskNotifications.poll();
+                    while (notification != null) {
+                        batch.add(notification);
+                        notification = pendingFinishedTaskNotifications.poll();
+                    }
+                    notifyTasksFinished(batch);
                 }
 
                 requestNewTasks();

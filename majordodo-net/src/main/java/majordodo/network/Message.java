@@ -77,18 +77,12 @@ public final class Message {
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
-    public static Message TASK_FINISHED(String processId, long taskId, String finalStatus, String results, Throwable error) {
+    public static Message TASK_FINISHED(String processId, List<Map<String,Object>> tasksData) {
         Map<String, Object> params = new HashMap<>();
-        params.put("taskid", taskId);
         params.put("processId", processId);
-        params.put("status", finalStatus);
-        params.put("result", results);
-        if (error != null) {
-            StringWriter r = new StringWriter();
-            PrintWriter t = new PrintWriter(r);
-            error.printStackTrace(t);
-            params.put("error", r.toString());
-        }
+        params.put("tasksData", tasksData);;
+        
+        
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 

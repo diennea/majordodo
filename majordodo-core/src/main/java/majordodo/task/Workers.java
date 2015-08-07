@@ -21,8 +21,10 @@ package majordodo.task;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,7 +51,7 @@ public class Workers {
         this.workersActivityThread = new Thread(new Life(), "workers-life");
     }
 
-    public void start(BrokerStatus statusAtBoot, Map<Long, String> deadWorkerTasks, List<String> connectedAtBoot) {
+    public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot) {
         Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
         Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
         for (WorkerStatus status : workersAtBoot) {
@@ -58,6 +60,8 @@ public class Workers {
             if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
                 connectedAtBoot.add(workerId);
             }
+            Set<Long> toRecoverForWorker = new HashSet<>();
+            deadWorkerTasks.put(workerId, toRecoverForWorker);
             LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:" + status.getWorkerId() + ", actual status: " + status.getStatus() + " " + WorkerStatus.statusToString(status.getStatus()));
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId()) && task.getStatus() == Task.STATUS_RUNNING) {
@@ -66,7 +70,7 @@ public class Workers {
                 } else {
                     if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
                         LOGGER.log(Level.SEVERE, "workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId() + ", but worker is DEAD");
-                        deadWorkerTasks.put(task.getTaskId(), workerId);
+                        toRecoverForWorker.add(task.getTaskId());
                     }
                 }
             }

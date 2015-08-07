@@ -27,8 +27,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,7 +72,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public static String VERSION() {
-        return "0.1.2";
+        return "0.1.3";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -194,11 +194,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                             break;
                     }
                 }
-                Map<Long, String> deadWorkerTasks = new HashMap<>();
+                Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
                 workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot);
-                for (Map.Entry<Long, String> task : deadWorkerTasks.entrySet()) {
-                    taskNeedsRecoveryDueToWorkerDeath(task.getKey(), task.getValue());
+                for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
+                    tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
                 }
                 started = true;
                 finishedTaskCollectorScheduler.start();
@@ -426,53 +426,80 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         return res;
     }
 
-    public void taskNeedsRecoveryDueToWorkerDeath(long taskId, String workerId) throws LogNotAvailableException {
-        taskFinished(workerId, taskId, Task.STATUS_ERROR, "worker " + workerId + " died");
-    }
-
-    public void taskFinished(String workerId, long taskId, int finalstatus, String result) throws LogNotAvailableException {
-        Task task = this.brokerStatus.getTask(taskId);
-        if (task == null) {
-            LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
+    public void tasksNeedsRecoveryDueToWorkerDeath(Collection<Long> tasksId, String workerId) throws LogNotAvailableException {
+        if (tasksId.isEmpty()) {
             return;
         }
-        switch (finalstatus) {
-            case Task.STATUS_FINISHED: {
-                StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, finalstatus, result);
-                this.brokerStatus.applyModification(edit);
-                return;
-            }
-            case Task.STATUS_ERROR: {
-                int maxAttepts = task.getMaxattempts();
-                int attempt = task.getAttempts();
-                if (maxAttepts > 0 && attempt >= maxAttepts) {
-                    // too many attempts
-                    LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
-                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
-                    this.brokerStatus.applyModification(edit);
-                    return;
+        List<TaskFinishedData> data = new ArrayList<>();
+        tasksId.forEach(
+                taskId -> {
+                    Task task = brokerStatus.getTask(taskId);
+                    if (task.getStatus() == Task.STATUS_RUNNING) {
+                        data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
+                    } else {
+                        LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
+                    }
                 }
-                long deadline = task.getExecutionDeadline();
-                if (deadline > 0 && deadline < System.currentTimeMillis()) {
-                    // deadline expired
-                    LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
-                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
-                    this.brokerStatus.applyModification(edit);
-                    return;
-                }
+        );
+        tasksFinished(workerId, data);
+    }
 
-                // submit for new execution
-                LOGGER.log(Level.FINER, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
-                StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
-                this.brokerStatus.applyModification(edit);
-                this.tasksHeap.insertTask(taskId, task.getType(), task.getUserId());
-                return;
+    public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
+        List<StatusEdit> edits = new ArrayList<>();
+        List<Task> toSchedule = new ArrayList<>();
+        for (TaskFinishedData taskData : tasks) {
+            long taskId = taskData.taskid;
+            int finalstatus = taskData.finalStatus;
+            String result = taskData.result;
+            Task task = this.brokerStatus.getTask(taskId);
+            if (task == null) {
+                LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
+                continue;
             }
-            case Task.STATUS_WAITING:
-            case Task.STATUS_RUNNING:
-                // impossible
-                throw new IllegalStateException("bad finalstatus:" + finalstatus);
+            if (task.getStatus() != Task.STATUS_RUNNING) {
+                LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status", new Object[]{taskId, Task.statusToString(task.getStatus())});
+                continue;
+            }
+            switch (finalstatus) {
+                case Task.STATUS_FINISHED: {
+                    StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, finalstatus, result);
+                    edits.add(edit);
+                    break;
+                }
+                case Task.STATUS_ERROR: {
+                    int maxAttepts = task.getMaxattempts();
+                    int attempt = task.getAttempts();
+                    long deadline = task.getExecutionDeadline();
+                    if (maxAttepts > 0 && attempt >= maxAttepts) {
+                        // too many attempts
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
+                        StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+                        edits.add(edit);
 
+                    } else if (deadline > 0 && deadline < System.currentTimeMillis()) {
+                        // deadline expired
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
+                        StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
+                        edits.add(edit);
+                    } else {
+                        // submit for new execution
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
+                        StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
+                        edits.add(edit);
+                        toSchedule.add(task);
+                    }
+                    break;
+                }
+                case Task.STATUS_WAITING:
+                case Task.STATUS_RUNNING:
+                    // impossible
+                    throw new IllegalStateException("bad finalstatus:" + finalstatus);
+            }
+        }
+        brokerStatus.applyModifications(edits);
+        for (Task task : toSchedule) {
+            LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2}", new Object[]{task.getTaskId(), task.getType(), task.getUserId()});
+            this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
         }
 
     }

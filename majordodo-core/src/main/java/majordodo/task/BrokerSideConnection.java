@@ -117,7 +117,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     @Override
     public void messageReceived(Message message) {
-        lastReceivedMessageTs = System.currentTimeMillis();        
+        lastReceivedMessageTs = System.currentTimeMillis();
         if (channel == null) {
             LOGGER.log(Level.SEVERE, "receivedMessageFromWorker {0}, but channel is closed", message);
             return;
@@ -134,7 +134,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     });
                     return;
                 }
-                String _workerId = (String) message.parameters.get("workerId");                
+                String _workerId = (String) message.parameters.get("workerId");
                 if (_workerId == null) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("invalid workerid " + workerId));
                     return;
@@ -142,12 +142,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 if (!broker.isWritable()) {
                     answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not yet writable"));
                     return;
-                }                
+                }
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
                 LOGGER.log(Level.FINE, "registering connection workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
                 if (actual != null) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId+", processId "+this.workerProcessId+", location:"+location));
+                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + this.workerProcessId + ", location:" + location));
                     return;
                 }
                 this.workerId = _workerId;
@@ -167,12 +167,20 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             }
 
             case Message.TYPE_TASK_FINISHED:
-                long taskid = (Long) message.parameters.get("taskid");
-                String status = (String) message.parameters.get("status");
-                String result = (String) message.parameters.get("result");
-                int finalStatus = Task.taskExecutorStatusToTaskStatus(status);
+                List<Map<String, Object>> tasksData = (List<Map<String, Object>>) message.parameters.get("tasksData");
+                LOGGER.log(Level.SEVERE, "tasksFinished {0} {1}", new Object[]{tasksData, message.parameters});
+                List<TaskFinishedData> finishedTasksInfo = new ArrayList<>(tasksData.size());
+                for (Map<String, Object> task : tasksData) {
+                    long taskid = (Long) task.get("taskid");
+                    String status = (String) task.get("status");
+                    String result = (String) task.get("result");
+                    int finalStatus = Task.taskExecutorStatusToTaskStatus(status);
+                    TaskFinishedData dd = new TaskFinishedData(taskid, result, finalStatus);
+                    finishedTasksInfo.add(dd);
+                }
+
                 try {
-                    broker.taskFinished(workerId, taskid, finalStatus, result);
+                    broker.tasksFinished(workerId, finishedTasksInfo);
                     channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                 } catch (LogNotAvailableException error) {
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));

@@ -127,10 +127,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            System.out.println("QUI");
             long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
-            System.out.println("QUA:" + taskId);
-
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         }
