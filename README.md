@@ -1,6 +1,6 @@
 # [Majordodo](http://majordodo.org/)
 
-Majordodo is a Distributed Resource Manager, essentially consisting of brokers which coordinate a pool of workers.
+Majordodo is a Distributed Resource Manager, essentially consisting of brokers which coordinate a pool of workers. Users (clients) submit tasks to be executed using a simple HTTP JSON based API
 
 There is no single point of failure, brokers replicate state using Apache BookKeeper. Workers are handled in a very elastic way: you can add and remove workers at runtime, they can crash at any time and the system will continue to be available. You can also add workers to distinct groups to handle different type of works or priorities.
 
@@ -10,6 +10,7 @@ You can also assign a task to a slot. A Slot is like a task with a shared lock: 
 
 In the first release tasks are executed by Java-based workers: the implementation of the actual work is to be coded using Java or any other language which can be run on a JVM (such as Scala, Groovy, JRuby, ...).
 
+Client API supports transactions, batching of requests and http keep-alive connections in order to reduce all the network related overheadd
 
 ## Getting Involved
 
