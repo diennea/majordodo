@@ -10,6 +10,7 @@ You can also assign a task to a slot. A Slot is like a task with a shared lock: 
 
 In the first release tasks are executed by Java-based workers: the implementation of the actual work is to be coded using Java or any other language which can be run on a JVM (such as Scala, Groovy, JRuby, ...).
 
+Client API supports transactions, batching of requests and http keep-alive connections in order to reduce all the network related overheadd
 
 ## Getting Involved
 
