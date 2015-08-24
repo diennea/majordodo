@@ -467,6 +467,7 @@ public class BrokerStatus {
                     task.setUserId(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
+                    task.setAttempts(edit.attempt);
                     task.setExecutionDeadline(edit.executionDeadline);
                     task.setSlot(edit.slot);
                     tasks.put(edit.taskId, task);
@@ -495,6 +496,7 @@ public class BrokerStatus {
                     task.setUserId(edit.userid);
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
+                    task.setAttempts(edit.attempt);
                     task.setExecutionDeadline(edit.executionDeadline);
                     task.setSlot(edit.slot);
                     if (edit.slot != null) {

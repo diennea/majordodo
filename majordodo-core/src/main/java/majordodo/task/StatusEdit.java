@@ -97,7 +97,7 @@ public final class StatusEdit {
 
     @Override
     public String toString() {
-        return "StatusEdit{" + "editType=" + editType + " "+typeToString(editType)+", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", attempt=" + attempt + ", maxattempts=" + maxattempts + ", timestamp=" + timestamp + ", transactionId=" + transactionId + ", executionDeadline=" + executionDeadline + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", slot=" + slot + ", actualRunningTasks=" + actualRunningTasks + '}';
+        return "StatusEdit{" + "editType=" + editType + " " + typeToString(editType) + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", attempt=" + attempt + ", maxattempts=" + maxattempts + ", timestamp=" + timestamp + ", transactionId=" + transactionId + ", executionDeadline=" + executionDeadline + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", slot=" + slot + ", actualRunningTasks=" + actualRunningTasks + '}';
     }
 
     public static final StatusEdit NOOP() {
@@ -147,9 +147,10 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
+    public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempt) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
+        action.attempt = attempt;
         action.slot = slot;
         action.parameter = taskParameter;
         action.taskType = taskType;
@@ -160,9 +161,10 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot) {
+    public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempts) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_PREPARE_ADD_TASK;
+        action.attempt = attempts;
         action.transactionId = transactionId;
         action.slot = slot;
         action.parameter = taskParameter;
@@ -223,6 +225,7 @@ public final class StatusEdit {
                     doo.writeInt(taskStatus);
                     doo.writeUTF(taskType);
                     doo.writeInt(maxattempts);
+                    doo.writeInt(attempt);
                     doo.writeLong(executionDeadline);
                     if (parameter != null) {
                         doo.writeUTF(parameter);
@@ -242,6 +245,7 @@ public final class StatusEdit {
                     doo.writeInt(taskStatus);
                     doo.writeUTF(taskType);
                     doo.writeInt(maxattempts);
+                    doo.writeInt(attempt);
                     doo.writeLong(executionDeadline);
                     if (parameter != null) {
                         doo.writeUTF(parameter);
@@ -311,6 +315,7 @@ public final class StatusEdit {
                 res.taskStatus = doo.readInt();
                 res.taskType = doo.readUTF();
                 res.maxattempts = doo.readInt();
+                res.attempt = doo.readInt();
                 res.executionDeadline = doo.readLong();
                 res.parameter = doo.readUTF();
                 String slot = doo.readUTF();
@@ -326,6 +331,7 @@ public final class StatusEdit {
                 res.taskStatus = doo.readInt();
                 res.taskType = doo.readUTF();
                 res.maxattempts = doo.readInt();
+                res.attempt = doo.readInt();
                 res.executionDeadline = doo.readLong();
                 res.parameter = doo.readUTF();
                 String slot = doo.readUTF();

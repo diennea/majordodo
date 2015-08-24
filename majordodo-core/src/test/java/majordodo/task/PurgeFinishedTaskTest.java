@@ -153,7 +153,7 @@ public class PurgeFinishedTaskTest {
         BrokerConfiguration bc = new BrokerConfiguration();
         bc.setFinishedTasksRetention(0);
         bc.setFinishedTasksPurgeSchedulerPeriod(1000);
-        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -197,7 +197,7 @@ public class PurgeFinishedTaskTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                         TaskStatusView task = broker.getClient().getTask(taskId);
                         assertEquals(Task.STATUS_WAITING, task.getStatus());
                         core.start();

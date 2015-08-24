@@ -30,8 +30,17 @@ public class SubmitTaskRequest {
     private String tasktype;
     private String data;
     private int maxattempts;
+    private int attempt;
     private String slot;
     private long timeToLive;
+
+    public int getAttempt() {
+        return attempt;
+    }
+
+    public void setAttempt(int attempt) {
+        this.attempt = attempt;
+    }
 
     public String getUserid() {
         return userid;
@@ -80,5 +89,5 @@ public class SubmitTaskRequest {
     public void setTimeToLive(long timeToLive) {
         this.timeToLive = timeToLive;
     }
-
+        
 }

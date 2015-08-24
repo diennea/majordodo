@@ -27,15 +27,17 @@ package majordodo.clientfacade;
 public class AddTaskRequest {
 
     public final long transaction;
-    public final String taskType ;
+    public final String taskType;
     public final String userId;
     public final String data;
     public final int maxattempts;
+    public final int attempt;
     public final long deadline;
     public final String slot;
 
-    public AddTaskRequest(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot) {
+    public AddTaskRequest(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot, int attempts) {
         this.transaction = transaction;
+        this.attempt = attempts;
         this.taskType = taskType;
         this.userId = userId;
         this.data = parameter;

@@ -73,7 +73,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public static String VERSION() {
-        return "0.1.4";
+        return "0.1.5";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -373,7 +373,6 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         });
         return res;
     }
-    
 
     public static interface ActionCallback {
 
@@ -383,11 +382,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     public AddTaskResult addTask(AddTaskRequest request) throws LogNotAvailableException {
         Long taskId = brokerStatus.nextTaskId();
         if (request.transaction > 0) {
-            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             return new AddTaskResult((Long) result.data, result.error);
         } else {
-            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             taskId = (Long) result.data;
             if (taskId > 0 && result.error == null) {
@@ -404,10 +403,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         for (AddTaskRequest request : requests) {
             Long taskId = brokerStatus.nextTaskId();
             if (request.transaction > 0) {
-                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
                 edits.add(addTask);
             } else {
-                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot);
+                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
                 edits.add(addTask);
             }
         }

@@ -150,7 +150,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -195,7 +195,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -219,7 +219,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         }
 
         // startAsWritable another broker
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             // ask for task status and worker status
             TaskStatusView task = broker.getClient().getTask(taskId);

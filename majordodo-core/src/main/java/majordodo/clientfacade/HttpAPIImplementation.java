@@ -221,9 +221,14 @@ public class HttpAPIImplementation {
                     String user = (String) data.get("userid");
                     String parameters = (String) data.get("data");
                     String _maxattempts = (String) data.get("maxattempts");
+                    String _attempt = (String) data.get("attempt");
                     long transaction = 0;
                     if (data.containsKey("transaction")) {
                         transaction = Long.parseLong(data.get("transaction") + "");
+                    }
+                    int attempt = 0;
+                    if (_attempt != null) {
+                        attempt = Integer.parseInt(_attempt);
                     }
                     int maxattempts = 1;
                     if (_maxattempts != null) {
@@ -241,7 +246,7 @@ public class HttpAPIImplementation {
 
                     SubmitTaskResult result;
                     try {
-                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
                         long taskId = result.getTaskId();
                         resultMap.put("taskId", taskId);
                         resultMap.put("result", result.getOutcome());
@@ -266,6 +271,7 @@ public class HttpAPIImplementation {
                             String user = (String) task.get("userid");
                             String parameters = (String) task.get("data");
                             String _maxattempts = (String) task.get("maxattempts");
+                            String _attempt = (String) task.get("attempt");
                             long transaction = 0;
                             if (task.containsKey("transaction")) {
                                 transaction = Long.parseLong(task.get("transaction") + "");
@@ -273,6 +279,10 @@ public class HttpAPIImplementation {
                             int maxattempts = 1;
                             if (_maxattempts != null) {
                                 maxattempts = Integer.parseInt(_maxattempts);
+                            }
+                            int attempt = 0;
+                            if (_attempt != null) {
+                                attempt = Integer.parseInt(_attempt);
                             }
                             String _deadline = (String) task.get("deadline");
                             long deadline = 0;
@@ -284,7 +294,7 @@ public class HttpAPIImplementation {
                                 slot = null;
                             }
 
-                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
                         }
                         try {
                             List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);

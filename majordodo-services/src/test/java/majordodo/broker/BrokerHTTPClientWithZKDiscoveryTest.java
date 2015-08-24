@@ -52,6 +52,8 @@ public class BrokerHTTPClientWithZKDiscoveryTest {
     }
     @Rule
     public TemporaryFolder folderZk = new TemporaryFolder();
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
 
     @Test
     public void test() throws Exception {
@@ -63,6 +65,8 @@ public class BrokerHTTPClientWithZKDiscoveryTest {
             pp.setProperty("clustering.mode", "clustered");
             pp.setProperty("zk.address", zkServer.getAddress());
             pp.setProperty("zk.path", zkServer.getPath());
+            pp.put("logs.dir", folder.newFolder().getAbsolutePath());
+            pp.put("data.dir", folder.newFolder().getAbsolutePath());
 
             try (BrokerMain main = new BrokerMain(pp)) {
                 main.start();

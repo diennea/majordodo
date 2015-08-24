@@ -150,7 +150,7 @@ public class TaskDeadlineOnRequestTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -193,13 +193,13 @@ public class TaskDeadlineOnRequestTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0)).getTaskId();
 
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
                             if (task.getStatus() == Task.STATUS_ERROR && "deadline_expired".equals(task.getResult())) {
-                                System.out.println("task:"+task);
+                                System.out.println("task:" + task);
                                 okFinishedForBroker = true;
                                 break;
                             }

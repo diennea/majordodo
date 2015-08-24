@@ -203,6 +203,9 @@ public class HTTPClientConnection implements ClientConnection {
         reqdata.put("tasktype", request.getTasktype());
         reqdata.put("data", request.getData());
         reqdata.put("maxattempts", request.getMaxattempts() + "");
+        if (request.getAttempt() > 0) {
+            reqdata.put("attempt", request.getAttempt() + "");
+        }
         if (request.getSlot() != null && !request.getSlot().isEmpty()) {
             reqdata.put("slot", request.getSlot());
         }
@@ -250,11 +253,17 @@ public class HTTPClientConnection implements ClientConnection {
             if (request.getMaxattempts() < 0) {
                 throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
             }
+            if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
+                throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
+            }
 
             reqdata.put("userid", request.getUserid());
             reqdata.put("tasktype", request.getTasktype());
             reqdata.put("data", request.getData());
             reqdata.put("maxattempts", request.getMaxattempts() + "");
+            if (request.getAttempt() > 0) {
+                reqdata.put("attempt", request.getAttempt() + "");
+            }
             if (request.getSlot() != null && !request.getSlot().isEmpty()) {
                 reqdata.put("slot", request.getSlot());
             }
