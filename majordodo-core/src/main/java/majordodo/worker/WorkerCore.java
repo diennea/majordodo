@@ -32,6 +32,7 @@ import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
 import majordodo.network.SendResultCallback;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -110,7 +111,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public Set<Long> getRunningTaskIds() {
-        return runningTasks.keySet();
+        Set<Long> res = new HashSet<>();
+        res.addAll(runningTasks.keySet());
+        for (FinishedTaskNotification f : this.pendingFinishedTaskNotifications) {
+            res.add(f.taskId);
+        }
+        return res;
     }
 
     public TaskExecutorFactory getExecutorFactory() {
