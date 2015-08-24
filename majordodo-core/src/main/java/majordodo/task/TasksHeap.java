@@ -192,7 +192,11 @@ public class TasksHeap {
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {
-                    entry.groupid = groupMapper.getGroup(entry.taskid, taskTypes.get(entry.tasktype), entry.userid);
+                    int newGroup = groupMapper.getGroup(entry.taskid, taskTypes.get(entry.tasktype), entry.userid);
+                    if (entry.groupid != newGroup) {
+                        // let's limit writes on memory, usually group never change
+                        entry.groupid = newGroup;
+                    }
                 }
             }
         } finally {
