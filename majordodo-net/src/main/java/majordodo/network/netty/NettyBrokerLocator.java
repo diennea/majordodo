@@ -29,7 +29,12 @@ public class NettyBrokerLocator extends GenericNettyBrokerLocator {
 
     @Override
     protected InetSocketAddress getServer() {
-        return servers.get(index.incrementAndGet() % servers.size());
+        return servers.get(index.get() % servers.size());
+    }
+
+    @Override
+    public void brokerDisconnected() {
+        index.incrementAndGet();
     }
 
 }

@@ -61,6 +61,7 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
     };
 
     private void lookForLeader() {
+        LOGGER.severe("lookingForLeader broker");
         if (zk != null) {
             zk.getData(basePath + "/leader", workerWatcher, leaderData, null);
         }
@@ -74,6 +75,11 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
         }
 
     };
+
+    @Override
+    public void brokerDisconnected() {
+        lookForLeader();
+    }
 
     private ZooKeeper zk;
     private final String basePath;

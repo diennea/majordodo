@@ -72,4 +72,10 @@ public class JVMBrokerLocator implements BrokerLocator {
 
     }
 
+    @Override
+    public void brokerDisconnected() {        
+    }
+    
+    
+
 }

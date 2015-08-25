@@ -213,8 +213,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.SEVERE, "channel closed");
+        LOGGER.log(Level.SEVERE, "channel closed");        
         disconnect();
+        brokerLocator.brokerDisconnected();
     }
 
     BlockingQueue<FinishedTaskNotification> pendingFinishedTaskNotifications = new LinkedBlockingQueue<>();
@@ -386,7 +387,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         listener.connectionEvent("connected", this);
     }
 
-    public void disconnect() {
+    public void disconnect() {        
         try {
             Channel c = channel;
             if (c != null) {
