@@ -55,7 +55,6 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
                 }
             } else {
                 LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " path=" + path);
-                lookForLeader();
             }
         }
     };
@@ -78,6 +77,7 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     @Override
     public void brokerDisconnected() {
+        leaderBroker = null;
         lookForLeader();
     }
 
@@ -94,6 +94,9 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     @Override
     protected InetSocketAddress getServer() {
+        if (leaderBroker == null) {
+            lookForLeader();
+        }
         return leaderBroker;
     }
 
