@@ -152,7 +152,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         config.getTasksRequestTimeout()
                 );
                 Integer count = (Integer) reply.parameters.get("countAssigned");
-                LOGGER.log(Level.SEVERE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
+                LOGGER.log(Level.FINE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
                     LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
@@ -343,7 +343,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     long _start = System.currentTimeMillis();
                     notifyTasksFinished(batch);
                     long _stop = System.currentTimeMillis();
-                    LOGGER.log(Level.SEVERE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
+                    LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
                 }
 
                 requestNewTasks();
