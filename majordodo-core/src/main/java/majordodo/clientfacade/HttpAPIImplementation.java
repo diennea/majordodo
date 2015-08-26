@@ -92,6 +92,22 @@ public class HttpAPIImplementation {
                     resultMap.put("status", "not_started");
                 }
                 break;
+            case "slots":
+                if (broker != null) {
+                    resultMap.put("slots", broker.getClient().getSlotsStatusView());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
+            case "transactions":
+                if (broker != null) {
+                    resultMap.put("transactions", broker.getClient().getTransactionsStatusView());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
             case "workers":
                 if (broker != null) {
                     resultMap.put("workers", broker.getClient().getAllWorkers());

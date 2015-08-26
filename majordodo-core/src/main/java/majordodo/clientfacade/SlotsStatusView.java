@@ -17,31 +17,25 @@
  under the License.
 
  */
-package majordodo.task;
+package majordodo.clientfacade;
 
-import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Managers execution slots
+ * Status of busy slots
  *
  * @author enrico.olivelli
  */
-class SlotsManager {
+public class SlotsStatusView {
 
-    private final ConcurrentHashMap<String, Object> actualSlots = new ConcurrentHashMap<>();
+    private Set<String> busySlots;
 
     public Set<String> getBusySlots() {
-        return new HashSet<>(actualSlots.keySet());
+        return busySlots;
     }
 
-    public boolean assignSlot(String slot) {
-        return actualSlots.putIfAbsent(slot, Boolean.TRUE) == null;
-    }
-
-    public void releaseSlot(String slot) {
-        actualSlots.remove(slot);
+    public void setBusySlots(Set<String> busySlots) {
+        this.busySlots = busySlots;
     }
 
 }

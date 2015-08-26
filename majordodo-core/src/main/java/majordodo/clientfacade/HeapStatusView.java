@@ -45,6 +45,11 @@ public class HeapStatusView {
         private String taskType;
         private int group;
 
+        @Override
+        public String toString() {
+            return "{" + "taskId=" + taskId + ", taskType=" + taskType + ", group=" + group + '}';
+        }        
+
         public long getTaskId() {
             return taskId;
         }

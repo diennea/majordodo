@@ -390,9 +390,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private void openNewLedger() throws LogNotAvailableException {
         writeLock.lock();
         try {
-            if (writer != null) {
-                writer.close();
-            }
+            closeCurrentWriter();
             writer = new CommitFileWriter();
             currentLedgerId = writer.getLedgerId();
             LOGGER.log(Level.SEVERE, "Opened new ledger:" + currentLedgerId);
@@ -439,7 +437,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             count++;
                             if (count % 1000 == 0) {
                                 LOGGER.log(Level.SEVERE, "read {0} entries from ledger {1}", new Object[]{count, ledgerId});
-                            }                            
+                            }
                         }
                     }
                 } finally {
@@ -656,16 +654,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             if (closed) {
                 return;
             }
-            if (writer != null) {
-
-                try {
-                    writer.close();
-                } catch (Exception err) {
-                    err.printStackTrace();
-                } finally {
-                    writer = null;
-                }
-            }
+            closeCurrentWriter();
             if (zKClusterManager != null) {
                 try {
                     zKClusterManager.close();
@@ -680,6 +669,19 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             writeLock.unlock();
         }
 
+    }
+
+    private void closeCurrentWriter() {
+        if (writer != null) {
+            
+            try {
+                writer.close();
+            } catch (Exception err) {
+                LOGGER.log(Level.SEVERE,"error while closing ledger",err);
+            } finally {
+                writer = null;
+            }
+        }
     }
 
     @Override

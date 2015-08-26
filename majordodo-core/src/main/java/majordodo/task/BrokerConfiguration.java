@@ -90,6 +90,23 @@ public class BrokerConfiguration {
     public void setRecomputeGroupsPeriod(int recomputeGroupsPeriod) {
         this.recomputeGroupsPeriod = recomputeGroupsPeriod;
     }
+    
+    
+    private int brokerStatusMonitorPeriod = 1000 * 60 * 2;
+
+    /**
+     * Write on the logs the status of the broker, in order to detect problems
+     * @return 
+     */
+    public int getBrokerStatusMonitorPeriod() {
+        return brokerStatusMonitorPeriod;
+    }
+
+    public void setBrokerStatusMonitorPeriod(int brokerStatusMonitorPeriod) {
+        this.brokerStatusMonitorPeriod = brokerStatusMonitorPeriod;
+    }
+    
+    
 
     private int finishedTasksPurgeSchedulerPeriod = 1000 * 60 * 15;
 

@@ -82,5 +82,15 @@ public class ClientFacade {
     public HeapStatusView getHeapStatus() {
         return broker.getHeapStatusView();
     }
+    
+    
+    public TransactionsStatusView getTransactionsStatusView() {
+        return broker.getTransactionsStatusView();
+    }
+    
+    
+    public SlotsStatusView getSlotsStatusView() {
+        return broker.getSlotsStatusView();
+    }
 
 }

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +39,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
+import majordodo.clientfacade.SlotsStatusView;
+import majordodo.clientfacade.TransactionsStatusView;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -119,6 +121,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     private final CheckpointScheduler checkpointScheduler;
     private final GroupMapperScheduler groupMapperScheduler;
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
+    private final BrokerStatusMonitor brokerStatusMonitor;
     private final Thread brokerLifeThread;
 
     public BrokerConfiguration getConfiguration() {
@@ -148,6 +151,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
         this.groupMapperScheduler = new GroupMapperScheduler(configuration, this);
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
+        this.brokerStatusMonitor = new BrokerStatusMonitor(configuration, this);
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
     }
 
@@ -180,6 +184,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         @Override
         public void run() {
             try {
+                brokerStatusMonitor.start();
                 LOGGER.log(Level.SEVERE, "Waiting to become leader...");
                 brokerStatus.followTheLeader();
                 if (stopped) {
@@ -202,7 +207,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
                 }
                 started = true;
-                finishedTaskCollectorScheduler.start();
+                finishedTaskCollectorScheduler.start();                
                 try {
                     while (!stopped) {
                         noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
@@ -224,13 +229,14 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     private void shutdown() {
         stopperLatch.countDown();
-        stopped = true;
+        stopped = true;        
         JVMBrokersRegistry.unregisterBroker(brokerId);
+        this.brokerStatusMonitor.stop();
         this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
         this.groupMapperScheduler.stop();
         this.workers.stop();
-        this.brokerStatus.close();
+        this.brokerStatus.close();        
     }
 
     public void stop() {
@@ -260,6 +266,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId) throws LogNotAvailableException {
+        if (!started) {
+            return Collections.emptyList();
+        }
         long start = System.currentTimeMillis();
         List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
         long now = System.currentTimeMillis();
@@ -283,6 +292,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     void purgeTasks() {
+        if (!started) {
+            return;
+        }
         Set<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
         if (expired.isEmpty()) {
             return;
@@ -314,6 +326,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public long beginTransaction() throws LogNotAvailableException, IllegalActionException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         long transactionId = brokerStatus.nextTransactionId();
         StatusEdit edit = StatusEdit.BEGIN_TRANSACTION(transactionId, System.currentTimeMillis());
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
@@ -324,6 +339,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public void commitTransaction(long id) throws LogNotAvailableException, IllegalActionException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         StatusEdit edit = StatusEdit.COMMIT_TRANSACTION(id);
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
         if (result.error != null) {
@@ -337,6 +355,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public void rollbackTransaction(long id) throws LogNotAvailableException, IllegalActionException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         StatusEdit edit = StatusEdit.ROLLBACK_TRANSACTION(id);
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
         if (result.error != null) {
@@ -374,12 +395,29 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         return res;
     }
 
+    
+
+    public TransactionsStatusView getTransactionsStatusView() {
+        TransactionsStatusView res = new TransactionsStatusView();
+        res.setTransactions(brokerStatus.getAllTransactions());
+        return res;
+    }
+
+    public SlotsStatusView getSlotsStatusView() {
+        SlotsStatusView res = new SlotsStatusView();
+        res.setBusySlots(brokerStatus.getBusySlots());
+        return res;
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(StatusEdit action, ActionResult result);
     }
 
     public AddTaskResult addTask(AddTaskRequest request) throws LogNotAvailableException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         Long taskId = brokerStatus.nextTaskId();
         if (request.transaction > 0) {
             StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
@@ -397,6 +435,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public List<AddTaskResult> addTasks(List<AddTaskRequest> requests) throws LogNotAvailableException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         int size = requests.size();
         List<AddTaskResult> res = new ArrayList<>(size);
         List<StatusEdit> edits = new ArrayList<>(size);
@@ -446,6 +487,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker not yet started"));
+        }
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
         for (TaskFinishedData taskData : tasks) {

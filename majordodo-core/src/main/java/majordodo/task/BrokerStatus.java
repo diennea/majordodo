@@ -23,6 +23,7 @@ import majordodo.clientfacade.TaskStatusView;
 import majordodo.clientfacade.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -36,6 +37,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import majordodo.clientfacade.TransactionsStatusView;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a
@@ -69,6 +71,23 @@ public class BrokerStatus {
 
     public BrokerStatus(StatusChangesLog log) {
         this.log = log;
+    }
+
+    public Set<String> getBusySlots() {
+        return  slotsManager.getBusySlots();        
+    }
+    
+    public List<TransactionsStatusView.TransactionStatus> getAllTransactions() {
+        List<TransactionsStatusView.TransactionStatus> result = new ArrayList<>();
+        lock.readLock().lock();
+        try {
+            transactions.values().stream().forEach((k) -> {
+                result.add(createTransactionStatusView(k));
+            });
+        } finally {
+            lock.readLock().unlock();
+        }
+        return result;
     }
 
     public List<WorkerStatusView> getAllWorkers() {
@@ -284,6 +303,17 @@ public class BrokerStatus {
             this.lock.readLock().unlock();
         }
     }
+
+    private TransactionsStatusView.TransactionStatus createTransactionStatusView(Transaction k) {
+        int countTasks = 0;
+        Set<String> taskTypes = Collections.emptySet();
+        if (k.getPreparedTasks() != null) {
+            countTasks = k.getPreparedTasks().size();
+            taskTypes = k.getPreparedTasks().stream().map(Task::getType).collect(Collectors.toSet());
+        }
+        return new TransactionsStatusView.TransactionStatus(k.getTransactionId(), k.getCreationTimestamp(), countTasks, taskTypes);
+    }
+    
 
     public static final class ModificationResult {
 
