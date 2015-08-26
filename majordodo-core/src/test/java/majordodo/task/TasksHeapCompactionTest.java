@@ -172,4 +172,56 @@ public class TasksHeapCompactionTest {
 
     }
 
+    @Test
+    public void testCompation3() throws Exception {
+        TasksHeap instance = new TasksHeap(10, DEFAULT_FUNCTION);
+        Map< String, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(Task.TASKTYPE_ANY, 1);
+        AtomicLong newTaskId = new AtomicLong(987);
+        long task1 = newTaskId.incrementAndGet();
+        long task2 = newTaskId.incrementAndGet();
+        long task3 = newTaskId.incrementAndGet();
+        instance.insertTask(task1, TASKTYPE_MYTASK1, USERID1);
+        instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
+
+        List<TasksHeap.TaskEntry> entries = new ArrayList<>();
+        instance.scanFull(entry -> {
+            System.out.println("entry:" + entry);
+            entries.add(entry);
+        });
+        assertEquals(task1, entries.get(0).taskid);
+        assertEquals(task2, entries.get(1).taskid);
+
+        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        assertEquals(1, taskids.size());
+        assertEquals(task1, taskids.get(0).longValue());
+
+        System.out.println("after take first");
+        entries.clear();
+        instance.scanFull(entry -> {
+            System.out.println("entry:" + entry);
+            entries.add(entry);
+        });
+
+        assertEquals(0, entries.get(0).taskid);
+        assertEquals(task2, entries.get(1).taskid);
+
+        System.out.println("compaction...");
+        instance.runCompaction();
+        entries.clear();
+        instance.scanFull(entry -> {
+            System.out.println("entry:" + entry);
+            entries.add(entry);
+        });
+
+        assertEquals(task2, entries.get(0).taskid);
+        assertEquals(0, entries.get(1).taskid);
+
+        instance.insertTask(task3, TASKTYPE_MYTASK2, USERID1);
+        entries.clear();
+        instance.scan(entries::add);
+        assertEquals(2,entries.size());
+
+    }
+
 }

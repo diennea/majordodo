@@ -204,13 +204,13 @@ public class TasksHeap {
         }
     }
 
-    public void runCompaction() {
-        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize);
+    public void runCompaction() {        
         lock.writeLock().lock();
+        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize+", size "+size+", minValidPosition "+minValidPosition);
         try {
             int[] nonemptypositions = new int[size];
             int insertpos = 0;
-            int pos = 0;
+            int pos = 0;            
             for (TaskEntry entry : actuallist) {
                 if (entry.taskid > 0) {
                     nonemptypositions[insertpos++] = pos + 1; // NOTE_A: 0 means "empty", so we are going to add "+1" to every position
@@ -238,8 +238,9 @@ public class TasksHeap {
             }
 
             minValidPosition = 0;
-            actualsize = pos;
+            actualsize = writepos+1;
             fragmentation = 0;
+            LOGGER.log(Level.SEVERE, "after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize+", size "+size+", minValidPosition "+minValidPosition);
         } finally {
             lock.writeLock().unlock();
         }
