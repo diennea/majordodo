@@ -421,6 +421,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 LOGGER.log(Level.SEVERE, "Recovering from ledger " + ledgerId);
                 LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, magic);
                 try {
+                    long count = 0;
                     long lastAddConfirmed = handle.getLastAddConfirmed();
                     LOGGER.log(Level.SEVERE, "Recovering from ledger " + ledgerId + ", lastAddConfirmed=" + lastAddConfirmed);
                     if (lastAddConfirmed >= 0) {
@@ -435,6 +436,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             } else {
                                 LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
                             }
+                            count++;
+                            if (count % 1000 == 0) {
+                                LOGGER.log(Level.SEVERE, "read {0} entries from ledger {1}", new Object[]{count, ledgerId});
+                            }                            
                         }
                     }
                 } finally {
