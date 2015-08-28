@@ -75,7 +75,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public static String VERSION() {
-        return "0.1.7";
+        return "0.1.8";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -156,6 +156,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public void start() {
+        LOGGER.log(Level.SEVERE, "Booting Majordodo Broker, version {0}", VERSION());
         JVMBrokersRegistry.registerBroker(brokerId, this);
         if (configuration.isClearStatusAtBoot()) {
             try {
