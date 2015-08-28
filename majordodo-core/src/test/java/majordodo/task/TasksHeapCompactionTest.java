@@ -166,9 +166,7 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task3, entries.get(1).taskid);
         assertEquals(task6, entries.get(2).taskid);
-        assertEquals(0, entries.get(3).taskid);
-        assertEquals(0, entries.get(4).taskid);
-        assertEquals(0, entries.get(5).taskid);
+        assertEquals(0, entries.get(3).taskid);        
 
     }
 

@@ -156,6 +156,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             } catch (InterruptedException | TimeoutException err) {
                 if (!stopped) {
                     LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
+                    disconnect();
                 }
                 return;
             }

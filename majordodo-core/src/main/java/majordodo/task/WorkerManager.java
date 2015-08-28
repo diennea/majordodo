@@ -66,6 +66,10 @@ public class WorkerManager {
             return;
         }
         long now = System.currentTimeMillis();
+        if (connection != null && !connection.validate()) {
+            connection.close();
+            deactivateConnection(connection);
+        }
         if (connection == null) {
             LOGGER.log(Level.FINE, "wakeup {0} -> no connection", workerId);
             try {

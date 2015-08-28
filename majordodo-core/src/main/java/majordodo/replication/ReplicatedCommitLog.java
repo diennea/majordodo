@@ -419,24 +419,29 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 LOGGER.log(Level.SEVERE, "Recovering from ledger " + ledgerId);
                 LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, magic);
                 try {
-                    long count = 0;
                     long lastAddConfirmed = handle.getLastAddConfirmed();
                     LOGGER.log(Level.SEVERE, "Recovering from ledger " + ledgerId + ", lastAddConfirmed=" + lastAddConfirmed);
-                    if (lastAddConfirmed >= 0) {
-                        for (Enumeration<LedgerEntry> en = handle.readEntries(0, lastAddConfirmed); en.hasMoreElements();) {
-                            LedgerEntry entry = en.nextElement();
-
-                            LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
-                            StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
-                            if (number.after(snapshotSequenceNumber)) {
-                                LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
-                                consumer.accept(number, statusEdit);
-                            } else {
-                                LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
+                    if (lastAddConfirmed > 0) {
+                        for (long b = 0; b <= lastAddConfirmed;) {
+                            long start = b;
+                            long end = b + 1000;
+                            if (end > lastAddConfirmed) {
+                                end = lastAddConfirmed;
                             }
-                            count++;
-                            if (count % 1000 == 0) {
-                                LOGGER.log(Level.SEVERE, "read {0} entries from ledger {1}", new Object[]{count, ledgerId});
+                            b = end + 1;
+                            double percent = (start * 100.0 / (lastAddConfirmed + 1));
+                            LOGGER.log(Level.SEVERE, "From entry {0}, to entry {1} ({2} %)", new Object[]{start, end, percent});
+                            for (Enumeration<LedgerEntry> en = handle.readEntries(start, end); en.hasMoreElements();) {
+                                LedgerEntry entry = en.nextElement();
+
+                                LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
+                                StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
+                                if (number.after(snapshotSequenceNumber)) {
+                                    LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                    consumer.accept(number, statusEdit);
+                                } else {
+                                    LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
+                                }
                             }
                         }
                     }
@@ -499,9 +504,34 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
+
+            try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
+                for (Path path : allfiles) {
+                    String other_filename = path.getFileName().toString();
+                    if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
+                        LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
+                        try {
+                            other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
+
+                            int pos = other_filename.indexOf('_');
+                            if (pos > 0) {
+                                if (!snapshotfilename.equals(path)) {
+                                    LOGGER.log(Level.SEVERE, "Deleting old snapshot file: " + path);
+                                    Files.delete(path);
+                                }
+                            }
+                        } catch (NumberFormatException invalidName) {
+                            LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                        }
+                    }
+                }
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
+            }
         } finally {
             snapshotLock.unlock();
         }
+
         if (zKClusterManager.isLeader()) {
             dropOldLedgers();
         }
@@ -673,11 +703,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     private void closeCurrentWriter() {
         if (writer != null) {
-            
+
             try {
                 writer.close();
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE,"error while closing ledger",err);
+                LOGGER.log(Level.SEVERE, "error while closing ledger", err);
             } finally {
                 writer = null;
             }

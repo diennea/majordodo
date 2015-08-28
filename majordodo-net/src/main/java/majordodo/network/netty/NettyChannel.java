@@ -157,6 +157,11 @@ public class NettyChannel extends Channel {
     }
 
     @Override
+    public boolean isValid() {
+        return socket != null && socket.isOpen();
+    }
+
+    @Override
     public void close() {
         if (socket != null) {
             try {

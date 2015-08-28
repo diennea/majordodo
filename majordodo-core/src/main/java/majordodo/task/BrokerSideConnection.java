@@ -115,6 +115,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         return lastReceivedMessageTs;
     }
 
+    public boolean validate() {
+        return channel != null && channel.isValid();
+    }
+
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();
@@ -245,9 +249,18 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex
     ) {
-        channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
-        channel.close();
-        channelClosed();
+        if (channel != null) {
+            channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
+        }
+        close();
+    }
+
+    public void close() {
+        if (channel != null) {
+            channel.close();
+        } else {
+            channelClosed();
+        }
     }
 
     void answerConnectionAccepted(Message connectionRequestMessage
