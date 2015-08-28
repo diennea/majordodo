@@ -477,7 +477,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         tasksId.forEach(
                 taskId -> {
                     Task task = brokerStatus.getTask(taskId);
-                    if (task.getStatus() == Task.STATUS_RUNNING) {
+                    if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
                         data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
                     } else {
                         LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
