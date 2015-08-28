@@ -407,6 +407,9 @@ public class BrokerStatus {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
+                    if (task == null) {
+                        throw new RuntimeException("task "+taskId+" not present in brokerstatus. maybe you are recovering broken snapshot");
+                    }
                     int oldStatus = task.getStatus();
                     task.setStatus(Task.STATUS_RUNNING);
                     if (workerId == null || workerId.isEmpty()) {
