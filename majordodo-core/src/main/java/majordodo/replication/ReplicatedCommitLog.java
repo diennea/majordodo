@@ -421,10 +421,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 try {
                     long lastAddConfirmed = handle.getLastAddConfirmed();
                     LOGGER.log(Level.SEVERE, "Recovering from ledger " + ledgerId + ", lastAddConfirmed=" + lastAddConfirmed);
+                    final int BATCH_SIZE = 10000;
                     if (lastAddConfirmed > 0) {
                         for (long b = 0; b <= lastAddConfirmed;) {
                             long start = b;
-                            long end = b + 1000;
+                            long end = b + BATCH_SIZE;
                             if (end > lastAddConfirmed) {
                                 end = lastAddConfirmed;
                             }
