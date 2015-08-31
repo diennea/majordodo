@@ -208,7 +208,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
                 }
                 started = true;
-                finishedTaskCollectorScheduler.start();                
+                finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped) {
                         noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
@@ -230,14 +230,14 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     private void shutdown() {
         stopperLatch.countDown();
-        stopped = true;        
+        stopped = true;
         JVMBrokersRegistry.unregisterBroker(brokerId);
         this.brokerStatusMonitor.stop();
         this.finishedTaskCollectorScheduler.stop();
         this.checkpointScheduler.stop();
         this.groupMapperScheduler.stop();
         this.workers.stop();
-        this.brokerStatus.close();        
+        this.brokerStatus.close();
     }
 
     public void stop() {
@@ -396,8 +396,6 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         return res;
     }
 
-    
-
     public TransactionsStatusView getTransactionsStatusView() {
         TransactionsStatusView res = new TransactionsStatusView();
         res.setTransactions(brokerStatus.getAllTransactions());
@@ -479,8 +477,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                     Task task = brokerStatus.getTask(taskId);
                     if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
                         data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
-                    } else {
+                    } else if (task != null) {
                         LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
+                    } else {
+                        LOGGER.log(Level.SEVERE, "task {0} no more exists, no real need to recovery", new Object[]{taskId});
                     }
                 }
         );
