@@ -163,6 +163,7 @@ public class HTTPClientConnection implements ClientConnection {
                 throw new IllegalStateException(method);
             }
             if (!"true".equals(rr.get("ok") + "")) {
+                discoveryService.brokerFailed(broker);
                 throw new Exception("error from broker: " + rr);
             }
             return rr;
