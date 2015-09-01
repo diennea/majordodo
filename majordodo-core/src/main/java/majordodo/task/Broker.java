@@ -204,10 +204,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
                 workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot);
+                started = true;
                 for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
-                }
-                started = true;
+                }                
                 finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped) {
@@ -238,6 +238,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.groupMapperScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
+    }
+    
+    public boolean isStopped() {
+        return stopped;
     }
 
     public void stop() {
