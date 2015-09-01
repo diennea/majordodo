@@ -150,11 +150,18 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
                 LOGGER.log(Level.SEVERE, "registering connection " + connectionId + ", workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
-                BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
+                BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_workerId);
                 if (actual != null) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
-                    return;
+                    LOGGER.log(Level.SEVERE, "there is already a connection id: {0}, workerId:{1}, {2}", new Object[]{actual.getConnectionId(), _workerId, actual});
+                    if (!actual.validate()) {
+                        LOGGER.log(Level.SEVERE, "connection id: {0}, is no more valid", actual.getConnectionId());
+                        actual.close();
+                    } else {
+                        answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
+                        return;
+                    }
                 }
+
                 this.workerId = _workerId;
                 this.workerProcessId = (String) message.parameters.get("processId");
                 this.location = (String) message.parameters.get("location");
@@ -164,7 +171,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     answerConnectionNotAcceptedAndClose(message, error);
                     return;
                 }
-                broker.getAcceptor().getWorkersConnections().put(workerId, this);
+                broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
                 manager.activateConnection(this);
                 answerConnectionAccepted(message);

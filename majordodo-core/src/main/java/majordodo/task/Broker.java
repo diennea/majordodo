@@ -207,7 +207,8 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 started = true;
                 for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
-                }                
+                }
+                checkpoint();
                 finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped) {
@@ -239,7 +240,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.workers.stop();
         this.brokerStatus.close();
     }
-    
+
     public boolean isStopped() {
         return stopped;
     }
