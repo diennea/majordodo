@@ -89,7 +89,7 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
     }
 
     @Override
-    public void brokerFailed(BrokerAddress address) {
+    public void brokerFailed(BrokerAddress address) {        
         leaderBrokerCache = null;
     }
 
