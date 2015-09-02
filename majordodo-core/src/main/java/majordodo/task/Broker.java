@@ -75,7 +75,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.8";
+        return "0.1.9";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
