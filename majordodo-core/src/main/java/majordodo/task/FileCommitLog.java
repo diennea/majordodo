@@ -178,6 +178,7 @@ public class FileCommitLog extends StatusChangesLog {
             currentSequenceNumber = 0;
             writer = new CommitFileWriter(currentLedgerId);
         } catch (IOException err) {
+            signalBrokerFailed();
             throw new LogNotAvailableException(err);
         } finally {
             writeLock.unlock();
@@ -205,6 +206,7 @@ public class FileCommitLog extends StatusChangesLog {
             }
             return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
         } catch (IOException err) {
+            signalBrokerFailed();
             throw new LogNotAvailableException(err);
         } finally {
             writeLock.unlock();

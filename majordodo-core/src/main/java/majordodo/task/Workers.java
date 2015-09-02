@@ -108,6 +108,7 @@ public class Workers {
             } catch (Throwable exit) {
                 // exiting loop                
                 LOGGER.log(Level.SEVERE, "workers manager is dead", exit);
+                broker.brokerFailed();
             }
         }
     }

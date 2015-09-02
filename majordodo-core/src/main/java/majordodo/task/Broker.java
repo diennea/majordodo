@@ -52,7 +52,7 @@ import org.codehaus.jackson.map.ObjectMapper;
  *
  * @author enrico.olivelli
  */
-public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
+public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerFailureListener {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
@@ -148,12 +148,15 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
         this.brokerStatus = new BrokerStatus(log);
         this.tasksHeap = tasksHeap;
         this.log = log;
+        this.log.setFailureListener(this);
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
         this.groupMapperScheduler = new GroupMapperScheduler(configuration, this);
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
         this.brokerStatusMonitor = new BrokerStatusMonitor(configuration, this);
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
     }
+
+    private boolean recoveryInProgress = false;
 
     public void start() {
         LOGGER.log(Level.SEVERE, "Booting Majordodo Broker, version {0}", VERSION());
@@ -166,7 +169,12 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 throw new RuntimeException(error);
             }
         }
-        this.brokerStatus.recover();
+        try {
+            recoveryInProgress = true;
+            this.brokerStatus.recover();
+        } finally {
+            recoveryInProgress = false;
+        }
         // checkpoint must startboth in leader mode and in follower mode
         this.checkpointScheduler.start();
         this.brokerLifeThread.start();
@@ -188,7 +196,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 brokerStatusMonitor.start();
                 LOGGER.log(Level.SEVERE, "Waiting to become leader...");
                 brokerStatus.followTheLeader();
-                if (stopped) {
+                if (stopped || failed) {
                     return;
                 }
                 LOGGER.log(Level.SEVERE, "Starting as leader");
@@ -211,7 +219,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
                 checkpoint();
                 finishedTaskCollectorScheduler.start();
                 try {
-                    while (!stopped) {
+                    while (!stopped && !failed) {
                         noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
@@ -373,10 +381,14 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
 
     public BrokerStatusView createBrokerStatusView() {
         BrokerStatusView res = new BrokerStatusView();
-        if (log.isLeader()) {
-            res.setClusterMode("LEADER");
+        if (recoveryInProgress) {
+            res.setClusterMode("RECOVERY");
         } else {
-            res.setClusterMode("FOLLOWER");
+            if (log.isLeader()) {
+                res.setClusterMode("LEADER");
+            } else {
+                res.setClusterMode("FOLLOWER");
+            }
         }
         res.setCurrentLedgerId(log.getCurrentLedgerId());
         res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
@@ -566,6 +578,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     }
 
     public void declareWorkerDisconnected(String workerId, long timestamp) throws LogNotAvailableException {
+        if (stopped || failed) {
+            // cannot write this on log, because we are stopped or failed, log will surely be not available
+            return;
+        }
         StatusEdit edit = StatusEdit.WORKER_DISCONNECTED(workerId, timestamp);
         this.brokerStatus.applyModification(edit);
     }
@@ -573,6 +589,17 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface {
     public void declareWorkerDead(String workerId, long timestamp) throws LogNotAvailableException {
         StatusEdit edit = StatusEdit.WORKER_DIED(workerId, timestamp);
         this.brokerStatus.applyModification(edit);
+    }
+
+    private volatile boolean failed;
+
+    @Override
+    public void brokerFailed() {
+        LOGGER.severe("brokerFailed!");
+        failed = true;
+        if (brokerStatus != null) {
+            brokerStatus.brokerFailed();
+        }
     }
 
 }

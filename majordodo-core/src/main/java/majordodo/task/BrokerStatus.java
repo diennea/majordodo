@@ -74,9 +74,9 @@ public class BrokerStatus {
     }
 
     public Set<String> getBusySlots() {
-        return  slotsManager.getBusySlots();        
+        return slotsManager.getBusySlots();
     }
-    
+
     public List<TransactionsStatusView.TransactionStatus> getAllTransactions() {
         List<TransactionsStatusView.TransactionStatus> result = new ArrayList<>();
         lock.readLock().lock();
@@ -282,7 +282,7 @@ public class BrokerStatus {
     public void followTheLeader() throws InterruptedException {
         try {
             log.requestLeadership();
-            while (!log.isLeader() && !log.isClosed()) {
+            while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
                 log.followTheLeader(this.lastLogSequenceNumber,
                         (logSeqNumber, edit) -> {
                             LOGGER.log(Level.INFO, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
@@ -313,7 +313,13 @@ public class BrokerStatus {
         }
         return new TransactionsStatusView.TransactionStatus(k.getTransactionId(), k.getCreationTimestamp(), countTasks, taskTypes);
     }
-    
+
+    private boolean brokerFailed;
+
+    void brokerFailed() {
+        LOGGER.severe("brokerFailed!");
+        brokerFailed = true;
+    }
 
     public static final class ModificationResult {
 
@@ -335,6 +341,9 @@ public class BrokerStatus {
     }
 
     List<ModificationResult> applyModifications(List<StatusEdit> edits) throws LogNotAvailableException {
+        if (brokerFailed) {
+            throw new LogNotAvailableException("broker failed");
+        }
         List<ModificationResult> results = new ArrayList<>();
         Set<Integer> skip = new HashSet<>();
         int index = 0;
@@ -368,6 +377,9 @@ public class BrokerStatus {
     }
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
+        if (brokerFailed) {
+            throw new LogNotAvailableException("broker failed");
+        }
         LOGGER.log(Level.FINEST, "applyModification {0}", edit);
         if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
                 && edit.slot != null) {
@@ -408,7 +420,7 @@ public class BrokerStatus {
                     String workerId = edit.workerId;
                     Task task = tasks.get(taskId);
                     if (task == null) {
-                        throw new RuntimeException("task "+taskId+" not present in brokerstatus. maybe you are recovering broken snapshot");
+                        throw new RuntimeException("task " + taskId + " not present in brokerstatus. maybe you are recovering broken snapshot");
                     }
                     int oldStatus = task.getStatus();
                     task.setStatus(Task.STATUS_RUNNING);
@@ -612,6 +624,9 @@ public class BrokerStatus {
             log.recovery(snapshot.getActualLogSequenceNumber(),
                     (logSeqNumber, edit) -> {
                         applyEdit(logSeqNumber, edit);
+                        if (brokerFailed) {
+                            throw new RuntimeException("broker failed");
+                        }
                     });
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);

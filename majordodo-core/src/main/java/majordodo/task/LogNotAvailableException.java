@@ -30,4 +30,8 @@ public class LogNotAvailableException extends Exception {
         super(cause);
     }
 
+    public LogNotAvailableException(String message) {
+        super(message);
+    }
+
 }
