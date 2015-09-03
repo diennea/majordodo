@@ -40,6 +40,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -464,37 +465,20 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                                 end = lastAddConfirmed;
                             }
                             b = end + 1;
-                            int expectedCount = (int) (end - start);
-                            CountDownLatch countDown = new CountDownLatch(expectedCount);
-                            double percent = (start * 100.0 / (lastAddConfirmed + 1));
+                            double percent = ((start - first) * 100.0 / (lastAddConfirmed + 1));
                             LOGGER.log(Level.SEVERE, "From entry {0}, to entry {1} ({2} %)", new Object[]{start, end, percent});
-                            handle.asyncReadEntries(start, end, new AsyncCallback.ReadCallback() {
-                                @Override
-                                public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> seq, Object ctx) {
-
-                                    try {
-                                        if (rc != BKException.Code.OK) {
-                                            throw BKException.create(rc);
-                                        }
-                                        while (seq.hasMoreElements()) {
-                                            countDown.countDown();
-                                            LedgerEntry entry = seq.nextElement();
-                                            LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
-                                            StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
-                                            if (number.after(snapshotSequenceNumber)) {
-                                                LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
-                                                consumer.accept(number, statusEdit);
-                                            } else {
-                                                LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
-                                            }
-                                        }
-                                    } catch (Throwable err) {
-                                        LOGGER.log(Level.SEVERE, "recovery failed", err);
-                                    }
+                            Enumeration<LedgerEntry> seq = handle.readEntries(start, end);
+                            while (seq.hasMoreElements()) {
+                                LedgerEntry entry = seq.nextElement();
+                                LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
+                                StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
+                                if (number.after(snapshotSequenceNumber)) {
+                                    LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                    consumer.accept(number, statusEdit);
+                                } else {
+                                    LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
                                 }
-                            }, null);
-
-                            countDown.await();
+                            }
                         }
                     }
                 } finally {
@@ -502,6 +486,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
             }
         } catch (Exception err) {
+            signalBrokerFailed();
             throw new LogNotAvailableException(err);
         }
     }
@@ -552,19 +537,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
         snapshotLock.lock();
         try {
-            ensureDirectories();
-            LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
-            String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
-            Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
-            LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
-
-            try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-                mapper.writeValue(out, filedata);
-            } catch (IOException err) {
-                throw new LogNotAvailableException(err);
-            }
+            Path snapshotfilename = writeSnapshotOnDisk(snapshotData);
 
             try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
                 for (Path path : allfiles) {
@@ -596,6 +569,22 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         if (zKClusterManager.isLeader()) {
             dropOldLedgers();
         }
+    }
+
+    private Path writeSnapshotOnDisk(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
+        ensureDirectories();
+        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
+        String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
+        Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
+        LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
+        try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
+            mapper.writeValue(out, filedata);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        return snapshotfilename;
     }
 
     private void dropOldLedgers() throws LogNotAvailableException {
@@ -730,6 +719,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     snapshotdata = mapper.readValue(in, Map.class
                     );
                     BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+                    writeSnapshotOnDisk(result);
                     currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                     return result;
                 } catch (IOException err) {
@@ -827,7 +817,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
                     byte[] entryData = e.getEntry();
                     StatusEdit statusEdit = StatusEdit.read(entryData);
-                    LOGGER.log(Level.SEVERE, "entry " + previous + "," + entryId + " -> " + statusEdit);
+                    LOGGER.log(Level.FINEST, "entry " + previous + "," + entryId + " -> " + statusEdit);
                     LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
                     consumer.accept(number, statusEdit);
                     lastSequenceNumber = number.sequenceNumber;
