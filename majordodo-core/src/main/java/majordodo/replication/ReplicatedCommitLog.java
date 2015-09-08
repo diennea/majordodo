@@ -427,7 +427,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException {
         this.actualLedgersList = zKClusterManager.getActualLedgersList();
         LOGGER.log(Level.SEVERE, "Actual ledgers list:" + actualLedgersList);
         this.currentLedgerId = snapshotSequenceNumber.ledgerId;
@@ -443,7 +443,12 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     LOGGER.log(Level.SEVERE, "Skipping ledger " + ledgerId);
                     continue;
                 }
-                LedgerHandle handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, magic);
+                LedgerHandle handle;
+                if (fencing) {
+                    handle = bookKeeper.openLedger(ledgerId, BookKeeper.DigestType.MAC, magic);
+                } else {
+                    handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, magic);
+                }
                 try {
                     long first;
                     if (ledgerId == snapshotSequenceNumber.ledgerId) {
@@ -494,15 +499,6 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public void startWriting() throws LogNotAvailableException {
         actualLedgersList = zKClusterManager.getActualLedgersList();
-        // fence  other brokers
-        for (long actualLedger : actualLedgersList.getActiveLedgers()) {
-            try {
-                bookKeeper.openLedger(actualLedger,
-                        BookKeeper.DigestType.MAC, magic).close();
-            } catch (BKException | InterruptedException err) {
-                throw new LogNotAvailableException(err);
-            }
-        }
         openNewLedger();
     }
 

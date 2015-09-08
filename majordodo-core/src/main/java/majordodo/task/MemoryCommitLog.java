@@ -87,7 +87,7 @@ public class MemoryCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException {
         if (logatboot != null) {
             for (MemoryLogLine line : logatboot) {
                 if (line.logSequenceNumber.after(snapshotSequenceNumber)) {

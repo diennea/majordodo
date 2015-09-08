@@ -55,7 +55,7 @@ public class FileCommitLogSimpleTest {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                 fail();
-            });
+            }, false);
             log.startWriting();
             assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
             assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
@@ -83,7 +83,7 @@ public class FileCommitLogSimpleTest {
                 assertTrue(a.sequenceNumber > last.get());
                 edits.add(b);
                 last.set(a.sequenceNumber);
-            });
+            }, false);
             log.startWriting();
             assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
             assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);

@@ -141,7 +141,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
     @Test
     public void snapshotTest() throws Exception {
-
+        Broker.PERFORM_CHECKPOINT_AT_LEADERSHIP = false;
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
         System.out.println("SETUPWORKDIR:" + workDir);

@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
@@ -141,7 +135,7 @@ public class SimpleBrokerRestartWithoutCheckpointTest {
 
     @Test
     public void snapshotTest() throws Exception {
-
+        Broker.PERFORM_CHECKPOINT_AT_LEADERSHIP = false;
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
         System.out.println("SETUPWORKDIR:" + workDir);

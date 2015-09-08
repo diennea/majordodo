@@ -321,6 +321,30 @@ public class BrokerStatus {
         brokerFailed = true;
     }
 
+    void recoverForLeadership() {
+        lock.writeLock().lock();
+        try {
+            // we have to be sure that we are in sych we the global status                        
+            LOGGER.severe("recoverForLeadership, from " + this.lastLogSequenceNumber);
+            AtomicInteger done = new AtomicInteger();
+            log.recovery(this.lastLogSequenceNumber,
+                    (logSeqNumber, edit) -> {
+                        applyEdit(logSeqNumber, edit);
+                        done.incrementAndGet();
+                        if (brokerFailed) {
+                            throw new RuntimeException("broker failed");
+                        }
+                    }, false);
+            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode");
+        } catch (LogNotAvailableException err) {
+            throw new RuntimeException(err);
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        LOGGER.log(Level.SEVERE, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
@@ -627,7 +651,7 @@ public class BrokerStatus {
                         if (brokerFailed) {
                             throw new RuntimeException("broker failed");
                         }
-                    });
+                    }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {

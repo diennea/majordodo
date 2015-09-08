@@ -187,6 +187,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
             Thread.sleep(500);
         }
     }
+    public static boolean PERFORM_CHECKPOINT_AT_LEADERSHIP = true;
 
     private final Runnable brokerLife = new Runnable() {
 
@@ -200,6 +201,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                     return;
                 }
                 LOGGER.log(Level.SEVERE, "Starting as leader");
+                brokerStatus.recoverForLeadership();
                 brokerStatus.startWriting();
                 for (Task task : brokerStatus.getTasksAtBoot()) {
                     switch (task.getStatus()) {
@@ -216,7 +218,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
                 }
-                checkpoint();
+                if (PERFORM_CHECKPOINT_AT_LEADERSHIP) {
+                    checkpoint();
+                }
                 finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped && !failed) {
