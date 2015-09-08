@@ -14,7 +14,7 @@ Client API supports transactions, batching of requests and http keep-alive conne
 
 ## Getting Involved
 
-See our [wiki](https://github.com/majordodo/Majordodo/wiki)
+See our [docs](https://majordodo.readme.io)
 
 Give us [feedback](https://dev.majordodo.org/jira/secure/Dashboard.jspa)
 
