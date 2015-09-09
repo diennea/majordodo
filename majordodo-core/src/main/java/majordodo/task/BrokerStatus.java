@@ -635,7 +635,7 @@ public class BrokerStatus {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             this.maxTaskId = snapshot.getMaxTaskId();
             this.newTaskId.set(maxTaskId + 1);
-            this.maxTransactionId = snapshot.getMaxTaskId();
+            this.maxTransactionId = snapshot.getMaxTransactionId();
             this.newTransactionId.set(maxTransactionId + 1);
             this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
             for (Task task : snapshot.getTasks()) {
@@ -644,6 +644,9 @@ public class BrokerStatus {
             }
             for (WorkerStatus worker : snapshot.getWorkers()) {
                 this.workers.put(worker.getWorkerId(), worker);
+            }
+            for (Transaction tx : snapshot.getTransactions()) {
+                this.transactions.put(tx.getTransactionId(), tx);
             }
             log.recovery(snapshot.getActualLogSequenceNumber(),
                     (logSeqNumber, edit) -> {
