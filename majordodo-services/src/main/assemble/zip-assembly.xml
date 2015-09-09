@@ -35,7 +35,19 @@
             <includes>
                 <include>*:jar</include>                
             </includes>
+            <excludes>
+                <exclude>majordodo:majordodo-demo-worker:*</exclude>                
+            </excludes>            
             <outputDirectory>lib</outputDirectory>
+        </dependencySet>
+         <dependencySet>
+            <useProjectArtifact>true</useProjectArtifact>
+            <useStrictFiltering>true</useStrictFiltering>
+            <unpack>false</unpack>           
+            <includes>
+                <include>majordodo:majordodo-demo-worker:*</include>                
+            </includes>            
+            <outputDirectory>extra</outputDirectory>
         </dependencySet>
     </dependencySets>
 

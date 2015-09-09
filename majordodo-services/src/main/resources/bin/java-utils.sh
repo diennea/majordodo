@@ -41,6 +41,11 @@ do
   CLASSPATH=$CLASSPATH:$file
 done
 
+for file in $BASE_DIR/extra/*.jar;
+do
+  CLASSPATH=$CLASSPATH:$file
+done
+
 
 if [ -z "$JAVA_OPTS" ]; then
   JAVA_OPTS=""

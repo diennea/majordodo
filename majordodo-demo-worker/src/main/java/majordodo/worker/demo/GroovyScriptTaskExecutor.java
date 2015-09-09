@@ -17,11 +17,10 @@
  under the License.
 
  */
-package majordodo.worker;
+package majordodo.worker.demo;
 
 import majordodo.executors.TaskExecutor;
 import java.util.Map;
-import javax.script.Bindings;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
@@ -30,7 +29,7 @@ import javax.script.ScriptEngineManager;
  *
  * @author enrico.olivelli
  */
-class GroovyScriptTaskExecutor extends TaskExecutor {
+public class GroovyScriptTaskExecutor extends TaskExecutor {
 
     public GroovyScriptTaskExecutor(Map<String, Object> parameters) {
     }

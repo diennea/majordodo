@@ -26,7 +26,6 @@ import majordodo.network.BrokerLocator;
 import majordodo.network.ConnectionRequestInfo;
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorFactory;
-import majordodo.executors.TaskExecutorStatus;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;

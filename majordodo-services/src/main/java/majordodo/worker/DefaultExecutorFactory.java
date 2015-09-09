@@ -19,30 +19,61 @@
  */
 package majordodo.worker;
 
-import majordodo.executors.TaskExecutor;
-import majordodo.executors.TaskExecutorFactory;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.executors.TaskExecutor;
+import majordodo.executors.TaskExecutorFactory;
+import majordodo.executors.TaskExecutorFactoryImplementation;
+import org.reflections.Reflections;
 
 /**
- * default exefutor factory, executes goorvy scripts
+ * Task Executor Factory which scans the cclasspath in order to find
+ * implementations of tasks
  *
  * @author enrico.olivelli
  */
 public class DefaultExecutorFactory implements TaskExecutorFactory {
 
-    public static final String TASKTYPE_GROOVYSCRIPT = "script";
     private static final Logger LOGGER = Logger.getLogger(DefaultExecutorFactory.class.getName());
+    private final List<TaskExecutorFactory> factories = new ArrayList<>();
+
+    public DefaultExecutorFactory() {
+        discoverFromClasspath();
+    }
 
     @Override
     public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
-        LOGGER.log(Level.FINE, "createTaskExecutor {0}", parameters);
-        if (taskType.equals(TASKTYPE_GROOVYSCRIPT)) {
-            return new GroovyScriptTaskExecutor(parameters);
-        } else {
-            return new TaskExecutor();
+        for (TaskExecutorFactory factory : factories) {
+            TaskExecutor e = factory.createTaskExecutor(taskType, parameters);
+            if (e != null) {
+                return e;
+            }
         }
+        return new TaskExecutor();
+    }
+
+    private void discoverFromClasspath() {
+        try {
+            Reflections reflections = new Reflections();
+            LOGGER.severe("looking on classpath for classes annotated with @TaskExecutorFactoryImplementation");
+            Set<Class<?>> classes = reflections.getTypesAnnotatedWith(TaskExecutorFactoryImplementation.class);
+
+            for (Class c : classes) {
+                LOGGER.log(Level.SEVERE, "found class {0}", c);
+                TaskExecutorFactory factory = (TaskExecutorFactory) c.newInstance();
+                factories.add(factory);
+            }
+            if (factories.isEmpty()) {
+                LOGGER.log(Level.SEVERE, "no class annotated with @TaskExecutorFactoryImplementation was found on the class path. This worker does not implement any tasktype!");
+            }
+        } catch (Throwable t) {
+            throw new RuntimeException(t);
+        }
+
     }
 
 }

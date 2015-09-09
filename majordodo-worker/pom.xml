@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">   
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
-    <name>Majordodo Client</name>
+    <name>Majordodo Worker Implementations</name>
     <version>0.1.11</version>
     <groupId>majordodo</groupId>
-    <artifactId>majordodo-client</artifactId>
+    <artifactId>majordodo-worker</artifactId>
     <build>
         <plugins>
             <plugin>
@@ -28,34 +28,11 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>       
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.11</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.3.6</version>
-        </dependency> 
-        <dependency>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>jackson-mapper-asl</artifactId>
-            <version>1.9.13</version>     
-            <optional>true</optional>       
-        </dependency>
-        <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>3.4.6</version>
-            <optional>true</optional>
-        </dependency>        
+    <dependencies>                     
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-    </properties>   
+    </properties>    
 </project>

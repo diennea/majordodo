@@ -19,7 +19,7 @@
  */
 package majordodo.task;
 
-import majordodo.executors.TaskExecutorStatus;
+import majordodo.worker.TaskExecutorStatus;
 import java.util.Map;
 
 /**
