@@ -347,6 +347,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
 
                 requestNewTasks();
+                if (externalProcessChecker != null) {
+                    try {
+                        externalProcessChecker.call();
+                    } catch (Exception err) {
+                        err.printStackTrace();
+                        killWorkerHandler.killWorker(WorkerCore.this);
+                    }
+                }
             }
 
             LOGGER.log(Level.SEVERE, "shutting down");
@@ -360,14 +368,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     }
                 });
                 disconnect();
-            }
-            if (externalProcessChecker != null) {
-                try {
-                    externalProcessChecker.call();
-                } catch (Exception err) {
-                    err.printStackTrace();
-                    killWorkerHandler.killWorker(WorkerCore.this);
-                }
             }
         }
     }
