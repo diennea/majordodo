@@ -28,10 +28,9 @@ import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
 import java.lang.management.ManagementFactory;
 import java.util.UUID;
-import majordodo.network.jvm.JVMBrokersRegistry;
 
 /**
- * Tools for embedded Majordod worker
+ * Tools for embedded Majordodo worker
  *
  * @author enrico.olivelli
  */

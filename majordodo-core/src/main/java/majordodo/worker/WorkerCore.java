@@ -213,7 +213,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.SEVERE, "channel closed");        
+        LOGGER.log(Level.SEVERE, "channel closed");
         disconnect();
         brokerLocator.brokerDisconnected();
     }
@@ -387,7 +387,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         listener.connectionEvent("connected", this);
     }
 
-    public void disconnect() {        
+    public void disconnect() {
         try {
             Channel c = channel;
             if (c != null) {
@@ -401,16 +401,34 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     }
 
+    @Override
     public String getProcessId() {
         return processId;
     }
 
+    @Override
     public String getWorkerId() {
         return workerId;
     }
 
+    @Override
     public String getLocation() {
         return location;
+    }
+
+    public WorkerStatusView createWorkerStatusView() {
+        WorkerStatusView res = new WorkerStatusView();
+        if (stopped) {
+            res.setStatus("STOPPED");
+        } else if (channel != null) {
+            res.setStatus("CONNECTED");
+            res.setConnectionInfo(channel + "");
+        } else {
+            res.setStatus("DISCONNECTED");
+        }
+        res.setRunningTasks(this.runningTasks.size());
+        res.setFinishedTasksPendingNotification(this.pendingFinishedTaskNotifications.size());
+        return res;
     }
 
 }
