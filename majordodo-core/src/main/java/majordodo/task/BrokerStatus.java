@@ -457,19 +457,11 @@ public class BrokerStatus {
                     return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
-                    long taskId = edit.taskId;
-                    String workerId = edit.workerId;
+                    long taskId = edit.taskId;                   
                     Task task = tasks.get(taskId);
                     if (task == null) {
-                        throw new IllegalStateException();
-                    }
-                    if (workerId != null && workerId.isEmpty()) {
-                        workerId = null;
-                    }
-                    // workerId is the id of the worker which causes the status change, it can be null if a system event occours (like deadline_expired)
-                    if (workerId != null && !Objects.equals(workerId, task.getWorkerId())) {
-                        throw new IllegalStateException("task " + taskId + ", bad workerid " + workerId + ", expected " + task.getWorkerId() + ", status " + Task.statusToString(task.getStatus()) + ", edit " + edit);
-                    }
+                        throw new IllegalStateException("task "+taskId+" does not exist");
+                    }                    
                     int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);
                     task.setResult(edit.result);
