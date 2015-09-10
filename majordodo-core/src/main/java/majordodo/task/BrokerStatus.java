@@ -63,7 +63,7 @@ public class BrokerStatus {
     private LogSequenceNumber lastLogSequenceNumber;
     private final AtomicInteger checkpointsCount = new AtomicInteger();
     private final SlotsManager slotsManager = new SlotsManager();
-    private BrokerStatusStats stats = new BrokerStatusStats();
+    private final BrokerStatusStats stats = new BrokerStatusStats();
 
     public WorkerStatus getWorkerStatus(String workerId) {
         return workers.get(workerId);
