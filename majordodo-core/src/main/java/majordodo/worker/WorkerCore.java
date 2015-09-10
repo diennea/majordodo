@@ -324,26 +324,8 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     continue;
                 }
 
-                FinishedTaskNotification notification;
-                try {
-                    notification = pendingFinishedTaskNotifications.poll(500, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                if (sendPendingNotifications()) {
                     break;
-                }
-                if (notification != null) {
-                    int max = 1000;
-                    List<FinishedTaskNotification> batch = new ArrayList<>();
-                    batch.add(notification);
-                    notification = pendingFinishedTaskNotifications.poll();
-                    while (notification != null && max-- > 0) {
-                        batch.add(notification);
-                        notification = pendingFinishedTaskNotifications.poll();
-                    }
-                    long _start = System.currentTimeMillis();
-                    notifyTasksFinished(batch);
-                    long _stop = System.currentTimeMillis();
-                    LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
                 }
 
                 requestNewTasks();
@@ -355,11 +337,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         killWorkerHandler.killWorker(WorkerCore.this);
                     }
                 }
-            }
 
-            LOGGER.log(Level.SEVERE, "shutting down");
+                LOGGER.log(Level.SEVERE, "shutting down");
+            }
+            
             Channel _channel = channel;
             if (_channel != null) {
+                sendPendingNotifications();
                 _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId), new SendResultCallback() {
 
                     @Override
@@ -369,6 +353,31 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 });
                 disconnect();
             }
+        }
+
+        private boolean sendPendingNotifications() {
+            FinishedTaskNotification notification;
+            try {
+                notification = pendingFinishedTaskNotifications.poll(500, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException exit) {
+                LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                return true;
+            }
+            if (notification != null) {
+                int max = 1000;
+                List<FinishedTaskNotification> batch = new ArrayList<>();
+                batch.add(notification);
+                notification = pendingFinishedTaskNotifications.poll();
+                while (notification != null && max-- > 0) {
+                    batch.add(notification);
+                    notification = pendingFinishedTaskNotifications.poll();
+                }
+                long _start = System.currentTimeMillis();
+                notifyTasksFinished(batch);
+                long _stop = System.currentTimeMillis();
+                LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
+            }
+            return false;
         }
     }
 

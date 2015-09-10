@@ -109,6 +109,7 @@ public class WorkerManager {
                                 connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
                                     if (error != null) {
                                         // the write failed
+                                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
                                         taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
                                     } else {
                                         tasksRunningOnRemoteWorker.add(taskToBeSubmitted);

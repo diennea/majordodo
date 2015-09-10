@@ -47,7 +47,7 @@ public final class WorkerStatus {
     private int status;
     private String workerLocation;
     private String processId;
-    private long lastConnectionTs;
+    private long lastConnectionTs;    
 
     public long getLastConnectionTs() {
         return lastConnectionTs;

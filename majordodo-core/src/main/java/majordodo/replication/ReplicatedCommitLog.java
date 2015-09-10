@@ -67,7 +67,7 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * Commit log replicated on Apache Bookeeper
+ * Commit log replicated on Apache Bookkeeper
  *
  * @author enrico.olivelli
  */
