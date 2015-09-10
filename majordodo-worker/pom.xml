@@ -35,4 +35,11 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
     </properties>    
+    <distributionManagement>        
+        <repository>            
+            <id>dev.majordodo.org</id>
+            <name>Majordodo Public Repository</name>
+            <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
+        </repository>        
+    </distributionManagement>  
 </project>
