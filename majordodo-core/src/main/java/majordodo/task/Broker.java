@@ -539,18 +539,18 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                     long deadline = task.getExecutionDeadline();
                     if (maxAttepts > 0 && attempt >= maxAttepts) {
                         // too many attempts
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2}", new Object[]{taskId, attempt, maxAttepts});
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2} ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+""});
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
                         edits.add(edit);
 
                     } else if (deadline > 0 && deadline < System.currentTimeMillis()) {
                         // deadline expired
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1}", new Object[]{taskId, new java.util.Date(deadline)});
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1} ({2})", new Object[]{taskId, new java.sql.Timestamp(deadline),task.getResult()+""});
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
                         edits.add(edit);
                     } else {
                         // submit for new execution
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, attempts {1}/{2}, scheduling for retry", new Object[]{taskId, attempt, maxAttepts});
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}, attempts {1}/{2}, scheduling for retry ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+""});
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
                         edits.add(edit);
                         toSchedule.add(task);
@@ -565,7 +565,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         }
         brokerStatus.applyModifications(edits);
         for (Task task : toSchedule) {
-            LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2}", new Object[]{task.getTaskId(), task.getType(), task.getUserId()});
+            LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(),task.getResult()+""});
             this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
         }
 

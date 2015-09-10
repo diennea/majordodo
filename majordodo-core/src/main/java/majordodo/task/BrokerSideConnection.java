@@ -129,7 +129,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
-                LOGGER.log(Level.FINE, "connection request {0}", message);
+                LOGGER.log(Level.INFO, "connection request {0}", message);
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
@@ -213,6 +213,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
+                LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent shutdown message");
                 /// ignore
                 break;
             case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
@@ -231,11 +232,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     LOGGER.log(Level.SEVERE, "sending snapshot data..." + data.length + " bytes");
                     channel.sendReplyMessage(message, Message.SNAPSHOT_DOWNLOAD_RESPONSE(data));
                 } catch (Exception error) {
+                    LOGGER.log(Level.SEVERE, "Error", error);
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
 
             default:
+                LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent unknown message " + message);
                 channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
 
         }
@@ -244,6 +247,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     @Override
     public void channelClosed() {
+        LOGGER.log(Level.SEVERE, "worker " + workerId + " connection " + this + " closed");
         channel = null;
         if (workerId != null) {
             broker.getWorkers().getWorkerManager(workerId).deactivateConnection(this);
@@ -292,6 +296,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     }
 
     public void workerDied() {
+        LOGGER.log(Level.SEVERE, "worker " + workerId + " connection " + this + ": workerDied");
         if (channel != null) {
             channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
                 @Override
@@ -327,4 +332,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         return true;
     }
 
+    @Override
+    public String toString() {
+        return "BrokerSideConnection{" + "workerId=" + workerId + ", workerProcessId=" + workerProcessId + ", connectionId=" + connectionId + ", location=" + location + ", channel=" + channel + ", lastReceivedMessageTs=" + lastReceivedMessageTs + '}';
+    }
+
+    
 }
