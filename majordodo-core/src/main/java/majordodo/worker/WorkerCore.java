@@ -336,10 +336,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         err.printStackTrace();
                         killWorkerHandler.killWorker(WorkerCore.this);
                     }
-                }
-
-                LOGGER.log(Level.SEVERE, "shutting down");
+                }               
             }
+            LOGGER.log(Level.SEVERE, "shutting down");
             
             Channel _channel = channel;
             if (_channel != null) {
