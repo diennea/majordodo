@@ -408,6 +408,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     public void disconnect() {
+        requestNewTasksPending = false;
         try {
             Channel c = channel;
             if (c != null) {
