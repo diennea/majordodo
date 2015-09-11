@@ -441,7 +441,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         if (stopped) {
             res.setStatus("STOPPED");
         } else if (channel != null) {
-            res.setStatus("CONNECTED");
+
+            if (requestNewTasksPending) {
+                res.setStatus("REQUESTNEWTASKS");
+            } else {
+                res.setStatus("CONNECTED");
+            }
             res.setConnectionInfo(channel + "");
         } else {
             res.setStatus("DISCONNECTED");
