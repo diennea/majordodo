@@ -163,7 +163,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                         (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
-                                System.out.println("executeTask: " + parameters);
+//                                System.out.println("executeTask: " + parameters);
                                 taskStartedLatch.countDown();
                                 newBrokerStartedLatch.await(10, TimeUnit.SECONDS);
                                 taskFinishedLatch.countDown();

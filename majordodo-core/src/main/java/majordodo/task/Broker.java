@@ -75,7 +75,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.11";
+        return "0.1.12-BETA1";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -224,7 +224,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 finishedTaskCollectorScheduler.start();
                 try {
                     while (!stopped && !failed) {
-                        noop(); // write something to long, this simple action detects fencing and forces flushes to other follower brokers
+                        noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
                         }
@@ -511,7 +511,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
         if (!started) {
             throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        }        
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
         for (TaskFinishedData taskData : tasks) {
@@ -523,6 +523,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
                 continue;
             }
+            workers.getWorkerManager(workerId).taskFinished(taskId);
             if (task.getStatus() != Task.STATUS_RUNNING) {
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
                 continue;
@@ -539,7 +540,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                     long deadline = task.getExecutionDeadline();
                     if (maxAttepts > 0 && attempt >= maxAttepts) {
                         // too many attempts
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, too many attempts {1}/{2} ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+""});
+                        LOGGER.log(Level.SEVERE, "taskFinished {0} {4}, too many attempts {1}/{2} ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+"", Task.statusToString(task.getStatus())});
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
                         edits.add(edit);
 
@@ -550,7 +551,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                         edits.add(edit);
                     } else {
                         // submit for new execution
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, attempts {1}/{2}, scheduling for retry ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+""});
+                        LOGGER.log(Level.SEVERE, "taskFinished {0}  {4}, attempts {1}/{2}, scheduling for retry ({3})", new Object[]{taskId, attempt, maxAttepts,task.getResult()+"",Task.statusToString(task.getStatus())});
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
                         edits.add(edit);
                         toSchedule.add(task);

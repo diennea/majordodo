@@ -84,6 +84,7 @@ public class WorkerManager {
 
                         LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
                         broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker, workerId);
+                        tasksRunningOnRemoteWorker.clear();
                     }
                 }
             } catch (LogNotAvailableException err) {
@@ -93,7 +94,7 @@ public class WorkerManager {
             if (lastActivity < connection.getLastReceivedMessageTs()) {
                 lastActivity = connection.getLastReceivedMessageTs();
             }
-            LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1} ", new Object[]{workerId, new java.util.Date(lastActivity)});
+            LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1}  taskToBeSubmittedToRemoteWorker {2} tasksRunningOnRemoteWorker {3}", new Object[]{workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker});
             if (connection != null) {
                 int max = 100;
                 while (max-- > 0) {
@@ -105,11 +106,15 @@ public class WorkerManager {
                             // task disappeared ?
                             LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
                         } else {
+                            if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted)) {
+                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} is already running on worker", new Object[]{workerId, taskToBeSubmitted, task});
+                                return;
+                            }
                             if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
                                 connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
                                     if (error != null) {
                                         // the write failed
-                                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
+                                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure, rescheduling for retry:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
                                         taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
                                     } else {
                                         tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
@@ -137,11 +142,16 @@ public class WorkerManager {
     }
 
     public void taskShouldBeRunning(long taskId) {
+        LOGGER.severe(workerId + " taskShouldBeRunning " + taskId);
         tasksRunningOnRemoteWorker.add(taskId);
+        taskToBeSubmittedToRemoteWorker.remove(taskId);
     }
 
     public void taskAssigned(long taskId) {
         taskToBeSubmittedToRemoteWorker.add(taskId);
+        if (tasksRunningOnRemoteWorker.contains(taskId)) {
+            LOGGER.log(Level.SEVERE, "taskAssigned {0}, the task is already running on remote worker?", new Object[]{taskId});
+        }
     }
 
     public void deactivateConnection(BrokerSideConnection aThis) {
@@ -149,6 +159,10 @@ public class WorkerManager {
         if (this.connection == aThis) {
             this.connection = null;
         }
+    }
+
+    void taskFinished(long taskId) {
+        tasksRunningOnRemoteWorker.remove(taskId);
     }
 
 }

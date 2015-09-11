@@ -187,7 +187,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                 boolean ok = false;
                 for (int i = 0; i < 100; i++) {
                     Task task = broker.getBrokerStatus().getTask(taskId);
-                    System.out.println("task:" + task);
+//                    System.out.println("task:" + task);
                     if (task.getStatus() == Task.STATUS_WAITING) {
                         ok = true;
                         break;

@@ -184,7 +184,7 @@ public class TaskDeadlineOnRequestTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
 
                                         throw new Exception("not to be executed");
 
@@ -200,7 +200,7 @@ public class TaskDeadlineOnRequestTest {
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
                             if (task.getStatus() == Task.STATUS_ERROR && "deadline_expired".equals(task.getResult())) {
-                                System.out.println("task:" + task);
+//                                System.out.println("task:" + task);
                                 okFinishedForBroker = true;
                                 break;
                             }

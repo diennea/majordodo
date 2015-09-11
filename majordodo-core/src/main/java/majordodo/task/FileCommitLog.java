@@ -360,7 +360,7 @@ public class FileCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    System.out.println("Processing snapshot file: " + path);
+                    LOGGER.severe("Processing snapshot file: " + path);
                     try {
                         filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
 
@@ -375,7 +375,7 @@ public class FileCommitLog extends StatusChangesLog {
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        System.out.println("Error:" + invalidName);
+                        LOGGER.severe("Error:" + invalidName);
                         invalidName.printStackTrace();
                     }
                 }
@@ -384,7 +384,7 @@ public class FileCommitLog extends StatusChangesLog {
             throw new LogNotAvailableException(err);
         }
         if (snapshotfilename == null) {
-            System.out.println("No snapshot available Starting with a brand new status");
+            LOGGER.severe("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {

@@ -17,42 +17,41 @@
  under the License.
 
  */
-package majordodo.network.jvm;
+package majordodo.worker;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * JVM classloader based registry for Brokers
+ * JVM classloader based registry for Workers
  *
  * @author enrico.olivelli
  */
-public class JVMBrokersRegistry {
+public class JVMWorkersRegistry {
 
-    private static final ConcurrentHashMap<String, JVMBrokerSupportInterface> brokers = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = Logger.getLogger(JVMBrokersRegistry.class.getName());
-    private static String lastRegisteredBroker = "";
+    private static final ConcurrentHashMap<String, WorkerCore> workers = new ConcurrentHashMap<>();
+    private static final Logger LOGGER = Logger.getLogger(JVMWorkersRegistry.class.getName());
+    private static String lastRegisteredWorker = "";
 
-    public static void registerBroker(String id, JVMBrokerSupportInterface broker) {
-        LOGGER.log(Level.SEVERE, "registerBroker {0}", id);
-        brokers.put(id, broker);
-        lastRegisteredBroker = id;
+    public static void registerWorker(String id, WorkerCore worker) {
+        workers.put(id, worker);
+        lastRegisteredWorker = id;
     }
 
-    public static <T extends JVMBrokerSupportInterface> T lookupBroker(String id) {
-        return (T) brokers.get(id);
+    public static <T extends WorkerCore> T lookupBroker(String id) {
+        return (T) workers.get(id);
     }
 
-    public static <T extends JVMBrokerSupportInterface> T getDefaultBroker() {
-        return (T) brokers.get(lastRegisteredBroker);
+    public static <T extends WorkerCore> T getLocalWorker() {
+        return (T) workers.get(lastRegisteredWorker);
     }
 
     public static void clear() {
-        brokers.clear();
+        workers.clear();
     }
 
-    public static void unregisterBroker(String brokerId) {
-        brokers.remove(brokerId);
+    public static void unregisterWorker(String brokerId) {
+        workers.remove(brokerId);
     }
 }

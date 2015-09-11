@@ -155,7 +155,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                         boolean ok = false;
                         for (int i = 0; i < 10; i++) {
                             TaskStatusView task = broker2.getClient().getTask(taskId);
-                            System.out.println("task:" + task);
+//                            System.out.println("task:" + task);
                             Thread.sleep(1000);
                             if (task != null) {
                                 ok = true;

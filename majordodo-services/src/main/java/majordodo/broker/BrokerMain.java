@@ -196,10 +196,10 @@ public class BrokerMain implements AutoCloseable {
 
                 ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir), Broker.formatHostdata(host, port, additionalInfo));
                 log = _log;
-                int ensemble = Integer.parseInt(configuration.getProperty("bookeeper.ensemblesize", _log.getEnsemble() + ""));
-                int writeQuorumSize = Integer.parseInt(configuration.getProperty("bookeeper.writequorumsize", _log.getWriteQuorumSize() + ""));
-                int ackQuorumSize = Integer.parseInt(configuration.getProperty("bookeeper.ackquorumsize", _log.getAckQuorumSize() + ""));
-                long ledgersRetentionPeriod = Long.parseLong(configuration.getProperty("bookeeper.ledgersretentionperiod", _log.getLedgersRetentionPeriod() + ""));
+                int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));
+                int writeQuorumSize = Integer.parseInt(configuration.getProperty("bookkeeper.writequorumsize", _log.getWriteQuorumSize() + ""));
+                int ackQuorumSize = Integer.parseInt(configuration.getProperty("bookkeeper.ackquorumsize", _log.getAckQuorumSize() + ""));
+                long ledgersRetentionPeriod = Long.parseLong(configuration.getProperty("bookkeeper.ledgersretentionperiod", _log.getLedgersRetentionPeriod() + ""));
                 _log.setAckQuorumSize(ackQuorumSize);
                 _log.setEnsemble(ensemble);
                 _log.setLedgersRetentionPeriod(ledgersRetentionPeriod);

@@ -186,7 +186,7 @@ public class TaskExecutionRecoveryOnErrorTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
                                         Integer attempt = (Integer) parameters.get("attempt");
                                         if (attempt == null || attempt == 1) {
                                             throw new Exception("failing at first attempt");

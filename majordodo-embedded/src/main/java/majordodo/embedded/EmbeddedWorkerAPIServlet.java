@@ -26,20 +26,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Servlet  API Client Majordodo Broker
+ * Servlet API Client Majordodo Worker
  *
  * @author enrico.olivelli
  */
-public class EmbeddedBrokerAPIServlet extends HttpServlet {
+public class EmbeddedWorkerAPIServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.clientfacade.HttpAPIImplementation.doGet(req, resp);
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        majordodo.clientfacade.HttpAPIImplementation.doPost(req, resp);
+        majordodo.worker.WorkerHttpAPIImplementation.doGet(req, resp);
     }
 
 }

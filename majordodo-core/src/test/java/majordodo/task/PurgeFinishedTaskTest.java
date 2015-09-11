@@ -189,7 +189,7 @@ public class PurgeFinishedTaskTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
                                         allTaskExecuted.countDown();
                                         return "theresult";
                                     }
@@ -207,7 +207,7 @@ public class PurgeFinishedTaskTest {
                         boolean purged = false;
                         for (int i = 0; i < 100; i++) {
                             task = broker.getClient().getTask(taskId);
-                            System.out.println("task:" + task);
+//                            System.out.println("task:" + task);
                             if (task == null) {
                                 purged = true;
                                 break;

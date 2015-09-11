@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.network.ReplyCallback;
 import majordodo.utils.ErrorUtils;
 
 /**
@@ -118,6 +119,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         return res;
     }
 
+    public List<FinishedTaskNotification> getPendingFinishedTaskNotifications() {
+        return new ArrayList<>(pendingFinishedTaskNotifications);
+    }
+
     public TaskExecutorFactory getExecutorFactory() {
         return executorFactory;
     }
@@ -126,7 +131,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.executorFactory = executorFactory;
     }
 
+    private volatile boolean requestNewTasksPending = false;
+
     private void requestNewTasks() {
+        if (requestNewTasksPending) {
+            return;
+        }
         Channel _channel = channel;
         if (_channel != null) {
             Map<String, Integer> availableSpace = new HashMap<>(config.getMaxThreadsByTaskType());
@@ -145,20 +155,20 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
-            try {
-                Message reply = _channel.sendMessageWithReply(
-                        Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
-                        config.getTasksRequestTimeout()
-                );
-                Integer count = (Integer) reply.parameters.get("countAssigned");
-                LOGGER.log(Level.FINE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
-            } catch (InterruptedException | TimeoutException err) {
-                if (!stopped) {
-                    LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
-                    disconnect();
-                }
-                return;
-            }
+            requestNewTasksPending = true;
+            _channel.sendMessageWithAsyncReply(Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
+                    (Message originalMessage, Message message, Throwable error) -> {
+                        requestNewTasksPending = false;
+                        if (error != null) {
+                            if (!stopped) {
+                                LOGGER.log(Level.SEVERE, "requestNewTasks error ", error);
+                                disconnect();
+                            }
+                        } else {
+                            Integer count = (Integer) message.parameters.get("countAssigned");
+                            LOGGER.log(Level.FINE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
+                        }
+                    });
         } else {
             LOGGER.log(Level.FINER, "requestNewTasks not connected");
         }
@@ -197,6 +207,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             executorFactory = new NotImplementedTaskExecutorFactory();
         }
         this.coreThread.start();
+        JVMWorkersRegistry.registerWorker(workerId, this);
     }
 
     @Override
@@ -284,6 +295,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+        JVMWorkersRegistry.unregisterWorker(workerId);
     }
 
     @Override
@@ -336,10 +348,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         err.printStackTrace();
                         killWorkerHandler.killWorker(WorkerCore.this);
                     }
-                }               
+                }
             }
             LOGGER.log(Level.SEVERE, "shutting down");
-            
+
             Channel _channel = channel;
             if (_channel != null) {
                 sendPendingNotifications();

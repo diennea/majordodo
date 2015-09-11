@@ -170,7 +170,7 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
                                         throw new Exception("failing at " + parameters.get("attempt") + " attempt");
 
                                     }
@@ -183,7 +183,7 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
-                            System.out.println("task:" + task);
+//                            System.out.println("task:" + task);
                             if (task.getStatus() == Task.STATUS_ERROR && task.getAttempts() == 5) {
                                 okFinishedForBroker = true;
                                 break;

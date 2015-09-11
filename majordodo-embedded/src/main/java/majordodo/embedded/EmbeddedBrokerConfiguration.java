@@ -34,9 +34,9 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_CLIENTAPIURL = "broker.clientapiurl";
     public static String KEY_BROKERID = "broker.id";
 
-    public static String KEY_BK_ENSEMBLE_SIZE = "bookeeper.ensemblesize";
-    public static String KEY_BK_WRITEQUORUMSIZE = "bookeeper.writequorumsize";
-    public static String KEY_BK_ACKQUORUMSIZE = "bookeeper.ackquorumsize";
-    public static String KEY_BK_LEDGERSRETENTIONPERIOD = "bookeeper.ledgersretentionperiod";
+    public static String KEY_BK_ENSEMBLE_SIZE = "bookkeeper.ensemblesize";
+    public static String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";
+    public static String KEY_BK_ACKQUORUMSIZE = "bookkeeper.ackquorumsize";
+    public static String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
 
 }
