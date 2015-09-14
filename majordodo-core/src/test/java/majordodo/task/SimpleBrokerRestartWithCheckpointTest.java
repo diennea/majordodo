@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
@@ -177,6 +171,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
                     config.setWorkerId(workerId);
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {

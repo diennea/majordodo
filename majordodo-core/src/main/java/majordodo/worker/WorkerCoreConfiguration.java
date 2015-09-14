@@ -149,5 +149,35 @@ public class WorkerCoreConfiguration {
     public void setTasksRequestTimeout(int tasksRequestTimeout) {
         this.tasksRequestTimeout = tasksRequestTimeout;
     }
+    
+    private long maxPendingFinishedTaskNotifications = 100;
+    
+    /**
+     * Maximum number of tasks for which a "finished" notification is waiting in queues
+     * @return 
+     */
+    public long getMaxPendingFinishedTaskNotifications() {
+        return maxPendingFinishedTaskNotifications;
+    }
+
+    public void setMaxPendingFinishedTaskNotifications(long maxPendingFinishedTaskNotifications) {
+        this.maxPendingFinishedTaskNotifications = maxPendingFinishedTaskNotifications;
+    }
+    
+    
+    /**
+     * Maximum time to be in the pendingFinishedTaskNotifications queue
+     */
+    private long maxWaitPendingFinishedTaskNotifications = 10000;
+
+    public long getMaxWaitPendingFinishedTaskNotifications() {
+        return maxWaitPendingFinishedTaskNotifications;
+    }
+
+    public void setMaxWaitPendingFinishedTaskNotifications(long maxWaitPendingFinishedTaskNotifications) {
+        this.maxWaitPendingFinishedTaskNotifications = maxWaitPendingFinishedTaskNotifications;
+    }
+
+    
 
 }

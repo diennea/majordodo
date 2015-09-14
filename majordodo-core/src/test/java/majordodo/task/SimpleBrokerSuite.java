@@ -74,6 +74,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -131,6 +132,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -193,6 +195,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -263,6 +266,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -335,6 +339,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -393,6 +398,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -457,6 +463,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
             Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+            config.setMaxPendingFinishedTaskNotifications(1);
             config.setWorkerId("workerid_" + i);
             config.setMaxThreadsByTaskType(tags);
             config.setGroups(Arrays.asList(group));
@@ -521,6 +528,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));

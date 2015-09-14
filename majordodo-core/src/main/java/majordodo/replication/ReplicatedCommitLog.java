@@ -34,13 +34,13 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -157,6 +157,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
+            long _start = System.currentTimeMillis();
             try {
                 byte[] serialize = edit.serialize();
                 writtenBytes += serialize.length;
@@ -178,6 +179,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             } catch (Exception err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
+            } finally {
+                long _end = System.currentTimeMillis();
+                LOGGER.log(Level.FINEST, "writeEntry {0} time " + (_end - _start) + " ms", new Object[]{edit});
             }
         }
 
@@ -195,15 +199,21 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         private List<Long> writeEntries(List<StatusEdit> edits) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
-
+            int size = edits.size();
+            if (size == 0) {
+                return Collections.emptyList();
+            } else if (size == 1) {
+                return Arrays.asList(writeEntry(edits.get(0)));
+            }
+            long _start = System.currentTimeMillis();
             try {
                 Holder<Exception> exception = new Holder<>();
                 CountDownLatch latch = new CountDownLatch(edits.size());
                 List<Long> res = new ArrayList<>(edits.size());
-                for (StatusEdit edit : edits) {
+                for (int i = 0; i < size; i++) {
                     res.add(null);
                 }
-                for (int i = 0; i < edits.size(); i++) {
+                for (int i = 0; i < size; i++) {
                     StatusEdit edit = edits.get(i);
                     byte[] serialize = edit.serialize();
                     writtenBytes += serialize.length;
@@ -254,6 +264,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             } catch (Exception err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
+            } finally {
+                long _end = System.currentTimeMillis();
+                LOGGER.log(Level.FINEST, "writeEntries " + edits.size() + " time " + (_end - _start) + " ms");
             }
         }
     }

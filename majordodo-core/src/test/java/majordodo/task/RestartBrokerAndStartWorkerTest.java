@@ -191,7 +191,8 @@ public class RestartBrokerAndStartWorkerTest {
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
-                    config.setWorkerId(workerId);
+                    config.setWorkerId(workerId);                    
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
 

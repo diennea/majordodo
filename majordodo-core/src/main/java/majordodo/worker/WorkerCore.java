@@ -230,6 +230,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     BlockingQueue<FinishedTaskNotification> pendingFinishedTaskNotifications = new LinkedBlockingQueue<>();
+    private long lastFinishedTaskNotificationSent;
 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
@@ -336,9 +337,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     continue;
                 }
 
-                if (sendPendingNotifications()) {
-                    break;
-                }
+                sendPendingNotifications();
 
                 requestNewTasks();
                 if (externalProcessChecker != null) {
@@ -366,29 +365,28 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
         }
 
-        private boolean sendPendingNotifications() {
-            FinishedTaskNotification notification;
-            try {
-                notification = pendingFinishedTaskNotifications.poll(500, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException exit) {
-                LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
-                return true;
+        private void sendPendingNotifications() {
+            long now = System.currentTimeMillis();
+            long delta = now - lastFinishedTaskNotificationSent;
+            int count = pendingFinishedTaskNotifications.size();
+            if (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications()) {
+                return;
             }
-            if (notification != null) {
-                int max = 1000;
-                List<FinishedTaskNotification> batch = new ArrayList<>();
+            lastFinishedTaskNotificationSent = now;
+            int max = 1000;
+            List<FinishedTaskNotification> batch = new ArrayList<>();
+            FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
+            while (notification != null && max-- > 0) {
                 batch.add(notification);
                 notification = pendingFinishedTaskNotifications.poll();
-                while (notification != null && max-- > 0) {
-                    batch.add(notification);
-                    notification = pendingFinishedTaskNotifications.poll();
-                }
-                long _start = System.currentTimeMillis();
-                notifyTasksFinished(batch);
-                long _stop = System.currentTimeMillis();
-                LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
             }
-            return false;
+            if (batch.isEmpty()) {
+                return;
+            }
+            long _start = System.currentTimeMillis();
+            notifyTasksFinished(batch);
+            long _stop = System.currentTimeMillis();
+            LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
         }
     }
 
