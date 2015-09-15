@@ -337,7 +337,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     continue;
                 }
 
-                sendPendingNotifications();
+                try {
+                    sendPendingNotifications(false);
+                } catch (InterruptedException exit) {
+                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    break;
+                }
 
                 requestNewTasks();
                 if (externalProcessChecker != null) {
@@ -353,7 +358,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
             Channel _channel = channel;
             if (_channel != null) {
-                sendPendingNotifications();
+                try {
+                    sendPendingNotifications(true);
+                } catch (InterruptedException ignore) {
+                }
                 _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId), new SendResultCallback() {
 
                     @Override
@@ -365,11 +373,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             }
         }
 
-        private void sendPendingNotifications() {
+        private void sendPendingNotifications(boolean force) throws InterruptedException {
             long now = System.currentTimeMillis();
             long delta = now - lastFinishedTaskNotificationSent;
             int count = pendingFinishedTaskNotifications.size();
-            if (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications()) {
+            if (force || (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
+                Thread.sleep(100);
                 return;
             }
             lastFinishedTaskNotificationSent = now;
