@@ -388,7 +388,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         if (recoveryInProgress) {
             res.setClusterMode("RECOVERY");
         } else {
-            if (log.isLeader()) {
+            if (log.isClosed()) {
+                res.setClusterMode("CLOSED");
+            } else if (log.isLeader()) {
                 res.setClusterMode("LEADER");
             } else {
                 res.setClusterMode("FOLLOWER");

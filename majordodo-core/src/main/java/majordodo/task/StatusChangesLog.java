@@ -70,7 +70,7 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     public boolean isLeader() {
         return true;
-    }
+    }        
 
     public void followTheLeader(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
     }

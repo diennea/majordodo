@@ -276,6 +276,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         @Override
         public void leadershipLost() {
             LOGGER.log(Level.SEVERE, "leadershipLost");
+            
         }
 
         @Override
