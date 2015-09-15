@@ -57,6 +57,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
+    private Runnable brokerDiedCallback;
 
     public Callable<Void> getExternalProcessChecker() {
         return externalProcessChecker;
@@ -64,6 +65,22 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
 
     public void setExternalProcessChecker(Callable<Void> externalProcessChecker) {
         this.externalProcessChecker = externalProcessChecker;
+    }
+
+    public Runnable getBrokerDiedCallback() {
+        return brokerDiedCallback;
+    }
+
+    public void setBrokerDiedCallback(Runnable brokerDiedCallback) {
+        if (brokerDiedCallback != null) {
+            this.brokerDiedCallback = () -> {
+                try {
+                    brokerDiedCallback.run();
+                } catch (Throwable t) {
+                    LOGGER.log(Level.SEVERE, "BrokerDiedCallback error", t);
+                }
+            };
+        }
     }
 
     public String getBrokerId() {
@@ -75,7 +92,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.12-BETA2";
+        return "0.1.12-BETA3";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -251,6 +268,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         this.groupMapperScheduler.stop();
         this.workers.stop();
         this.brokerStatus.close();
+
+        if (brokerDiedCallback != null) {
+            brokerDiedCallback.run();
+        }
     }
 
     public boolean isStopped() {
@@ -607,6 +628,9 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         failed = true;
         if (brokerStatus != null) {
             brokerStatus.brokerFailed();
+        }
+        if (brokerDiedCallback != null) {
+            brokerDiedCallback.run();
         }
     }
 

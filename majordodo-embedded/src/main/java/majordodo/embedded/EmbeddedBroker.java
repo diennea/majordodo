@@ -54,6 +54,27 @@ public class EmbeddedBroker implements AutoCloseable {
     private StatusChangesLog statusChangesLog;
     private NettyChannelAcceptor server;
     private final EmbeddedBrokerConfiguration configuration;
+    private Runnable brokerDiedCallback;
+
+    /**
+     * This callback wil be called when the broker dies, for example in case of
+     * "leadership lost" or "broker commit log"
+     *
+     * @return
+     */
+    public Runnable getBrokerDiedCallback() {
+        return brokerDiedCallback;
+    }
+
+    /**
+     * This callback wil be called when the broker dies, for example in case of
+     * "leadership lost" or "broker commit log"
+     *
+     * @param brokerDiedCallback
+     */
+    public void setBrokerDiedCallback(Runnable brokerDiedCallback) {
+        this.brokerDiedCallback = brokerDiedCallback;
+    }
 
     public EmbeddedBroker(EmbeddedBrokerConfiguration configuration) {
         this.configuration = configuration;
@@ -145,6 +166,7 @@ public class EmbeddedBroker implements AutoCloseable {
                 server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
                 break;
         }
+        broker.setBrokerDiedCallback(brokerDiedCallback);
         broker.start();
         if (server != null) {
             server.start();
