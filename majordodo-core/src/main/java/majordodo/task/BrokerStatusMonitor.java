@@ -71,20 +71,14 @@ public class BrokerStatusMonitor {
             TransactionsStatusView transactions = broker.getTransactionsStatusView();
             SlotsStatusView slots = broker.getSlotsStatusView();
             BrokerStatusView brokerStatusView = broker.createBrokerStatusView();
-            LOGGER.log(Level.SEVERE, "Broker status: " + brokerStatusView.getClusterMode()
-                    + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber());
-            LOGGER.log(Level.SEVERE, "Tasks:" + brokerStatusView.getTasks()
-                    + ", waiting:" + brokerStatusView.getWaitingTasks()
-                    + ", running:" + brokerStatusView.getRunningTasks()
-                    + ", error:" + brokerStatusView.getErrorTasks()
-                    + ", finished:" + brokerStatusView.getFinishedTasks());
+
             TransactionsStatusView.TransactionStatus oldestTransaction = transactions
                     .getTransactions()
                     .stream()
                     .sorted(Comparator.comparing(TransactionStatus::getCreationTimestamp))
                     .findFirst()
                     .orElse(null);
-            LOGGER.log(Level.SEVERE, "Transactions: count " + transactions.getTransactions().size() + ", oldest " + oldestTransaction);
+
             int countHeap = heap.getTasks().size();
             TaskStatus first = null;
             TaskStatus last = null;
@@ -92,7 +86,12 @@ public class BrokerStatusMonitor {
                 first = heap.getTasks().get(0);
                 last = heap.getTasks().get(countHeap - 1);
             }
-            LOGGER.log(Level.SEVERE, "TasksHeap: size " + heap.getTasks().size() + ", first " + first + ", last " + last);
+            LOGGER.log(Level.SEVERE, "Broker status: " + brokerStatusView.getClusterMode()
+                    + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",T asks:" + brokerStatusView.getTasks()
+                    + ", waiting:" + brokerStatusView.getWaitingTasks()
+                    + ", running:" + brokerStatusView.getRunningTasks()
+                    + ", error:" + brokerStatusView.getErrorTasks()
+                    + ", finished:" + brokerStatusView.getFinishedTasks() + ",Transactions: count " + transactions.getTransactions().size() + ", oldest " + oldestTransaction + ", TasksHeap: size " + heap.getTasks().size() + ", first " + first + ", last " + last);
         }
 
     }
