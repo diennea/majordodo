@@ -19,6 +19,7 @@
  */
 package majordodo.task;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -38,6 +39,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import majordodo.utils.FileUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -309,8 +312,10 @@ public class FileCommitLog extends StatusChangesLog {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
 
-            try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-                mapper.writeValue(out, filedata);
+            try (OutputStream out = Files.newOutputStream(snapshotfilename);
+                    BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+                    GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+                mapper.writeValue(zout, filedata);
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
@@ -349,7 +354,7 @@ public class FileCommitLog extends StatusChangesLog {
 
     }
 
-    private static final String SNAPSHOTFILEXTENSION = ".snap.json";
+    private static final String SNAPSHOTFILEXTENSION = ".snap.json.gz";
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
@@ -391,10 +396,10 @@ public class FileCommitLog extends StatusChangesLog {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
 
-            try (InputStream in = Files.newInputStream(snapshotfilename)) {
-
-                snapshotdata = mapper.readValue(in, Map.class
-                );
+            try (InputStream in = Files.newInputStream(snapshotfilename);
+                    BufferedInputStream bin = new BufferedInputStream(in);
+                    GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                snapshotdata = mapper.readValue(gzip, Map.class);
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;

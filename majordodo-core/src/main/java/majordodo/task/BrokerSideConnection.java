@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPOutputStream;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -223,8 +224,9 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshot);
                     ObjectMapper mapper = new ObjectMapper();
                     byte[] data;
-                    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                        mapper.writeValue(out, filedata);
+                    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            GZIPOutputStream zout = new GZIPOutputStream(out)) {
+                        mapper.writeValue(zout, filedata);
                         data = out.toByteArray();
                     } catch (IOException err) {
                         throw new LogNotAvailableException(err);

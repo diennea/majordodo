@@ -19,6 +19,8 @@
  */
 package majordodo.replication;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import majordodo.task.BrokerStatusSnapshot;
 import majordodo.task.LogNotAvailableException;
@@ -48,6 +50,8 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import javax.xml.ws.Holder;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
@@ -590,8 +594,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
-        try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-            mapper.writeValue(out, filedata);
+        try (OutputStream out = Files.newOutputStream(snapshotfilename);
+                BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+                GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+            mapper.writeValue(zout, filedata);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
@@ -635,7 +641,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
     }
 
-    private static final String SNAPSHOTFILEXTENSION = ".snap.json";
+    private static final String SNAPSHOTFILEXTENSION = ".snap.json.gz";
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
@@ -677,9 +683,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> snapshotdata;
 
-            try (InputStream in = Files.newInputStream(snapshotfilename)) {
-                snapshotdata = mapper.readValue(in, Map.class
-                );
+            try (InputStream in = Files.newInputStream(snapshotfilename);
+                    BufferedInputStream bin = new BufferedInputStream(in);
+                    GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                snapshotdata = mapper.readValue(gzip, Map.class);
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
 
@@ -726,8 +733,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> snapshotdata;
 
-                try (InputStream in = new ByteArrayInputStream(snapshot)) {
-                    snapshotdata = mapper.readValue(in, Map.class
+                try (InputStream in = new ByteArrayInputStream(snapshot);
+                        GZIPInputStream gzip = new GZIPInputStream(in)) {
+                    snapshotdata = mapper.readValue(gzip, Map.class
                     );
                     BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
                     writeSnapshotOnDisk(result);
