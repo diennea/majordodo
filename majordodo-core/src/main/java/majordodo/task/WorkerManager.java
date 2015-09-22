@@ -143,10 +143,10 @@ public class WorkerManager {
     private final BlockingQueue<Long> taskToBeSubmittedToRemoteWorker = new LinkedBlockingDeque<>();
 
     public void activateConnection(BrokerSideConnection connection) {
-        LOGGER.log(Level.INFO, "activateConnection {0}", connection);
-        lastActivity = System.currentTimeMillis();
+        LOGGER.log(Level.INFO, "activateConnection {0}", connection);        
         connectionLock.lock();
         try {
+            lastActivity = System.currentTimeMillis();
             this.connection = connection;
         } finally {
             connectionLock.unlock();

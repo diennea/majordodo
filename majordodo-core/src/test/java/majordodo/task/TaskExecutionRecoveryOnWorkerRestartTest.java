@@ -141,11 +141,11 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        BrokerConfiguration brokerConfig = new BrokerConfiguration();        
+        BrokerConfiguration brokerConfig = new BrokerConfiguration();
         brokerConfig.setMaxWorkerIdleTime(5000);
-        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null,0)).getTaskId();
+            taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -226,23 +226,22 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                                 }
                         );
                         assertTrue(taskStartedLatch.await(10, TimeUnit.SECONDS));
+                        ok = false;
+                        for (int i = 0; i < 100; i++) {
+                            Task task = broker.getBrokerStatus().getTask(taskId);
+                            System.out.println("task2:" + task);
+                            if (task.getStatus() == Task.STATUS_FINISHED) {
+                                ok = true;
+                                assertEquals("theresult", task.getResult());
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(ok);
                     }
                 }
 
             }
-
-            boolean ok = false;
-            for (int i = 0; i < 100; i++) {
-                Task task = broker.getBrokerStatus().getTask(taskId);
-                System.out.println("task2:" + task);
-                if (task.getStatus() == Task.STATUS_FINISHED) {
-                    ok = true;
-                    assertEquals("theresult", task.getResult());
-                    break;
-                }
-                Thread.sleep(1000);
-            }
-            assertTrue(ok);
 
         }
 

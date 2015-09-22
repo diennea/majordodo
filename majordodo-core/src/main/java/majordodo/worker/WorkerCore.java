@@ -320,10 +320,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     }
 
                 } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
                     break;
                 } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] no broker available:" + retry);
+                    LOGGER.log(Level.SEVERE, "no broker available:" + retry);
                 }
 
                 if (channel == null) {
@@ -331,7 +331,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
                         Thread.sleep(5000);
                     } catch (InterruptedException exit) {
-                        LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                        LOGGER.log(Level.SEVERE, "exit loop " + exit);
                         break;
                     }
                     continue;
@@ -340,7 +340,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 try {
                     sendPendingNotifications(false);
                 } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
                     break;
                 }
 
@@ -354,7 +354,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     }
                 }
             }
-            LOGGER.log(Level.SEVERE, "shutting down");
+            LOGGER.log(Level.SEVERE, "shutting down " + processId);
 
             Channel _channel = channel;
             if (_channel != null) {
@@ -407,10 +407,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.SEVERE, "[WORKER] connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
+        LOGGER.log(Level.SEVERE, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
         disconnect();
         channel = brokerLocator.connect(this, this);
-        LOGGER.log(Level.SEVERE, "[WORKER] connected, channel:" + channel);
+        LOGGER.log(Level.SEVERE, "connected, channel:" + channel);
         listener.connectionEvent("connected", this);
     }
 
