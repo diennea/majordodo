@@ -92,7 +92,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.12-BETA4";
+        return "0.1.12-BETA5";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
