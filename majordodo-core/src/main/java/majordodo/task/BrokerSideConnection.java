@@ -227,6 +227,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     try (ByteArrayOutputStream out = new ByteArrayOutputStream();
                             GZIPOutputStream zout = new GZIPOutputStream(out)) {
                         mapper.writeValue(zout, filedata);
+                        zout.close();
                         data = out.toByteArray();
                     } catch (IOException err) {
                         throw new LogNotAvailableException(err);
@@ -339,5 +340,4 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         return "BrokerSideConnection{" + "workerId=" + workerId + ", workerProcessId=" + workerProcessId + ", connectionId=" + connectionId + ", location=" + location + ", channel=" + channel + ", lastReceivedMessageTs=" + lastReceivedMessageTs + '}';
     }
 
-    
 }
