@@ -535,7 +535,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         if (!started) {
             throw new LogNotAvailableException(new Exception("broker not yet started"));
         }
-        LOGGER.log(Level.SEVERE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
+        LOGGER.log(Level.FINE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
         for (TaskFinishedData taskData : tasks) {

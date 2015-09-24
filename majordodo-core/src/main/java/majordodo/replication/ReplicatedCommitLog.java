@@ -700,6 +700,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 LOGGER.log(Level.SEVERE,
                         "Actually the loaded snapshot is not recoveable given the actual ledgers list. This file cannot be used for recovery");
             } catch (IOException err) {
+                LOGGER.log(Level.SEVERE, "error while reading snapshot data", err);
                 throw new LogNotAvailableException(err);
             }
         }
@@ -714,25 +715,25 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         } else {
             LOGGER.log(Level.SEVERE, "No valid snapshot present, I will try to download a snapshot from the actual master");
 
-            byte[] actualMaster;
+            byte[] actualLeader;
             try {
-                actualMaster = zKClusterManager.getActualMaster();
+                actualLeader = zKClusterManager.getActualMaster();
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
             }
-            if (actualMaster == null || actualMaster.length == 0) {
-                LOGGER.log(Level.SEVERE, "No snapshot present, no master is present, cannot boot");
-                throw new LogNotAvailableException(new Exception("No valid snapshot present, no master is present, cannot boot"));
+            if (actualLeader == null || actualLeader.length == 0) {
+                LOGGER.log(Level.SEVERE, "No snapshot present, no leader is present, cannot boot");
+                throw new LogNotAvailableException(new Exception("No valid snapshot present, no leader is present, cannot boot"));
             } else {
                 byte[] snapshot;
                 try {
-                    snapshot = downloadSnapshotFromMaster(actualMaster);
+                    snapshot = downloadSnapshotFromMaster(actualLeader);
                 } catch (Exception err) {
                     throw new LogNotAvailableException(err);
                 }
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> snapshotdata;
-
+                LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
                 try (InputStream in = new ByteArrayInputStream(snapshot);
                         GZIPInputStream gzip = new GZIPInputStream(in)) {
                     snapshotdata = mapper.readValue(gzip, Map.class
@@ -742,6 +743,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                     return result;
                 } catch (IOException err) {
+                    LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
                     throw new LogNotAvailableException(err);
                 }
             }

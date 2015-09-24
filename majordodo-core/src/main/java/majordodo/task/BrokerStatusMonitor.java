@@ -87,7 +87,7 @@ public class BrokerStatusMonitor {
                 last = heap.getTasks().get(countHeap - 1);
             }
             LOGGER.log(Level.SEVERE, "Broker status: " + brokerStatusView.getClusterMode()
-                    + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",T asks:" + brokerStatusView.getTasks()
+                    + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",Tasks:" + brokerStatusView.getTasks()
                     + ", waiting:" + brokerStatusView.getWaitingTasks()
                     + ", running:" + brokerStatusView.getRunningTasks()
                     + ", error:" + brokerStatusView.getErrorTasks()
