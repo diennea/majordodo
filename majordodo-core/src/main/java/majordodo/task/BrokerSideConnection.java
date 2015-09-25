@@ -131,6 +131,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
                 LOGGER.log(Level.INFO, "connection request {0}", message);
+                String sharedSecret = (String) message.parameters.get("secret");
+                if (sharedSecret == null || !sharedSecret.equals(broker.getConfiguration().getSharedSecret())) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("invalid network secret"));
+                    return;
+                }
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);

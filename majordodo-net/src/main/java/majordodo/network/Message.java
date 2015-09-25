@@ -68,12 +68,13 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, Set<Long> actualRunningTasks) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
         params.put("actualRunningTasks", actualRunningTasks);
         params.put("location", location);
+        params.put("secret", sharedSecret);
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 

@@ -39,6 +39,9 @@ public abstract class AbstractEmbeddedServiceConfiguration {
 
     public static final String KEY_MODE = "mode";
 
+    public static final String KEY_SHAREDSECRET = "sharedsecret";
+    public static final String KEY_SHAREDSECRET_DEFAULT = "dodo";
+
     private final Map<String, Object> properties = new HashMap<>();
 
     public Map<String, Object> getProperties() {

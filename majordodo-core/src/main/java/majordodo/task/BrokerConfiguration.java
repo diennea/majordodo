@@ -90,13 +90,13 @@ public class BrokerConfiguration {
     public void setRecomputeGroupsPeriod(int recomputeGroupsPeriod) {
         this.recomputeGroupsPeriod = recomputeGroupsPeriod;
     }
-    
-    
+
     private int brokerStatusMonitorPeriod = 1000 * 60 * 2;
 
     /**
      * Write on the logs the status of the broker, in order to detect problems
-     * @return 
+     *
+     * @return
      */
     public int getBrokerStatusMonitorPeriod() {
         return brokerStatusMonitorPeriod;
@@ -105,8 +105,6 @@ public class BrokerConfiguration {
     public void setBrokerStatusMonitorPeriod(int brokerStatusMonitorPeriod) {
         this.brokerStatusMonitorPeriod = brokerStatusMonitorPeriod;
     }
-    
-    
 
     private int finishedTasksPurgeSchedulerPeriod = 1000 * 60 * 15;
 
@@ -185,6 +183,20 @@ public class BrokerConfiguration {
 
     public void setClearStatusAtBoot(boolean clearStatusAtBoot) {
         this.clearStatusAtBoot = clearStatusAtBoot;
+    }
+
+    /**
+     * Shared secret among all the brokers and workers. Provides minimum
+     * security level
+     */
+    private String sharedSecret = "dodo";
+
+    public String getSharedSecret() {
+        return sharedSecret;
+    }
+
+    public void setSharedSecret(String sharedSecret) {
+        this.sharedSecret = sharedSecret;
     }
 
 }

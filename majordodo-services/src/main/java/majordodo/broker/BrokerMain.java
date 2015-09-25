@@ -40,6 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.daemons.PidFileLocker;
 import majordodo.replication.ReplicatedCommitLog;
+import majordodo.task.SingleUserAuthenticationManager;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -164,8 +165,13 @@ public class BrokerMain implements AutoCloseable {
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
         int taskheapsize = Integer.parseInt(configuration.getProperty("broker.tasksheap.size", "1000000"));
         String assigner = configuration.getProperty("tasks.groupmapper", "");
+        String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
         String clusteringmode = configuration.getProperty("clustering.mode", "singleserver");
-        System.out.println("Starting MajorDodo Broker");
+
+        String adminuser = configuration.getProperty("admin.username", "admin");
+        String adminpassword = configuration.getProperty("admin.password", "password");
+
+        System.out.println("Starting MajorDodo Broker " + Broker.VERSION());
         GroupMapperFunction mapper;
         if (assigner.isEmpty()) {
             mapper = new DefaultGroupMapperFunction();
@@ -213,8 +219,10 @@ public class BrokerMain implements AutoCloseable {
         BrokerConfiguration config = new BrokerConfiguration();
         Map<String, Object> props = new HashMap<>();
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
+        config.setSharedSecret(sharedsecret);
         config.read(props);
         broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
+        broker.setAuthenticationManager(new SingleUserAuthenticationManager(adminuser, adminpassword));
         broker.setBrokerId(id);
         broker.setExternalProcessChecker(() -> {
             pidFileLocker.check();
@@ -242,7 +250,7 @@ public class BrokerMain implements AutoCloseable {
 
     public void waitForLeadership() throws Exception {
         for (int i = 0; i < 100; i++) {
-            System.out.println("Waiting for leadership");            
+            System.out.println("Waiting for leadership");
             if (broker.isWritable()) {
                 return;
             }

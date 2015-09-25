@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.clientfacade.AuthenticationManager;
 import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
@@ -58,6 +59,15 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     private String brokerId = UUID.randomUUID().toString();
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
     private Runnable brokerDiedCallback;
+    private AuthenticationManager authenticationManager;
+
+    public AuthenticationManager getAuthenticationManager() {
+        return authenticationManager;
+    }
+
+    public void setAuthenticationManager(AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
+    }
 
     public Callable<Void> getExternalProcessChecker() {
         return externalProcessChecker;
@@ -92,7 +102,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.12-BETA5";
+        return "0.1.12-BETA6";
     }
 
     public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
@@ -161,6 +171,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         this.configuration = configuration;
         this.workers = new Workers(this);
         this.acceptor = new BrokerServerEndpoint(this);
+        this.authenticationManager = new SingleUserAuthenticationManager("admin", "password");
         this.client = new ClientFacade(this);
         this.brokerStatus = new BrokerStatus(log);
         this.tasksHeap = tasksHeap;
@@ -171,6 +182,8 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
         this.brokerStatusMonitor = new BrokerStatusMonitor(configuration, this);
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
+        this.brokerLifeThread.setDaemon(true);
+        this.log.setSharedSecret(configuration.getSharedSecret());
     }
 
     private boolean recoveryInProgress = false;

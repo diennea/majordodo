@@ -89,6 +89,9 @@ public class EmbeddedWorker {
                 brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
                 break;
         }
+        String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
+        workerConfiguration.setSharedSecret(sharedSecret);
+        workerConfiguration.read(configuration.getProperties());
         String processId = ManagementFactory.getRuntimeMXBean().getName() + "_" + UUID.randomUUID().toString();
         workerCore = new WorkerCore(workerConfiguration, processId, brokerLocator, null);
         if (taskExecutorFactory != null) {

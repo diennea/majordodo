@@ -120,6 +120,7 @@ public class WorkerMain implements AutoCloseable {
 
         String hostname = InetAddress.getLocalHost().getCanonicalHostName();
         String workerid = configuration.getProperty("worker.id", hostname);
+        String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
         if (workerid.isEmpty()) {
             workerid = hostname;
         }
@@ -157,6 +158,7 @@ public class WorkerMain implements AutoCloseable {
             }
         }
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setSharedSecret(sharedsecret);
         config.setMaxThreads(maxthreads);
         config.setWorkerId(workerid);
         config.setMaxThreadsByTaskType(maximumThreadPerTaskType);

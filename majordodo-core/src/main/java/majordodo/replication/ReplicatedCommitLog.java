@@ -79,7 +79,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());
 
-    private static final byte[] magic = "dodo".getBytes(StandardCharsets.UTF_8);
+    private String sharedSecret = "dodo";
     private BookKeeper bookKeeper;
     private ZKClusterManager zKClusterManager;
     private final ReentrantLock writeLock = new ReentrantLock();
@@ -95,6 +95,16 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long ledgersRetentionPeriod = 1000 * 60 * 60 * 24;
     private long maxLogicalLogFileSize = 1024 * 1024 * 256;
     private long writtenBytes = 0;
+
+    @Override
+    public String getSharedSecret() {
+        return sharedSecret;
+    }
+
+    @Override
+    public void setSharedSecret(String sharedSecret) {
+        this.sharedSecret = sharedSecret;
+    }
 
     public long getMaxLogicalLogFileSize() {
         return maxLogicalLogFileSize;
@@ -149,7 +159,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         private CommitFileWriter() throws LogNotAvailableException {
             try {
-                this.out = bookKeeper.createLedger(ensemble, writeQuorumSize, ackQuorumSize, BookKeeper.DigestType.MAC, magic);
+                this.out = bookKeeper.createLedger(ensemble, writeQuorumSize, ackQuorumSize, BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
                 writtenBytes = 0;
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
@@ -464,9 +474,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
                 LedgerHandle handle;
                 if (fencing) {
-                    handle = bookKeeper.openLedger(ledgerId, BookKeeper.DigestType.MAC, magic);
+                    handle = bookKeeper.openLedger(ledgerId, BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
                 } else {
-                    handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, magic);
+                    handle = bookKeeper.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
                 }
                 try {
                     long first;
@@ -818,7 +828,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 LedgerHandle lh;
                 try {
                     lh = bookKeeper.openLedgerNoRecovery(previous,
-                            BookKeeper.DigestType.MAC, magic);
+                            BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
                 } catch (BKException.BKLedgerRecoveryException e) {
                     LOGGER.log(Level.SEVERE, "error", e);
                     return;

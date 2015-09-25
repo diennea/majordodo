@@ -20,11 +20,13 @@
 package majordodo.clientfacade;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +37,9 @@ import javax.servlet.http.HttpServletResponse;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
 import majordodo.task.Task;
+import org.apache.commons.codec.binary.Base64;
 import org.codehaus.jackson.map.ObjectMapper;
+import sun.security.krb5.internal.ccache.Credentials;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone
@@ -47,9 +51,36 @@ public class HttpAPIImplementation {
 
     private static final Logger LOGGER = Logger.getLogger(HttpAPIImplementation.class.getName());
 
+    private static AuthenticatedUser login(HttpServletRequest req) {
+        Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+        if (broker == null) {
+            return null;
+        }
+        String authHeader = req.getHeader("Authorization");
+        if (authHeader != null) {
+            StringTokenizer st = new StringTokenizer(authHeader);
+            if (st.hasMoreTokens()) {
+                String basic = st.nextToken();
+                if (basic.equalsIgnoreCase("Basic")) {
+                    try {
+                        String credentials = new String(java.util.Base64.getDecoder().decode(st.nextToken()), StandardCharsets.UTF_8);
+                        int p = credentials.indexOf(":");
+                        if (p != -1) {
+                            String login = credentials.substring(0, p).trim();
+                            String password = credentials.substring(p + 1).trim();
+                            return broker.getAuthenticationManager().login(login, password);
+                        }
+                    } catch (IllegalArgumentException a) {
+                    }
+
+                }
+            }
+        }
+        return null;
+    }
+
     public static void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-
         String view = req.getParameter("view");
         if (view == null) {
             view = "overview";
@@ -219,7 +250,8 @@ public class HttpAPIImplementation {
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> data = mapper.readValue(req.getInputStream(), Map.class);
-        LOGGER.log(Level.FINE, "POST " + data + " broker=" + broker);
+        AuthenticatedUser auth_user = login(req);
+        LOGGER.log(Level.FINE, "POST " + data + " broker=" + broker + ", user: " + auth_user);
         String action = data.get("action") + "";
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("action", action);
@@ -230,6 +262,10 @@ public class HttpAPIImplementation {
             resultMap.put("error", "broker_not_started");
             resultMap.put("ok", false);
         } else {
+            if (auth_user == null) {
+                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                return;
+            }
             switch (action) {
                 case "submitTask": {
                     String error = "";
@@ -259,6 +295,11 @@ public class HttpAPIImplementation {
                     if (slot != null && slot.trim().isEmpty()) {
                         slot = null;
                     }
+                    if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                            && !auth_user.getUserId().equals(user)) {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                        return;
+                    }
 
                     SubmitTaskResult result;
                     try {
@@ -285,6 +326,11 @@ public class HttpAPIImplementation {
                         for (Map<String, Object> task : tasks) {
                             String type = (String) task.get("tasktype");
                             String user = (String) task.get("userid");
+                            if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                                    && !auth_user.getUserId().equals(user)) {
+                                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                                return;
+                            }
                             String parameters = (String) task.get("data");
                             String _maxattempts = (String) task.get("maxattempts");
                             String _attempt = (String) task.get("attempt");

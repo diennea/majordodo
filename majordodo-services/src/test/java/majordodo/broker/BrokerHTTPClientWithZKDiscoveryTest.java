@@ -73,6 +73,8 @@ public class BrokerHTTPClientWithZKDiscoveryTest {
                 main.waitForLeadership();
                 ClientConfiguration configuration = ClientConfiguration
                         .defaultConfiguration()
+                        .setUsername("admin")
+                        .setPassword("password")
                         .setBrokerDiscoveryService(new ZookeeperDiscoveryService(zkClient).setZkPath(zkServer.getPath()));
                 try (Client client = new Client(configuration);
                         ClientConnection con = client.openConnection()) {

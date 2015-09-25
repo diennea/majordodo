@@ -444,6 +444,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         return location;
     }
 
+    @Override
+    public String getSharedSecret() {
+        return config.getSharedSecret();
+    }
+        
+
     public WorkerStatusView createWorkerStatusView() {
         WorkerStatusView res = new WorkerStatusView();
         if (stopped) {

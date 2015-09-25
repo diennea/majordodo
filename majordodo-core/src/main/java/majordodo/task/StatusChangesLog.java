@@ -32,6 +32,13 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     protected BrokerFailureListener failureListener;
 
+    public String getSharedSecret() {
+        return null;
+    }
+
+    public void setSharedSecret(String secret) {
+    }
+
     public BrokerFailureListener getFailureListener() {
         return failureListener;
     }
@@ -70,7 +77,7 @@ public abstract class StatusChangesLog implements AutoCloseable {
 
     public boolean isLeader() {
         return true;
-    }        
+    }
 
     public void followTheLeader(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
     }

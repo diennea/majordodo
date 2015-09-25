@@ -37,6 +37,8 @@ public class BrokerHTTPClientTest {
             main.start();
             ClientConfiguration configuration = ClientConfiguration
                     .defaultConfiguration()
+                    .setUsername("admin")
+                    .setPassword("password")
                     .setBrokerDiscoveryService(new StaticBrokerDiscoveryService(BrokerAddress.http("127.0.0.1", 7364)));
             try (Client client = new Client(configuration);
                     ClientConnection con = client.openConnection()) {
