@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import majordodo.clientfacade.AuthenticationManager;
 
 /**
  * Utility to embed a Majordodo Broker
@@ -55,6 +56,15 @@ public class EmbeddedBroker implements AutoCloseable {
     private NettyChannelAcceptor server;
     private final EmbeddedBrokerConfiguration configuration;
     private Runnable brokerDiedCallback;
+    private AuthenticationManager authenticationManager;
+
+    public AuthenticationManager getAuthenticationManager() {
+        return authenticationManager;
+    }
+
+    public void setAuthenticationManager(AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
+    }
 
     /**
      * This callback wil be called when the broker dies, for example in case of
@@ -112,7 +122,7 @@ public class EmbeddedBroker implements AutoCloseable {
         String snapshotsDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SNAPSHOTSDIRECTORY, "snapshots");
         String zkAdress = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKADDRESS, "localhost:1281");
         String zkPath = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_ZKPATH, "/majordodo");
-        String clientapiurl = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_CLIENTAPIURL, "");        
+        String clientapiurl = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_CLIENTAPIURL, "");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
         long maxFileSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_LOGSMAXFILESIZE, 1024 * 1024);
         Map<String, String> additionalInfo = new HashMap<>();
@@ -154,11 +164,12 @@ public class EmbeddedBroker implements AutoCloseable {
                 break;
             }
         }
-        brokerConfiguration = new BrokerConfiguration();        
+        brokerConfiguration = new BrokerConfiguration();
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
         brokerConfiguration.setSharedSecret(sharedSecret);
         brokerConfiguration.read(configuration.getProperties());
         broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), groupMapperFunction));
+        broker.setAuthenticationManager(authenticationManager);
         broker.setBrokerId(id);
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY:
