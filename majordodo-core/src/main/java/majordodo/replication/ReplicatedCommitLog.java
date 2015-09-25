@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -564,29 +565,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         try {
             Path snapshotfilename = writeSnapshotOnDisk(snapshotData);
 
-            try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
-                for (Path path : allfiles) {
-                    String other_filename = path.getFileName().toString();
-                    if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                        LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
-                        try {
-                            other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
-
-                            int pos = other_filename.indexOf('_');
-                            if (pos > 0) {
-                                if (!snapshotfilename.equals(path)) {
-                                    LOGGER.log(Level.SEVERE, "Deleting old snapshot file: " + path);
-                                    Files.delete(path);
-                                }
-                            }
-                        } catch (NumberFormatException invalidName) {
-                            LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
-                        }
-                    }
-                }
-            } catch (IOException err) {
-                throw new LogNotAvailableException(err);
-            }
+            deleteOldSnapshots(snapshotfilename);
         } finally {
             snapshotLock.unlock();
         }
@@ -596,18 +575,50 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
     }
 
+    private void deleteOldSnapshots(Path snapshotfilename) throws LogNotAvailableException {
+        try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
+            for (Path path : allfiles) {
+                String other_filename = path.getFileName().toString();
+                if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
+                    LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
+                    try {
+                        other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
+
+                        int pos = other_filename.indexOf('_');
+                        if (pos > 0) {
+                            if (!snapshotfilename.equals(path)) {
+                                LOGGER.log(Level.SEVERE, "Deleting old snapshot file: " + path);
+                                Files.delete(path);
+                            }
+                        }
+                    } catch (NumberFormatException invalidName) {
+                        LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                    }
+                }
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+    }
+
     private Path writeSnapshotOnDisk(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
         ensureDirectories();
         LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
         String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
+        Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
         Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
-        try (OutputStream out = Files.newOutputStream(snapshotfilename);
+        try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
                 BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
                 GZIPOutputStream zout = new GZIPOutputStream(bout)) {
             mapper.writeValue(zout, filedata);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        try {
+            Files.move(snapshotfilename_tmp, snapshotfilename, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
