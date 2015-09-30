@@ -608,7 +608,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
 
     @Override
     public void brokerFailed() {
-        LOGGER.log(Level.SEVERE,"brokerFailed!",new Exception("brokerFailed").fillInStackTrace());
+        LOGGER.log(Level.SEVERE,"brokerFailed!");
         failed = true;
         if (brokerStatus != null) {
             brokerStatus.brokerFailed();
