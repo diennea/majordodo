@@ -20,7 +20,6 @@
 package majordodo.clientfacade;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,9 +36,7 @@ import javax.servlet.http.HttpServletResponse;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
 import majordodo.task.Task;
-import org.apache.commons.codec.binary.Base64;
 import org.codehaus.jackson.map.ObjectMapper;
-import sun.security.krb5.internal.ccache.Credentials;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone

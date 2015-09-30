@@ -39,6 +39,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.daemons.PidFileLocker;
+import majordodo.network.BrokerHostData;
 import majordodo.replication.ReplicatedCommitLog;
 import majordodo.task.SingleUserAuthenticationManager;
 import org.eclipse.jetty.server.Server;
@@ -161,6 +162,10 @@ public class BrokerMain implements AutoCloseable {
         }
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
+        boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
+        String certfile = configuration.getProperty("broker.ssl.certificatefile", "");
+        String certchainfile = configuration.getProperty("broker.ssl.certificatechainfile", "");
+        String certpassword = configuration.getProperty("broker.ssl.certificatefilepassword", null);
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
         int taskheapsize = Integer.parseInt(configuration.getProperty("broker.tasksheap.size", "1000000"));
@@ -200,7 +205,9 @@ public class BrokerMain implements AutoCloseable {
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 String snapdir = configuration.getProperty("data.dir", "data");
 
-                ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir), Broker.formatHostdata(host, port, additionalInfo));
+                ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
+                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo))
+                );
                 log = _log;
                 int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));
                 int writeQuorumSize = Integer.parseInt(configuration.getProperty("bookkeeper.writequorumsize", _log.getWriteQuorumSize() + ""));
@@ -230,10 +237,20 @@ public class BrokerMain implements AutoCloseable {
         });
         broker.start();
 
-        System.out.println("Listening for workers connections on " + host + ":" + port);
+        System.out.println("Listening for workers connections on " + host + ":" + port + " ssl=" + ssl);
         this.server = new NettyChannelAcceptor(broker.getAcceptor());
         server.setHost(host);
         server.setPort(port);
+        server.setSsl(ssl);
+        if (!certfile.isEmpty()) {
+            server.setSslCertFile(new File(certfile));
+        }
+        if (!certchainfile.isEmpty()) {
+            server.setSslCertChainFile(new File(certchainfile));
+        }
+        if (certpassword != null) {
+            server.setSslCertPassword(certpassword);
+        }
         server.start();
 
         httpserver = new Server(new InetSocketAddress(httphost, httpport));

@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
@@ -50,7 +44,6 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -157,7 +150,7 @@ public class PurgeFinishedTaskTest {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),false)) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);

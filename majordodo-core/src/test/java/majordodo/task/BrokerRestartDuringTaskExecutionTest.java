@@ -148,7 +148,7 @@ public class BrokerRestartDuringTaskExecutionTest {
         int port = 7000;
 
         // startAsWritable a worker, the broker is not started
-        try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port)) {
+        try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port,false)) {
             Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
 

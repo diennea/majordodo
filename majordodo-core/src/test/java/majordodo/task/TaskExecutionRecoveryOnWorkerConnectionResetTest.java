@@ -168,7 +168,7 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
                 server.start();
 
                 // startAsWritable a worker, connection will be dropped during the execution of the task
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);

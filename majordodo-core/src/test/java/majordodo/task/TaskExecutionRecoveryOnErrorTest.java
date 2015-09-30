@@ -153,7 +153,7 @@ public class TaskExecutionRecoveryOnErrorTest {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);

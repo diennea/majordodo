@@ -47,6 +47,15 @@ public abstract class AbstractEmbeddedServiceConfiguration {
     public Map<String, Object> getProperties() {
         return properties;
     }
+    
+    
+    public Object getProperty(String key, Object defaultValue) {
+        Object value = properties.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        return value;
+    }
 
     public String getStringProperty(String key, String defaultValue) {
         Object value = properties.get(key);
@@ -62,6 +71,13 @@ public abstract class AbstractEmbeddedServiceConfiguration {
             return defaultValue;
         }
         return Integer.parseInt(value.toString());
+    }
+    public boolean getBooleanProperty(String key, boolean defaultValue) {
+        Object value = properties.get(key);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.toString());
     }
 
     public long getLongProperty(String key, long defaultValue) {

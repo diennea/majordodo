@@ -19,6 +19,8 @@
  */
 package majordodo.embedded;
 
+import java.io.File;
+
 /**
  * Configuration for the embedded broker
  *
@@ -31,8 +33,13 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
     public static String KEY_HOST = "broker.host";
     public static String KEY_PORT = "broker.port";
+    public static String KEY_SSL = "broker.ssl";
     public static String KEY_CLIENTAPIURL = "broker.clientapiurl";
     public static String KEY_BROKERID = "broker.id";
+
+    public static String SSL_CERTIFICATE_FILE = "broker.ssl.certificatefile";
+    public static String SSL_CERTIFICATE_CHAIN_FILE = "broker.ssl.certificatechainfile";
+    public static String SSL_CERTIFICATE_PASSWORD = "broker.ssl.certificatefilepassword";
 
     public static String KEY_BK_ENSEMBLE_SIZE = "bookkeeper.ensemblesize";
     public static String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";

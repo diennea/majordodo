@@ -19,6 +19,7 @@
  */
 package majordodo.embedded;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import majordodo.network.netty.NettyChannelAcceptor;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import majordodo.clientfacade.AuthenticationManager;
+import majordodo.network.BrokerHostData;
 
 /**
  * Utility to embed a Majordodo Broker
@@ -117,6 +119,10 @@ public class EmbeddedBroker implements AutoCloseable {
         }
         String host = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_HOST, "localhost");
         int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
+        boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, true);
+        File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
+        File certchainfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
+        String certpassword = configuration.getStringProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_PASSWORD, null);
         String mode = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_MODE, EmbeddedBrokerConfiguration.MODE_SIGLESERVER);
         String logDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_LOGSDIRECTORY, "txlog");
         String snapshotsDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SNAPSHOTSDIRECTORY, "snapshots");
@@ -150,7 +156,9 @@ public class EmbeddedBroker implements AutoCloseable {
                 if (!Files.isDirectory(_snapshotsDirectory)) {
                     Files.createDirectory(_snapshotsDirectory);
                 }
-                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port, additionalInfo));
+                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
+                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo))
+                );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
                 int writeQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_WRITEQUORUMSIZE, _statusChangesLog.getWriteQuorumSize());
@@ -177,6 +185,10 @@ public class EmbeddedBroker implements AutoCloseable {
             case EmbeddedBrokerConfiguration.MODE_SIGLESERVER:
             case EmbeddedBrokerConfiguration.MODE_CLUSTERED:
                 server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
+                server.setSslCertChainFile(certchainfile);
+                server.setSslCertFile(certfile);
+                server.setSslCertPassword(certpassword);
+                server.setSsl(ssl);
                 break;
         }
         broker.setBrokerDiedCallback(brokerDiedCallback);

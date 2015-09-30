@@ -31,7 +31,10 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.JdkSslClientContext;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 /**
  * Worker-side connector
@@ -45,6 +48,8 @@ public class NettyConnector implements AutoCloseable {
     private NettyChannel channel;
     private Channel socketchannel;
     private EventLoopGroup group;
+    private SslContext sslCtx;
+    private boolean ssl;
 
     public int getPort() {
         return port;
@@ -58,15 +63,24 @@ public class NettyConnector implements AutoCloseable {
         return host;
     }
 
+    public boolean isSsl() {
+        return ssl;
+    }
+
+    public void setSsl(boolean ssl) {
+        this.ssl = ssl;
+    }
+
     private ChannelEventListener receiver;
 
     public NettyConnector(ChannelEventListener receiver) {
         this.receiver = receiver;
     }
 
-    private static final int MAX_FRAME_LENGTH = 10 * 1024 * 1024;
-
     public NettyChannel connect() throws Exception {
+        if (ssl) {
+            this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+        }
         group = new NioEventLoopGroup();
 
         Bootstrap b = new Bootstrap();
@@ -78,7 +92,9 @@ public class NettyConnector implements AutoCloseable {
                     public void initChannel(SocketChannel ch) throws Exception {
                         channel = new NettyChannel(ch);
                         channel.setMessagesReceiver(receiver);
-
+                        if (ssl) {
+                            ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
+                        }
                         ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
                         ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
 //

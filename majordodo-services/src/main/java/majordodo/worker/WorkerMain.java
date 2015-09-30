@@ -106,7 +106,8 @@ public class WorkerMain implements AutoCloseable {
             case "singleserver":
                 String host = configuration.getProperty("broker.host", "localhost");
                 int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
-                brokerLocator = new NettyBrokerLocator(host, port);
+                boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
+                brokerLocator = new NettyBrokerLocator(host, port, ssl);
                 break;
             case "clustered":
                 String zkAddress = configuration.getProperty("zk.address", "localhost:1281");

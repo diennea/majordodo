@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import javax.xml.ws.Holder;
+import majordodo.network.BrokerHostData;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
 import majordodo.network.ChannelEventListener;
@@ -120,8 +121,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     private byte[] downloadSnapshotFromMaster(byte[] actualMaster) throws Exception {
-        InetSocketAddress hostdata = Broker.parseHostdata(actualMaster);
-        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + hostdata);
+        BrokerHostData brokerData = BrokerHostData.parseHostdata(actualMaster);
+        InetSocketAddress hostdata = brokerData.getSocketAddress();
+        boolean ssl = brokerData.isSsl();
+        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + hostdata + " ssl=" + ssl);
         boolean ok = false;
 
         try (NettyConnector connector = new NettyConnector(new ChannelEventListener() {
@@ -136,6 +139,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         })) {
             connector.setPort(hostdata.getPort());
             connector.setHost(hostdata.getAddress().getHostAddress());
+            connector.setSsl(brokerData.isSsl());
             try (NettyChannel channel = connector.connect();) {
 
                 Message acceptMessage = Message.SNAPSHOT_DOWNLOAD_REQUEST();

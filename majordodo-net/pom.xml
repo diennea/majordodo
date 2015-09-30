@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>majordodo</groupId>
-        <version>0.1.12-BETA6</version>
+        <version>0.1.12-BETA7</version>
         <relativePath>..</relativePath>
         <artifactId>majordodo-parent</artifactId>
     </parent>
@@ -21,7 +21,12 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.0.25.Final</version>
+            <version>4.0.31.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+            <version>1.9.13</version>            
         </dependency>
     </dependencies>
     <properties>

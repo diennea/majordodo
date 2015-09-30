@@ -151,7 +151,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                 server.start();
 
                 // startAsWritable a worker, it will die
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
@@ -198,7 +198,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                 assertTrue(ok);
 
                 // boot the worker again
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);

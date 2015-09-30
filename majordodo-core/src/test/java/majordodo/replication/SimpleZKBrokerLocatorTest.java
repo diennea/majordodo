@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.network.BrokerHostData;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -57,7 +58,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port, null));
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)));
     }
 
     @Override
@@ -128,7 +129,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         }

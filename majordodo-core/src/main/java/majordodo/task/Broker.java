@@ -102,36 +102,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.12-BETA6";
-    }
-
-    public static byte[] formatHostdata(String host, int port, Map<String, String> additional) {
-        try {
-            Map<String, String> data = new HashMap<>();
-            data.put("host", host);
-            data.put("port", port + "");
-            data.put("version", VERSION());
-            if (additional != null) {
-                data.putAll(additional);
-            }
-            ByteArrayOutputStream oo = new ByteArrayOutputStream();
-            new ObjectMapper().writeValue(oo, data);
-            return oo.toByteArray();
-        } catch (IOException impossible) {
-            throw new RuntimeException(impossible);
-        }
-    }
-
-    public static InetSocketAddress parseHostdata(byte[] oo) {
-
-        try {
-            Map<String, String> data = new ObjectMapper().readValue(new ByteArrayInputStream(oo), Map.class);
-            String host = data.get("host");
-            int port = Integer.parseInt(data.get("port"));
-            return new InetSocketAddress(host, port);
-        } catch (IOException impossible) {
-            throw new RuntimeException(impossible);
-        }
+        return "0.1.12-BETA7";
     }
 
     private final Workers workers;
