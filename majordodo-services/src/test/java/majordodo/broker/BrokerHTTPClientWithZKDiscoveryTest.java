@@ -71,6 +71,7 @@ public class BrokerHTTPClientWithZKDiscoveryTest {
             try (BrokerMain main = new BrokerMain(pp)) {
                 main.start();
                 main.waitForLeadership();
+               
                 ClientConfiguration configuration = ClientConfiguration
                         .defaultConfiguration()
                         .setUsername("admin")

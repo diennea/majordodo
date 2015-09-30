@@ -78,7 +78,7 @@ public class BrokerHostData {
                 mdata.putAll(data.additionalData);
             }
             ByteArrayOutputStream oo = new ByteArrayOutputStream();
-            new ObjectMapper().writeValue(oo, data);
+            new ObjectMapper().writeValue(oo, mdata);
             return oo.toByteArray();
         } catch (IOException impossible) {
             throw new RuntimeException(impossible);
