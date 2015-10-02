@@ -52,7 +52,6 @@ if [ -z "$JAVA_OPTS" ]; then
 fi
 
 JAVA="$JAVA_HOME/bin/java"
-echo $@
 
 while [ $# -gt 0 ]; do
   COMMAND=$1
@@ -69,8 +68,6 @@ done
 
 SERVICE=$1
 shift
-
-echo $@
 
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   CONSOLE_OUTPUT_FILE=$SERVICE.service.log  
