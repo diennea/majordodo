@@ -95,7 +95,7 @@ public class NettyChannel extends Channel {
             callback.messageSent(message, new Exception("connection is closed"));
             return;
         }
-        this.socket.write(message).addListener(new GenericFutureListener() {
+        this.socket.writeAndFlush(message).addListener(new GenericFutureListener() {
 
             @Override
             public void operationComplete(Future future) throws Exception {
