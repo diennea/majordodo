@@ -74,6 +74,7 @@ public class BrokerHostData {
             mdata.put("host", data.host);
             mdata.put("port", data.port + "");
             mdata.put("version", data.version);
+            mdata.put("ssl", data.ssl + "");
             if (data.additionalData != null) {
                 mdata.putAll(data.additionalData);
             }
