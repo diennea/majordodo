@@ -612,12 +612,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
         Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
+
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
                 BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
                 GZIPOutputStream zout = new GZIPOutputStream(bout)) {
-            mapper.writeValue(zout, filedata);
+            BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
@@ -705,14 +704,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         if (snapshotfilename != null) {
             LOGGER.log(Level.SEVERE, "Loading snapshot from " + snapshotfilename);
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> snapshotdata;
-
             try (InputStream in = Files.newInputStream(snapshotfilename);
                     BufferedInputStream bin = new BufferedInputStream(in);
                     GZIPInputStream gzip = new GZIPInputStream(bin)) {
-                snapshotdata = mapper.readValue(gzip, Map.class);
-                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
 
                 LOGGER.log(Level.SEVERE,
@@ -757,13 +752,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     throw new LogNotAvailableException(err);
                 }
                 ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> snapshotdata;
+
                 LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
                 try (InputStream in = new ByteArrayInputStream(snapshot);
                         GZIPInputStream gzip = new GZIPInputStream(in)) {
-                    snapshotdata = mapper.readValue(gzip, Map.class
-                    );
-                    BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+                    BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                     writeSnapshotOnDisk(result);
                     currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                     return result;

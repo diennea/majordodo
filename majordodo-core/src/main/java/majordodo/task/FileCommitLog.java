@@ -307,12 +307,11 @@ public class FileCommitLog extends StatusChangesLog {
         Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
         Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
+
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
                 BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
                 GZIPOutputStream zout = new GZIPOutputStream(bout)) {
-            mapper.writeValue(zout, filedata);
+            BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
@@ -433,14 +432,11 @@ public class FileCommitLog extends StatusChangesLog {
             currentLedgerId = 0;
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> snapshotdata;
 
             try (InputStream in = Files.newInputStream(snapshotfilename);
                     BufferedInputStream bin = new BufferedInputStream(in);
                     GZIPInputStream gzip = new GZIPInputStream(bin)) {
-                snapshotdata = mapper.readValue(gzip, Map.class);
-                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;
             } catch (IOException err) {

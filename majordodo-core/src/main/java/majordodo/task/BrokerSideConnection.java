@@ -226,12 +226,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 LOGGER.log(Level.SEVERE, "creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from " + this.channel);
                 try {
                     BrokerStatusSnapshot snapshot = broker.getBrokerStatus().createSnapshot();
-                    Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshot);
-                    ObjectMapper mapper = new ObjectMapper();
+
                     byte[] data;
                     try (ByteArrayOutputStream out = new ByteArrayOutputStream();
                             GZIPOutputStream zout = new GZIPOutputStream(out)) {
-                        mapper.writeValue(zout, filedata);
+                        BrokerStatusSnapshot.serializeSnapshot(snapshot, zout);
                         zout.close();
                         data = out.toByteArray();
                     } catch (IOException err) {

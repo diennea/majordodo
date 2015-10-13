@@ -19,11 +19,17 @@
  */
 package majordodo.task;
 
-import majordodo.task.WorkerStatus;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.JsonToken;
 
 /**
  * Snapshot of the status of the broker
@@ -31,6 +37,22 @@ import java.util.Map;
  * @author enrico.olivelli
  */
 public class BrokerStatusSnapshot {
+
+    private static void serializeTransaction(Transaction transaction, JsonGenerator g) throws IOException {
+        g.writeStartObject();
+        writeSimpleProperty(g, "id", transaction.getTransactionId());
+        writeSimpleProperty(g, "creationTimestamp", transaction.getCreationTimestamp());
+
+        if (transaction.getPreparedTasks() != null && !transaction.getPreparedTasks().isEmpty()) {
+            g.writeFieldName("preparedTasks");
+            g.writeStartArray();
+            for (Task t : transaction.getPreparedTasks()) {
+                serializeTask(t, g);
+            }
+            g.writeEndArray();
+        }
+        g.writeEndObject();
+    }
 
     List<Task> tasks = new ArrayList<>();
     List<WorkerStatus> workers = new ArrayList<>();
@@ -93,130 +115,289 @@ public class BrokerStatusSnapshot {
         this.maxTaskId = maxTaskId;
     }
 
-    public static BrokerStatusSnapshot deserializeSnapshot(Map<String, Object> snapshotdata) {
-        long ledgerId = Long.parseLong(snapshotdata.get("ledgerid") + "");
-        long sequenceNumber = Long.parseLong(snapshotdata.get("sequenceNumber") + "");
+    private static JsonToken nextToken(JsonParser jParser) throws IOException {
+        jParser.nextToken();
+        JsonToken currentToken = jParser.getCurrentToken();
+        return currentToken;
+    }
 
-        long maxTaskId = Long.parseLong(snapshotdata.get("maxTaskId") + "");
-        long maxTransactionId = Long.parseLong(snapshotdata.get("maxTransactionId") + "");
-        BrokerStatusSnapshot result = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, new LogSequenceNumber(ledgerId, sequenceNumber));
-        List<Map<String, Object>> transactions = (List<Map<String, Object>>) snapshotdata.get("transactions");
-        if (transactions != null) {
-            transactions.forEach(tData -> {
-                long creationTimestamp = Long.parseLong(tData.get("creationTimestamp") + "");
-                long id = Long.parseLong(tData.get("id") + "");
-                Transaction transaction = new Transaction(id, creationTimestamp);
-                List<Map<String, Object>> preparedTasks = (List<Map<String, Object>>) tData.get("preparedTasks");
-                if (preparedTasks != null) {
-                    preparedTasks.forEach(taskData -> {
-                        Task t = deserializeTask(taskData);
-                        transaction.getPreparedTasks().add(t);
-                    });
-                }
-                result.getTransactions().add(transaction);
-            });
-        }
+    private static String readValue(JsonParser jParser) throws IOException {
+        String result = jParser.getText();
 
-        List<Map<String, Object>> tasksStatus = (List<Map<String, Object>>) snapshotdata.get("tasks");
-        if (tasksStatus != null) {
-            tasksStatus.forEach(taskData -> {
-                Task task = deserializeTask(taskData);
-                result.getTasks().add(task);
-            });
-        }
-        List<Map<String, Object>> workersStatus = (List<Map<String, Object>>) snapshotdata.get("workers");
-        if (workersStatus != null) {
-            workersStatus.forEach(w -> {
-                WorkerStatus workerStatus = new WorkerStatus();
-                workerStatus.setWorkerId((String) w.get("workerId"));
-                workerStatus.setWorkerLocation((String) w.get("location"));
-                workerStatus.setProcessId((String) w.get("processId"));
-                workerStatus.setLastConnectionTs(Long.parseLong(w.get("lastConnectionTs") + ""));
-                workerStatus.setStatus(Integer.parseInt(w.get("status") + ""));
-                result.getWorkers().add(workerStatus);
-            });
-        }
         return result;
     }
 
-    private static Task deserializeTask(Map<String, Object> taskData) throws NumberFormatException {
+    public static BrokerStatusSnapshot deserializeSnapshot(InputStream in) throws IOException {
+        JsonFactory jfactory = new JsonFactory();
+        JsonParser jParser = jfactory.createJsonParser(in);
+
+        long ledgerId = 0;
+        long sequenceNumber = 0;
+        long maxTaskId = 0;
+        long maxTransactionId = 0;
+        List< Transaction> transactions = new ArrayList<>();
+        List<Task> tasks = new ArrayList<>();
+        List<WorkerStatus> workers = new ArrayList<>();
+        nextToken(jParser);
+
+        while (jParser.nextToken() != JsonToken.END_OBJECT) {
+            switch (jParser.getCurrentName() + "") {
+                case "ledgerid": {
+                    nextToken(jParser);
+                    ledgerId = Long.parseLong(readValue(jParser)); // display mkyong
+                    break;
+                }
+                case "sequenceNumber": {
+                    nextToken(jParser);
+                    sequenceNumber = Long.parseLong(readValue(jParser)); // display mkyong
+                    break;
+                }
+                case "maxTaskId": {
+                    nextToken(jParser);
+                    maxTaskId = Long.parseLong(readValue(jParser)); // display mkyong                                        
+                    break;
+                }
+                case "maxTransactionId": {
+                    nextToken(jParser);
+                    maxTransactionId = Long.parseLong(readValue(jParser)); // display mkyong
+                    break;
+                }
+                case "transactions": {
+                    nextToken(jParser); // field name                                        
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        Transaction transaction = readTransaction(jParser);
+                        transactions.add(transaction);
+                    }
+                    break;
+                }
+                case "tasks": {
+                    nextToken(jParser); // field name                                        
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        Task task = readTask(jParser);
+                        tasks.add(task);
+                    }
+                    break;
+                }
+                case "workers": {
+                    nextToken(jParser); // field name                                        
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        WorkerStatus workerStatus = readWorkerStatus(jParser);
+                        workers.add(workerStatus);
+                    }
+                    break;
+                }
+                default:
+                    throw new IOException("Unexpected field " + jParser.getCurrentName());
+            }
+        }
+        BrokerStatusSnapshot res = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, new LogSequenceNumber(ledgerId, sequenceNumber));
+        res.setTransactions(transactions);
+        res.setWorkers(workers);
+        res.setTasks(tasks);
+        return res;
+    }
+
+    private static WorkerStatus readWorkerStatus(JsonParser jParser) throws IOException {
+        WorkerStatus res = new WorkerStatus();
+
+        while (jParser.nextToken() != JsonToken.END_OBJECT) {
+            switch (jParser.getCurrentName() + "") {
+                case "workerId":
+                    nextToken(jParser);
+                    res.setWorkerId(readValue(jParser));
+                    break;
+                case "location":
+                    nextToken(jParser);
+                    res.setWorkerLocation(readValue(jParser));
+                    break;
+                case "processId":
+                    nextToken(jParser);
+                    res.setProcessId(readValue(jParser));
+                    break;
+                case "status":
+                    nextToken(jParser);
+                    res.setStatus(Integer.parseInt(readValue(jParser)));
+                    break;
+                case "lastConnectionTs":
+                    nextToken(jParser);
+                    res.setLastConnectionTs(Long.parseLong(readValue(jParser)));
+                    break;
+                default:
+                    throw new IOException("Unexpected field " + jParser.getCurrentName());
+            }
+        }
+
+        return res;
+    }
+
+    private static Transaction readTransaction(JsonParser jParser) throws IOException {
+        long creationTimestamp = 0;
+        long id = 0;
+        List<Task> preparedTasks = new ArrayList<>();
+        while (jParser.nextToken() != JsonToken.END_OBJECT) {
+
+            switch (jParser.getCurrentName() + "") {
+                case "creationTimestamp":
+                    nextToken(jParser);
+                    creationTimestamp = Long.parseLong(readValue(jParser));
+                    break;
+                case "id":
+                    nextToken(jParser);
+                    id = Long.parseLong(readValue(jParser));
+                    break;
+                case "preparedTasks":
+                    nextToken(jParser);
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        Task task = readTask(jParser);
+                        preparedTasks.add(task);
+                    }
+                    break;
+                default:
+                    throw new IOException("Unexpected field " + jParser.getCurrentName());
+            }
+        }
+        Transaction res = new Transaction(id, creationTimestamp);
+        if (!preparedTasks.isEmpty()) {
+            res.getPreparedTasks().addAll(preparedTasks);
+        }
+        return res;
+
+    }
+
+    private static Task readTask(JsonParser jParser) throws NumberFormatException, IOException {
         Task task = new Task();
-        task.setTaskId(Long.parseLong(taskData.get("id") + ""));
-        task.setStatus(Integer.parseInt(taskData.get("status") + ""));
-        task.setMaxattempts(Integer.parseInt(taskData.get("maxattempts") + ""));
-        String slot = (String) taskData.get("slot");
-        task.setSlot(slot);
-        task.setAttempts(Integer.parseInt(taskData.get("attempts") + ""));
-        task.setParameter((String) taskData.get("parameter"));
-        task.setResult((String) taskData.get("result"));
-        task.setUserId((String) taskData.get("userId"));
-        task.setCreatedTimestamp(Long.parseLong(taskData.get("createdTimestamp") + ""));
-        task.setExecutionDeadline(Long.parseLong(taskData.get("executionDeadline") + ""));
-        task.setType((String) taskData.get("type"));
-        task.setWorkerId((String) taskData.get("workerId"));
+        while (jParser.nextToken() != JsonToken.END_OBJECT) {
+            switch (jParser.getCurrentName() + "") {
+                case "id":
+                    nextToken(jParser);
+                    task.setTaskId(Long.parseLong(readValue(jParser)));
+                    break;
+                case "status":
+                    nextToken(jParser);
+                    task.setStatus(Integer.parseInt(readValue(jParser)));
+                    break;
+                case "maxattempts":
+                    nextToken(jParser);
+                    task.setMaxattempts(Integer.parseInt(readValue(jParser)));
+                    break;
+                case "attempts":
+                    nextToken(jParser);
+                    task.setAttempts(Integer.parseInt(readValue(jParser)));
+                    break;
+                case "slot":
+                    nextToken(jParser);
+                    task.setSlot(readValue(jParser));
+                    break;
+                case "parameter":
+                    nextToken(jParser);
+                    task.setParameter(readValue(jParser));
+                    break;
+                case "result":
+                    nextToken(jParser);
+                    task.setResult(readValue(jParser));
+                    break;
+                case "userId":
+                    nextToken(jParser);
+                    task.setUserId(readValue(jParser));
+                    break;
+                case "type":
+                    nextToken(jParser);
+                    task.setType(readValue(jParser));
+                    break;
+                case "workerId":
+                    nextToken(jParser);
+                    task.setWorkerId(readValue(jParser));
+                    break;
+                case "createdTimestamp":
+                    nextToken(jParser);
+                    task.setCreatedTimestamp(Long.parseLong(readValue(jParser)));
+                    break;
+                case "executionDeadline":
+                    nextToken(jParser);
+                    task.setExecutionDeadline(Long.parseLong(readValue(jParser)));
+                    break;
+                default:
+                    throw new IOException("Unexpected field " + jParser.getCurrentName());
+            }
+        }
         return task;
     }
 
-    public static Map<String, Object> serializeSnapshot(BrokerStatusSnapshot snapshotData) {
-        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
-        Map<String, Object> filedata = new HashMap<>();
-        filedata.put("ledgerid", actualLogSequenceNumber.ledgerId);
-        filedata.put("sequenceNumber", actualLogSequenceNumber.sequenceNumber);
-        filedata.put("maxTaskId", snapshotData.maxTaskId);
-        filedata.put("maxTransactionId", snapshotData.maxTransactionId);
-        List<Map<String, Object>> tasksStatus = new ArrayList<>();
-        filedata.put("tasks", tasksStatus);
-        List<Map<String, Object>> workersStatus = new ArrayList<>();
-        filedata.put("workers", workersStatus);
-        List<Map<String, Object>> transactions = new ArrayList<>();
-        filedata.put("transactions", transactions);
-        snapshotData.getTransactions().forEach(transaction -> {
-            Map<String, Object> transactionData = new HashMap<>();
-            transactionData.put("id", transaction.getTransactionId());
-            transactionData.put("creationTimestamp", transaction.getCreationTimestamp());
-            if (transaction.getPreparedTasks() != null && !transaction.getPreparedTasks().isEmpty()) {
-                List<Map<String, Object>> preparedTasks = new ArrayList<>();
-                for (Task t : transaction.getPreparedTasks()) {
-                    preparedTasks.add(serializeTask(t));
-                }
-                transactionData.put("preparedTasks", preparedTasks);
-            }
-            transactions.add(transactionData);
-        });
-        snapshotData.getWorkers().forEach(worker -> {
-            Map<String, Object> workerData = new HashMap<>();
-            workerData.put("workerId", worker.getWorkerId());
-            workerData.put("location", worker.getWorkerLocation());
-            workerData.put("processId", worker.getProcessId());
-            workerData.put("lastConnectionTs", worker.getLastConnectionTs());
-            workerData.put("status", worker.getStatus());
-            workersStatus.add(workerData);
-        });
-        snapshotData.getTasks().forEach(task -> {
-            Map<String, Object> taskData = serializeTask(task);
-            tasksStatus.add(taskData);
+    private static void writeSimpleProperty(JsonGenerator g, String name, String value) throws IOException {
+        if (value != null) {
+            g.writeFieldName(name);
+            g.writeString(value);
         }
-        );
-        return filedata;
     }
 
-    private static Map<String, Object> serializeTask(Task task) {
-        Map<String, Object> taskData = new HashMap<>();
-        taskData.put("id", task.getTaskId());
-        taskData.put("status", task.getStatus());
-        taskData.put("maxattempts", task.getMaxattempts());
-        if (task.getSlot() != null) {
-            taskData.put("slot", task.getSlot());
+    private static void writeSimpleProperty(JsonGenerator g, String name, long value) throws IOException {
+
+        g.writeFieldName(name);
+        g.writeNumber(value);
+    }
+
+    public static void serializeSnapshot(BrokerStatusSnapshot snapshotData, OutputStream out) throws IOException {
+        JsonFactory f = new JsonFactory();
+        JsonGenerator g = f.createJsonGenerator(out);
+        g.writeStartObject();
+        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
+
+        Map<String, Object> filedata = new HashMap<>();
+        writeSimpleProperty(g, "ledgerid", actualLogSequenceNumber.ledgerId);
+        writeSimpleProperty(g, "sequenceNumber", actualLogSequenceNumber.sequenceNumber);
+        writeSimpleProperty(g, "maxTaskId", snapshotData.maxTaskId);
+        writeSimpleProperty(g, "maxTransactionId", snapshotData.maxTransactionId);
+        g.writeFieldName("tasks");
+        g.writeStartArray();
+
+        for (Task task : snapshotData.getTasks()) {
+            serializeTask(task, g);
         }
-        taskData.put("attempts", task.getAttempts());
-        taskData.put("executionDeadline", task.getExecutionDeadline());
-        taskData.put("parameter", task.getParameter());
-        taskData.put("result", task.getResult());
-        taskData.put("userId", task.getUserId());
-        taskData.put("createdTimestamp", task.getCreatedTimestamp());
-        taskData.put("type", task.getType());
-        taskData.put("workerId", task.getWorkerId());
-        return taskData;
+
+        g.writeEndArray();
+        g.writeFieldName("workers");
+        g.writeStartArray();
+        for (WorkerStatus worker : snapshotData.getWorkers()) {
+            serializeWorker(worker, g);
+        };
+        g.writeEndArray();
+        g.writeFieldName("transactions");
+        g.writeStartArray();
+        for (Transaction t : snapshotData.getTransactions()) {
+            serializeTransaction(t, g);
+        }
+        g.writeEndArray();
+
+        g.writeEndObject();
+        g.flush();
+    }
+
+    private static void serializeTask(Task task, JsonGenerator g) throws IOException {
+        g.writeStartObject();
+
+        writeSimpleProperty(g, "id", task.getTaskId());
+        writeSimpleProperty(g, "status", task.getStatus());
+        writeSimpleProperty(g, "maxattempts", task.getMaxattempts());
+        writeSimpleProperty(g, "slot", task.getSlot());
+        writeSimpleProperty(g, "attempts", task.getAttempts());
+        writeSimpleProperty(g, "executionDeadline", task.getExecutionDeadline());
+        writeSimpleProperty(g, "parameter", task.getParameter());
+        writeSimpleProperty(g, "result", task.getResult());
+        writeSimpleProperty(g, "userId", task.getUserId());
+        writeSimpleProperty(g, "createdTimestamp", task.getCreatedTimestamp());
+        writeSimpleProperty(g, "type", task.getType());
+        writeSimpleProperty(g, "workerId", task.getWorkerId());
+        g.writeEndObject();
+    }
+
+    private static void serializeWorker(WorkerStatus worker, JsonGenerator g) throws IOException {
+        g.writeStartObject();
+        writeSimpleProperty(g, "workerId", worker.getWorkerId());
+        writeSimpleProperty(g, "location", worker.getWorkerLocation());
+        writeSimpleProperty(g, "processId", worker.getProcessId());
+        writeSimpleProperty(g, "lastConnectionTs", worker.getLastConnectionTs());
+        writeSimpleProperty(g, "status", worker.getStatus());
+        g.writeEndObject();
     }
 
 }
