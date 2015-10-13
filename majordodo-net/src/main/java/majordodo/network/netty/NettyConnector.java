@@ -31,10 +31,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import io.netty.handler.ssl.JdkSslClientContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Worker-side connector
@@ -50,6 +51,7 @@ public class NettyConnector implements AutoCloseable {
     private EventLoopGroup group;
     private SslContext sslCtx;
     private boolean ssl;
+    private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
 
     public int getPort() {
         return port;
@@ -90,7 +92,7 @@ public class NettyConnector implements AutoCloseable {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        channel = new NettyChannel(ch);
+                        channel = new NettyChannel(ch, callbackExecutor);
                         channel.setMessagesReceiver(receiver);
                         if (ssl) {
                             ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
@@ -131,6 +133,9 @@ public class NettyConnector implements AutoCloseable {
             } finally {
                 group = null;
             }
+        }
+        if (callbackExecutor != null) {
+            callbackExecutor.shutdown();
         }
     }
 

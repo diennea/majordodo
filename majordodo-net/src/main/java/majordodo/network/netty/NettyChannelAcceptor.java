@@ -36,6 +36,8 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Accepts connections from workers
@@ -54,6 +56,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
     private File sslCertChainFile;
     private File sslCertFile;
     private String sslCertPassword;
+    private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
 
     public boolean isSsl() {
         return ssl;
@@ -126,7 +129,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
                     ssc.delete();
                 }
             } else {
-                sslCtx =  SslContextBuilder.forServer(sslCertChainFile, sslCertFile, sslCertPassword).build();
+                sslCtx = SslContextBuilder.forServer(sslCertChainFile, sslCertFile, sslCertPassword).build();
             }
 
         }
@@ -138,7 +141,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        NettyChannel session = new NettyChannel(ch);
+                        NettyChannel session = new NettyChannel(ch, callbackExecutor);
                         acceptor.createConnection(session);
 
 //                        ch.pipeline().addLast(new LoggingHandler());
@@ -172,6 +175,9 @@ public class NettyChannelAcceptor implements AutoCloseable {
         }
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();
+        }
+        if (callbackExecutor != null) {
+            callbackExecutor.shutdown();
         }
     }
 }

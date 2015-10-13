@@ -48,15 +48,16 @@ public class NettyChannel extends Channel {
 
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
-    private final ExecutorService callbackexecutor = Executors.newCachedThreadPool();
+    private final ExecutorService callbackexecutor;
 
     @Override
     public String toString() {
         return "NettyChannel{" + "socket=" + socket + '}';
     }
 
-    public NettyChannel(SocketChannel socket) {
+    public NettyChannel(SocketChannel socket, ExecutorService callbackexecutor) {
         this.socket = socket;
+        this.callbackexecutor = callbackexecutor;
     }
 
     public void messageReceived(Message message) {
@@ -182,7 +183,6 @@ public class NettyChannel extends Channel {
             });
         });
         pendingReplyMessages.clear();
-        callbackexecutor.shutdown();
     }
 
     void exceptionCaught(Throwable cause) {
