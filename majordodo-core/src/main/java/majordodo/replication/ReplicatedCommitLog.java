@@ -670,9 +670,43 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
-        Path snapshotfilename = null;
-        LogSequenceNumber latest = null;
+        Path snapshotfilename = null;        
         ensureDirectories();
+        
+         // download a snapshot from the actual leaer if present (this will be generally faster then recoverying from BK)                
+        byte[] actualLeader;
+        BrokerHostData leaderData = null;
+        try {
+            actualLeader = zKClusterManager.getActualMaster();
+            if (actualLeader != null && actualLeader.length > 0) {
+                leaderData = BrokerHostData.parseHostdata(actualLeader);
+                LOGGER.log(Level.SEVERE, "actual leader is at " + leaderData.getHost() + ":" + leaderData.getPort());
+            } else {
+                LOGGER.log(Level.SEVERE, "no leader is present");
+            }
+
+        } catch (Exception err) {
+            throw new LogNotAvailableException(err);
+        }
+        if (leaderData != null && !isLeader()) {
+            byte[] snapshot;
+            try {
+                snapshot = downloadSnapshotFromMaster(leaderData);
+                LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
+                try (InputStream in = new ByteArrayInputStream(snapshot);
+                        GZIPInputStream gzip = new GZIPInputStream(in)) {
+                    BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
+                    writeSnapshotOnDisk(result);
+                    currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
+                    return result;
+                }
+            } catch (Exception err) {
+                LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
+            }
+
+        }
+        
+        LogSequenceNumber latest = null;
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
@@ -728,38 +762,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         currentLedgerId = -1;
 
-        // download a snapshot from the actual leaer if present (this will be generally faster then recoverying from BK)                
-        byte[] actualLeader;
-        BrokerHostData leaderData = null;
-        try {
-            actualLeader = zKClusterManager.getActualMaster();
-            if (actualLeader != null && actualLeader.length > 0) {
-                leaderData = BrokerHostData.parseHostdata(actualLeader);
-                LOGGER.log(Level.SEVERE, "actual leader is at " + leaderData.getHost() + ":" + leaderData.getPort());
-            } else {
-                LOGGER.log(Level.SEVERE, "no leader is present");
-            }
-
-        } catch (Exception err) {
-            throw new LogNotAvailableException(err);
-        }
-        if (leaderData != null && !isLeader()) {
-            byte[] snapshot;
-            try {
-                snapshot = downloadSnapshotFromMaster(leaderData);
-                LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
-                try (InputStream in = new ByteArrayInputStream(snapshot);
-                        GZIPInputStream gzip = new GZIPInputStream(in)) {
-                    BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
-                    writeSnapshotOnDisk(result);
-                    currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
-                    return result;
-                }
-            } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
-            }
-
-        }
+       
 
         if (_actualLedgersList.getFirstLedger() < 0) {
             LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
