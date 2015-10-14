@@ -141,7 +141,6 @@ public class TaskExecutionRecoveryOnErrorTest {
 
     @Test
     public void taskRecoveryTest() throws Exception {
-
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
         System.out.println("SETUPWORKDIR:" + workDir);
@@ -150,11 +149,11 @@ public class TaskExecutionRecoveryOnErrorTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(),new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -176,6 +175,7 @@ public class TaskExecutionRecoveryOnErrorTest {
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
@@ -187,7 +187,7 @@ public class TaskExecutionRecoveryOnErrorTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
                                         Integer attempt = (Integer) parameters.get("attempt");
                                         if (attempt == null || attempt == 1) {
                                             throw new Exception("failing at first attempt");
@@ -199,7 +199,7 @@ public class TaskExecutionRecoveryOnErrorTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -215,9 +215,6 @@ public class TaskExecutionRecoveryOnErrorTest {
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
-                    // do a checkpoint
-                    broker.checkpoint();
-                    assertEquals(1, broker.getBrokerStatus().getCheckpointsCount());
                 }
             }
         }

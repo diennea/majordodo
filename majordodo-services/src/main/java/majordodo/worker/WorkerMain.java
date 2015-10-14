@@ -106,7 +106,8 @@ public class WorkerMain implements AutoCloseable {
             case "singleserver":
                 String host = configuration.getProperty("broker.host", "localhost");
                 int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
-                brokerLocator = new NettyBrokerLocator(host, port);
+                boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
+                brokerLocator = new NettyBrokerLocator(host, port, ssl);
                 break;
             case "clustered":
                 String zkAddress = configuration.getProperty("zk.address", "localhost:1281");
@@ -120,6 +121,7 @@ public class WorkerMain implements AutoCloseable {
 
         String hostname = InetAddress.getLocalHost().getCanonicalHostName();
         String workerid = configuration.getProperty("worker.id", hostname);
+        String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
         if (workerid.isEmpty()) {
             workerid = hostname;
         }
@@ -157,6 +159,7 @@ public class WorkerMain implements AutoCloseable {
             }
         }
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setSharedSecret(sharedsecret);
         config.setMaxThreads(maxthreads);
         config.setWorkerId(workerid);
         config.setMaxThreadsByTaskType(maximumThreadPerTaskType);

@@ -143,20 +143,21 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         // startAsWritable a broker and do some work
         BrokerConfiguration brokerConfig = new BrokerConfiguration();
         brokerConfig.setMaxWorkerIdleTime(5000);
-        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null)).getTaskId();
+            taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
 
                 // startAsWritable a worker, it will die
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
@@ -187,7 +188,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                 boolean ok = false;
                 for (int i = 0; i < 100; i++) {
                     Task task = broker.getBrokerStatus().getTask(taskId);
-                    System.out.println("task:" + task);
+//                    System.out.println("task:" + task);
                     if (task.getStatus() == Task.STATUS_WAITING) {
                         ok = true;
                         break;
@@ -197,12 +198,13 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                 assertTrue(ok);
 
                 // boot the worker again
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
@@ -224,23 +226,22 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                                 }
                         );
                         assertTrue(taskStartedLatch.await(10, TimeUnit.SECONDS));
+                        ok = false;
+                        for (int i = 0; i < 100; i++) {
+                            Task task = broker.getBrokerStatus().getTask(taskId);
+                            System.out.println("task2:" + task);
+                            if (task.getStatus() == Task.STATUS_FINISHED) {
+                                ok = true;
+                                assertEquals("theresult", task.getResult());
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(ok);
                     }
                 }
 
             }
-
-            boolean ok = false;
-            for (int i = 0; i < 100; i++) {
-                Task task = broker.getBrokerStatus().getTask(taskId);
-                System.out.println("task2:" + task);
-                if (task.getStatus() == Task.STATUS_FINISHED) {
-                    ok = true;
-                    assertEquals("theresult", task.getResult());
-                    break;
-                }
-                Thread.sleep(1000);
-            }
-            assertTrue(ok);
 
         }
 

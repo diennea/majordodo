@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,9 +48,36 @@ public class HttpAPIImplementation {
 
     private static final Logger LOGGER = Logger.getLogger(HttpAPIImplementation.class.getName());
 
+    private static AuthenticatedUser login(HttpServletRequest req) {
+        Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+        if (broker == null) {
+            return null;
+        }
+        String authHeader = req.getHeader("Authorization");
+        if (authHeader != null) {
+            StringTokenizer st = new StringTokenizer(authHeader);
+            if (st.hasMoreTokens()) {
+                String basic = st.nextToken();
+                if (basic.equalsIgnoreCase("Basic")) {
+                    try {
+                        String credentials = new String(java.util.Base64.getDecoder().decode(st.nextToken()), StandardCharsets.UTF_8);
+                        int p = credentials.indexOf(":");
+                        if (p != -1) {
+                            String login = credentials.substring(0, p).trim();
+                            String password = credentials.substring(p + 1).trim();
+                            return broker.getAuthenticationManager().login(login, password);
+                        }
+                    } catch (IllegalArgumentException a) {
+                    }
+
+                }
+            }
+        }
+        return null;
+    }
+
     public static void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-
         String view = req.getParameter("view");
         if (view == null) {
             view = "overview";
@@ -87,6 +115,22 @@ public class HttpAPIImplementation {
             case "tasksheap":
                 if (broker != null) {
                     resultMap.put("tasksheap", broker.getClient().getHeapStatus());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
+            case "slots":
+                if (broker != null) {
+                    resultMap.put("slots", broker.getClient().getSlotsStatusView());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
+            case "transactions":
+                if (broker != null) {
+                    resultMap.put("transactions", broker.getClient().getTransactionsStatusView());
                     resultMap.put("status", broker.getClient().getBrokerStatus());
                 } else {
                     resultMap.put("status", "not_started");
@@ -203,7 +247,8 @@ public class HttpAPIImplementation {
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> data = mapper.readValue(req.getInputStream(), Map.class);
-        LOGGER.log(Level.FINE, "POST " + data + " broker=" + broker);
+        AuthenticatedUser auth_user = login(req);
+        LOGGER.log(Level.FINE, "POST " + data + " broker=" + broker + ", user: " + auth_user);
         String action = data.get("action") + "";
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("action", action);
@@ -214,6 +259,10 @@ public class HttpAPIImplementation {
             resultMap.put("error", "broker_not_started");
             resultMap.put("ok", false);
         } else {
+            if (auth_user == null) {
+                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                return;
+            }
             switch (action) {
                 case "submitTask": {
                     String error = "";
@@ -221,9 +270,14 @@ public class HttpAPIImplementation {
                     String user = (String) data.get("userid");
                     String parameters = (String) data.get("data");
                     String _maxattempts = (String) data.get("maxattempts");
+                    String _attempt = (String) data.get("attempt");
                     long transaction = 0;
                     if (data.containsKey("transaction")) {
                         transaction = Long.parseLong(data.get("transaction") + "");
+                    }
+                    int attempt = 0;
+                    if (_attempt != null) {
+                        attempt = Integer.parseInt(_attempt);
                     }
                     int maxattempts = 1;
                     if (_maxattempts != null) {
@@ -238,10 +292,15 @@ public class HttpAPIImplementation {
                     if (slot != null && slot.trim().isEmpty()) {
                         slot = null;
                     }
+                    if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                            && !auth_user.getUserId().equals(user)) {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                        return;
+                    }
 
                     SubmitTaskResult result;
                     try {
-                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
                         long taskId = result.getTaskId();
                         resultMap.put("taskId", taskId);
                         resultMap.put("result", result.getOutcome());
@@ -264,8 +323,14 @@ public class HttpAPIImplementation {
                         for (Map<String, Object> task : tasks) {
                             String type = (String) task.get("tasktype");
                             String user = (String) task.get("userid");
+                            if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                                    && !auth_user.getUserId().equals(user)) {
+                                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                                return;
+                            }
                             String parameters = (String) task.get("data");
                             String _maxattempts = (String) task.get("maxattempts");
+                            String _attempt = (String) task.get("attempt");
                             long transaction = 0;
                             if (task.containsKey("transaction")) {
                                 transaction = Long.parseLong(task.get("transaction") + "");
@@ -273,6 +338,10 @@ public class HttpAPIImplementation {
                             int maxattempts = 1;
                             if (_maxattempts != null) {
                                 maxattempts = Integer.parseInt(_maxattempts);
+                            }
+                            int attempt = 0;
+                            if (_attempt != null) {
+                                attempt = Integer.parseInt(_attempt);
                             }
                             String _deadline = (String) task.get("deadline");
                             long deadline = 0;
@@ -284,7 +353,7 @@ public class HttpAPIImplementation {
                                 slot = null;
                             }
 
-                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot));
+                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
                         }
                         try {
                             List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);

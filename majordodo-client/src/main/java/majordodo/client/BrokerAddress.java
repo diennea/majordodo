@@ -90,4 +90,9 @@ public final class BrokerAddress {
         this.info = info;
     }
 
+    @Override
+    public String toString() {
+        return "BrokerAddress{" + "address=" + address + ", port=" + port + ", path=" + path + ", info=" + info + ", protocol=" + protocol + '}';
+    }
+
 }

@@ -31,7 +31,13 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.JdkSslServerContext;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
+import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Accepts connections from workers
@@ -44,7 +50,45 @@ public class NettyChannelAcceptor implements AutoCloseable {
     private EventLoopGroup workerGroup;
     private int port = 7000;
     private String host = "localhost";
+    private boolean ssl;
     private ServerSideConnectionAcceptor acceptor;
+    private SslContext sslCtx;
+    private File sslCertChainFile;
+    private File sslCertFile;
+    private String sslCertPassword;
+    private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
+
+    public boolean isSsl() {
+        return ssl;
+    }
+
+    public void setSsl(boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    public File getSslCertChainFile() {
+        return sslCertChainFile;
+    }
+
+    public void setSslCertChainFile(File sslCertChainFile) {
+        this.sslCertChainFile = sslCertChainFile;
+    }
+
+    public File getSslCertFile() {
+        return sslCertFile;
+    }
+
+    public void setSslCertFile(File sslCertFile) {
+        this.sslCertFile = sslCertFile;
+    }
+
+    public String getSslCertPassword() {
+        return sslCertPassword;
+    }
+
+    public void setSslCertPassword(String sslCertPassword) {
+        this.sslCertPassword = sslCertPassword;
+    }
 
     public int getPort() {
         return port;
@@ -75,6 +119,20 @@ public class NettyChannelAcceptor implements AutoCloseable {
     }
 
     public void start() throws Exception {
+        if (ssl) {
+
+            if (sslCertFile == null) {
+                SelfSignedCertificate ssc = new SelfSignedCertificate();
+                try {
+                    sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+                } finally {
+                    ssc.delete();
+                }
+            } else {
+                sslCtx = SslContextBuilder.forServer(sslCertChainFile, sslCertFile, sslCertPassword).build();
+            }
+
+        }
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup();
         ServerBootstrap b = new ServerBootstrap();
@@ -83,10 +141,15 @@ public class NettyChannelAcceptor implements AutoCloseable {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        NettyChannel session = new NettyChannel(ch);
+                        NettyChannel session = new NettyChannel(ch, callbackExecutor);
                         acceptor.createConnection(session);
 
 //                        ch.pipeline().addLast(new LoggingHandler());
+                        // Add SSL handler first to encrypt and decrypt everything.
+                        if (ssl) {
+                            ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
+                        }
+
                         ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
                         ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
 //
@@ -112,6 +175,9 @@ public class NettyChannelAcceptor implements AutoCloseable {
         }
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();
+        }
+        if (callbackExecutor != null) {
+            callbackExecutor.shutdown();
         }
     }
 }

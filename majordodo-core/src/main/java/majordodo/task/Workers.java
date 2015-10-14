@@ -54,23 +54,27 @@ public class Workers {
     public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot) {
         Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
         Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
-        for (WorkerStatus status : workersAtBoot) {
-            String workerId = status.getWorkerId();
+        for (WorkerStatus workerStatus : workersAtBoot) {
+            String workerId = workerStatus.getWorkerId();
             WorkerManager manager = getWorkerManager(workerId);
-            if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
+            if (workerStatus.getStatus() == WorkerStatus.STATUS_CONNECTED) {
                 connectedAtBoot.add(workerId);
             }
             Set<Long> toRecoverForWorker = new HashSet<>();
             deadWorkerTasks.put(workerId, toRecoverForWorker);
-            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:" + status.getWorkerId() + ", actual status: " + status.getStatus() + " " + WorkerStatus.statusToString(status.getStatus()));
+            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:" + workerStatus.getWorkerId() + ", actual status: " + workerStatus.getStatus() + " " + WorkerStatus.statusToString(workerStatus.getStatus()));
             for (Task task : tasksAtBoot) {
-                if (workerId.equals(task.getWorkerId()) && task.getStatus() == Task.STATUS_RUNNING) {
-                    LOGGER.log(Level.INFO, "Booting workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId());
-                    manager.taskShouldBeRunning(task.getTaskId());
-                } else {
-                    if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
-                        LOGGER.log(Level.SEVERE, "workerId:" + status.getWorkerId() + " should be running task " + task.getTaskId() + ", but worker is DEAD");
-                        toRecoverForWorker.add(task.getTaskId());
+                if (workerId.equals(task.getWorkerId())) {
+                    if (task.getStatus() == Task.STATUS_RUNNING) {
+                        if (workerStatus.getStatus() == WorkerStatus.STATUS_DEAD) {
+                            LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId() + ", but worker is DEAD");
+                            toRecoverForWorker.add(task.getTaskId());
+                        } else {
+                            LOGGER.log(Level.INFO, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId());
+                            manager.taskShouldBeRunning(task.getTaskId());
+                        }
+                    } else {
+                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));
                     }
                 }
             }
@@ -108,6 +112,7 @@ public class Workers {
             } catch (Throwable exit) {
                 // exiting loop                
                 LOGGER.log(Level.SEVERE, "workers manager is dead", exit);
+                broker.brokerFailed();
             }
         }
     }

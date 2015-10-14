@@ -4,13 +4,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>majordodo</groupId>
-        <version>0.1.4</version>
+        <version>0.1.14-BETA2</version>
         <relativePath>..</relativePath>
         <artifactId>majordodo-parent</artifactId>
     </parent>
-    <artifactId>majordodo-net</artifactId>
+    <artifactId>majordodo-net</artifactId>    
     <name>Majordodo Network layer</name>
-    <packaging>jar</packaging>
+    <packaging>jar</packaging>        
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -20,11 +20,32 @@
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.0.25.Final</version>
+            <artifactId>netty-common</artifactId>
+            <version>${libs.netty4}</version>
         </dependency>
-    </dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.jackson</groupId>
+            <artifactId>jackson-mapper-asl</artifactId>
+            <version>1.9.13</version>            
+        </dependency>
+    </dependencies>    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <libs.netty4>4.0.31.Final</libs.netty4>
     </properties>
 </project>

@@ -28,6 +28,7 @@ import majordodo.network.ConnectionRequestInfo;
 import majordodo.network.Message;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
+import majordodo.network.BrokerHostData;
 
 /**
  * Network connection, based on Netty
@@ -36,19 +37,21 @@ import java.util.concurrent.TimeoutException;
  */
 public abstract class GenericNettyBrokerLocator implements BrokerLocator {
 
-    protected abstract InetSocketAddress getServer();
+    protected abstract BrokerHostData getServer();
 
     @Override
     public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
         boolean ok = false;
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {
-            InetSocketAddress addre = getServer();
-            if (addre == null) {
+            BrokerHostData broker = getServer();
+            if (broker == null) {
                 throw new BrokerNotAvailableException(new Exception("no broker available"));
             }
+            InetSocketAddress addre = broker.getSocketAddress();
             connector.setPort(addre.getPort());
             connector.setHost(addre.getAddress().getHostAddress());
+            connector.setSsl(broker.isSsl());
             NettyChannel channel;
             try {
                 channel = connector.connect();
@@ -56,7 +59,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
                 throw new BrokerNotAvailableException(e);
             }
 
-            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getRunningTaskIds());
+            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds());
             try {
                 Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
                 if (connectionResponse.type == Message.TYPE_ACK) {

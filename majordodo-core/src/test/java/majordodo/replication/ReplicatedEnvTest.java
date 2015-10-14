@@ -19,15 +19,12 @@
  */
 package majordodo.replication;
 
+import majordodo.network.BrokerHostData;
 import majordodo.network.BrokerLocator;
-import majordodo.network.jvm.JVMBrokerLocator;
-import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.task.Broker;
 import majordodo.task.SimpleBrokerSuite;
 import majordodo.task.StatusChangesLog;
 import org.junit.After;
-import org.junit.Before;
 
 /**
  * simple tests using real network connector
@@ -48,7 +45,7 @@ public class ReplicatedEnvTest extends SimpleBrokerSuite {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, Broker.formatHostdata(host, port, null));
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir,BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)));
     }
 
     @Override

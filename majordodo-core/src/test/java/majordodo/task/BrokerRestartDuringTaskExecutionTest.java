@@ -148,11 +148,12 @@ public class BrokerRestartDuringTaskExecutionTest {
         int port = 7000;
 
         // startAsWritable a worker, the broker is not started
-        try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port)) {
+        try (NettyBrokerLocator locator = new NettyBrokerLocator(host, port,false)) {
             Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
 
-            WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+            WorkerCoreConfiguration config = new WorkerCoreConfiguration();            
+            config.setMaxPendingFinishedTaskNotifications(1);
             config.setWorkerId(workerId);
             config.setMaxThreadsByTaskType(tags);
             config.setGroups(Arrays.asList(group));
@@ -163,7 +164,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                         (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
-                                System.out.println("executeTask: " + parameters);
+//                                System.out.println("executeTask: " + parameters);
                                 taskStartedLatch.countDown();
                                 newBrokerStartedLatch.await(10, TimeUnit.SECONDS);
                                 taskFinishedLatch.countDown();
@@ -175,9 +176,9 @@ public class BrokerRestartDuringTaskExecutionTest {
                 // startAsWritable a broker and submit some work
                 BrokerConfiguration brokerConfig = new BrokerConfiguration();
                 brokerConfig.setMaxWorkerIdleTime(5000);
-                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker.startAsWritable();
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0,0,null)).getTaskId();
+                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);
                         server.setPort(port);
@@ -190,7 +191,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                 }
 
                 // restart the broker
-                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+                try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker.startAsWritable();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);

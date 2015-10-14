@@ -28,6 +28,8 @@ public interface BrokerLocator extends AutoCloseable {
 
     public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException;
 
+    public void brokerDisconnected();
+    
     @Override
     public default void close() {
     }

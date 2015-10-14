@@ -19,7 +19,7 @@
  */
 package majordodo.task;
 
-import majordodo.executors.TaskExecutorStatus;
+import majordodo.worker.TaskExecutorStatus;
 import java.util.Map;
 
 /**
@@ -65,7 +65,7 @@ public class Task {
 
     @Override
     public String toString() {
-        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + " " + statusToString(status) + ", taskId=" + taskId + ", tenantInfo=" + userId + ", workerId=" + workerId + '}';
+        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + " " + statusToString(status) + ", taskId=" + taskId + ", userId=" + userId + ", workerId=" + workerId + '}';
     }
 
     private String type;
@@ -125,8 +125,8 @@ public class Task {
         return userId;
     }
 
-    public void setUserId(String tenantInfo) {
-        this.userId = tenantInfo;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public long getTaskId() {

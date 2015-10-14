@@ -21,9 +21,10 @@ package majordodo.task;
 
 import majordodo.network.Channel;
 import majordodo.network.ServerSideConnectionAcceptor;
-import majordodo.task.Broker;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Connections manager broker-side
@@ -32,10 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<BrokerSideConnection> {
 
+    private static final Logger LOGGER = Logger.getLogger(BrokerServerEndpoint.class.getName());
     private final Map<String, BrokerSideConnection> workersConnections = new ConcurrentHashMap<>();
     private final Map<Long, BrokerSideConnection> connections = new ConcurrentHashMap<>();
 
-    private Broker broker;
+    private final Broker broker;
 
     public BrokerServerEndpoint(Broker broker) {
         this.broker = broker;
@@ -59,7 +61,17 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
         return connections;
     }
 
+    BrokerSideConnection getActualConnectionFromWorker(String workerId) {
+        return workersConnections.get(workerId);
+    }
+
+    void connectionAccepted(BrokerSideConnection con) {
+        LOGGER.log(Level.SEVERE, "connectionAccepted {0}", con);
+        workersConnections.put(con.getWorkerId(), con);
+    }
+
     void connectionClosed(BrokerSideConnection con) {
+        LOGGER.log(Level.SEVERE, "connectionClosed {0}", con);
         connections.remove(con.getConnectionId());
         if (con.getWorkerId() != null) {
             workersConnections.remove(con.getWorkerId()); // to be remove only if the connection is the current connection

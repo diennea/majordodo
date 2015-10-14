@@ -259,16 +259,18 @@ public class ZKClusterManager implements AutoCloseable {
 
         @Override
         public void processResult(int code, String path, Object o, String name) {
-            System.out.println("masterCreateCallback: " + Code.get(code) + ", path:" + path);
+            LOGGER.log(Level.INFO, "masterCreateCallback path:" + path + ", code:" + Code.get(code));
             switch (Code.get(code)) {
                 case CONNECTIONLOSS:
                     checkMaster();
                     break;
                 case OK:
+                    LOGGER.log(Level.SEVERE, "create success at " + path + ", code:" + Code.get(code) + ", I'm the new LEADER");
                     state = MasterStates.ELECTED;
                     takeLeaderShip();
                     break;
                 case NODEEXISTS:
+                    LOGGER.log(Level.SEVERE, "create failed at " + path + ", code:" + Code.get(code) + ", a LEADER already exists");
                     state = MasterStates.NOTELECTED;
                     masterExists();
                     break;

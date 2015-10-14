@@ -19,6 +19,7 @@
  */
 package majordodo.task;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -29,6 +30,7 @@ import java.io.OutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,6 +40,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import majordodo.utils.FileUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -178,6 +182,7 @@ public class FileCommitLog extends StatusChangesLog {
             currentSequenceNumber = 0;
             writer = new CommitFileWriter(currentLedgerId);
         } catch (IOException err) {
+            signalBrokerFailed();
             throw new LogNotAvailableException(err);
         } finally {
             writeLock.unlock();
@@ -205,6 +210,7 @@ public class FileCommitLog extends StatusChangesLog {
             }
             return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
         } catch (IOException err) {
+            signalBrokerFailed();
             throw new LogNotAvailableException(err);
         } finally {
             writeLock.unlock();
@@ -217,7 +223,7 @@ public class FileCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+    public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException {
         LOGGER.log(Level.SEVERE, "recovery, snapshotSequenceNumber: {0}", snapshotSequenceNumber);
         // no lock is needed, we are at boot time
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
@@ -294,24 +300,64 @@ public class FileCommitLog extends StatusChangesLog {
 
     private static final String LOGFILEEXTENSION = ".txlog";
 
+    private Path writeSnapshotOnDisk(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
+        ensureDirectories();
+        LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
+        String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
+        Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
+        Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
+        LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
+
+        try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
+                BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+                GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+            BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        try {
+            Files.move(snapshotfilename_tmp, snapshotfilename, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+        return snapshotfilename;
+    }
+
+    private void deleteOldSnapshots(Path snapshotfilename) throws LogNotAvailableException {
+        try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
+            for (Path path : allfiles) {
+                String other_filename = path.getFileName().toString();
+                if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
+                    LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
+                    try {
+                        other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
+
+                        int pos = other_filename.indexOf('_');
+                        if (pos > 0) {
+                            if (!snapshotfilename.equals(path)) {
+                                LOGGER.log(Level.SEVERE, "Deleting old snapshot file: " + path);
+                                Files.delete(path);
+                            }
+                        }
+                    } catch (NumberFormatException invalidName) {
+                        LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                    }
+                }
+            }
+        } catch (IOException err) {
+            throw new LogNotAvailableException(err);
+        }
+    }
+
     @Override
     public void checkpoint(BrokerStatusSnapshot snapshotData) throws LogNotAvailableException {
 
         snapshotLock.lock();
         try {
-            ensureDirectories();
-            LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
-            String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
-            Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
-            LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshotData);
 
-            try (OutputStream out = Files.newOutputStream(snapshotfilename)) {
-                mapper.writeValue(out, filedata);
-            } catch (IOException err) {
-                throw new LogNotAvailableException(err);
-            }
+            Path snapshotfilename = writeSnapshotOnDisk(snapshotData);
+            deleteOldSnapshots(snapshotfilename);
+
             writeLock.lock();
             try {
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
@@ -347,7 +393,7 @@ public class FileCommitLog extends StatusChangesLog {
 
     }
 
-    private static final String SNAPSHOTFILEXTENSION = ".snap.json";
+    private static final String SNAPSHOTFILEXTENSION = ".snap.json.gz";
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
@@ -358,7 +404,7 @@ public class FileCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String filename = path.getFileName().toString();
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    System.out.println("Processing snapshot file: " + path);
+                    LOGGER.severe("Processing snapshot file: " + path);
                     try {
                         filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
 
@@ -373,7 +419,7 @@ public class FileCommitLog extends StatusChangesLog {
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        System.out.println("Error:" + invalidName);
+                        LOGGER.severe("Error:" + invalidName);
                         invalidName.printStackTrace();
                     }
                 }
@@ -382,18 +428,15 @@ public class FileCommitLog extends StatusChangesLog {
             throw new LogNotAvailableException(err);
         }
         if (snapshotfilename == null) {
-            System.out.println("No snapshot available Starting with a brand new status");
+            LOGGER.severe("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> snapshotdata;
 
-            try (InputStream in = Files.newInputStream(snapshotfilename)) {
-
-                snapshotdata = mapper.readValue(in, Map.class
-                );
-                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(snapshotdata);
+            try (InputStream in = Files.newInputStream(snapshotfilename);
+                    BufferedInputStream bin = new BufferedInputStream(in);
+                    GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;
             } catch (IOException err) {

@@ -150,4 +150,47 @@ public class WorkerCoreConfiguration {
         this.tasksRequestTimeout = tasksRequestTimeout;
     }
 
+    private long maxPendingFinishedTaskNotifications = 100;
+
+    /**
+     * Maximum number of tasks for which a "finished" notification is waiting in
+     * queues
+     *
+     * @return
+     */
+    public long getMaxPendingFinishedTaskNotifications() {
+        return maxPendingFinishedTaskNotifications;
+    }
+
+    public void setMaxPendingFinishedTaskNotifications(long maxPendingFinishedTaskNotifications) {
+        this.maxPendingFinishedTaskNotifications = maxPendingFinishedTaskNotifications;
+    }
+
+    /**
+     * Maximum time to be in the pendingFinishedTaskNotifications queue
+     */
+    private long maxWaitPendingFinishedTaskNotifications = 10000;
+
+    public long getMaxWaitPendingFinishedTaskNotifications() {
+        return maxWaitPendingFinishedTaskNotifications;
+    }
+
+    public void setMaxWaitPendingFinishedTaskNotifications(long maxWaitPendingFinishedTaskNotifications) {
+        this.maxWaitPendingFinishedTaskNotifications = maxWaitPendingFinishedTaskNotifications;
+    }
+
+    /**
+     * Shared secret among all the brokers and workers. Provides minimum
+     * security level
+     */
+    private String sharedSecret = "dodo";
+
+    public String getSharedSecret() {
+        return sharedSecret;
+    }
+
+    public void setSharedSecret(String sharedSecret) {
+        this.sharedSecret = sharedSecret;
+    }
+
 }

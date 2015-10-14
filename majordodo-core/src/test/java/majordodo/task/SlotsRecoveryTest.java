@@ -153,17 +153,17 @@ public class SlotsRecoveryTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0)).getTaskId());
         }
 
         // restart a broker and request a task, with slot, slot is already busy
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0)).getTaskId());
         }
 
         // startAsWritable a broker and do some work
@@ -171,7 +171,7 @@ public class SlotsRecoveryTest {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -193,6 +193,7 @@ public class SlotsRecoveryTest {
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
@@ -227,19 +228,19 @@ public class SlotsRecoveryTest {
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
                     // now the slot is free
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID)).getTaskId();
+                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID,0)).getTaskId();
                     assertTrue(taskId > 0);
                 }
                 // transactions
                 long transaction_1 = broker.getClient().beginTransaction();
                 String SLOTTRANSACTION_1 = "sltr1";
-                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1)).getTaskId();
+                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1,0)).getTaskId();
                 assertTrue(slotTransactionTaskId > 0);
-                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1)).getTaskId();
+                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1,0)).getTaskId();
                 assertEquals(0, slotTransactionTaskId2);
                 broker.getClient().rollbackTransaction(transaction_1);
                 long transaction_2 = broker.getClient().beginTransaction();
-                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1)).getTaskId();
+                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1,0)).getTaskId();
                 assertTrue(slotTransactionTaskId3 > 0);
                 broker.getClient().commitTransaction(transaction_2);
 

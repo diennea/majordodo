@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
@@ -50,7 +44,6 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -153,11 +146,11 @@ public class PurgeFinishedTaskTest {
         BrokerConfiguration bc = new BrokerConfiguration();
         bc.setFinishedTasksRetention(0);
         bc.setFinishedTasksPurgeSchedulerPeriod(1000);
-        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),false)) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -178,7 +171,8 @@ public class PurgeFinishedTaskTest {
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
-                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();                    
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
@@ -189,7 +183,7 @@ public class PurgeFinishedTaskTest {
 
                                     @Override
                                     public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        System.out.println("executeTask: " + parameters);
+//                                        System.out.println("executeTask: " + parameters);
                                         allTaskExecuted.countDown();
                                         return "theresult";
                                     }
@@ -197,7 +191,7 @@ public class PurgeFinishedTaskTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                         TaskStatusView task = broker.getClient().getTask(taskId);
                         assertEquals(Task.STATUS_WAITING, task.getStatus());
                         core.start();
@@ -207,7 +201,7 @@ public class PurgeFinishedTaskTest {
                         boolean purged = false;
                         for (int i = 0; i < 100; i++) {
                             task = broker.getClient().getTask(taskId);
-                            System.out.println("task:" + task);
+//                            System.out.println("task:" + task);
                             if (task == null) {
                                 purged = true;
                                 break;

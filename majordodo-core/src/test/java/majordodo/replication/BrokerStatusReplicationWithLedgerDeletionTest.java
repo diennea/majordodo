@@ -30,6 +30,7 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -112,13 +113,13 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
             BrokerConfiguration brokerConfig = new BrokerConfiguration();
             brokerConfig.setMaxWorkerIdleTime(5000);
 
-            try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port,null));
+            try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)));
                     Broker broker1 = new Broker(brokerConfig, log1, new TasksHeap(1000, createGroupMapperFunction()));) {
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
 
                     log1.setLedgersRetentionPeriod(1);
                     log1.setMaxLogicalLogFileSize(10);
@@ -143,7 +144,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                     assertEquals(1, log1.getActualLedgersList().getActiveLedgers().size());
                     assertFalse(log1.getActualLedgersList().getActiveLedgers().contains(log1.getActualLedgersList().getFirstLedger()));
 
-                    try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host2, port2,null));
+                    try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)));
                             Broker broker2 = new Broker(brokerConfig, log2, new TasksHeap(1000, createGroupMapperFunction()));) {
                         broker2.start();
 
@@ -155,7 +156,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                         boolean ok = false;
                         for (int i = 0; i < 10; i++) {
                             TaskStatusView task = broker2.getClient().getTask(taskId);
-                            System.out.println("task:" + task);
+//                            System.out.println("task:" + task);
                             Thread.sleep(1000);
                             if (task != null) {
                                 ok = true;

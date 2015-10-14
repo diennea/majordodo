@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
@@ -55,26 +56,45 @@ import org.codehaus.jackson.map.ObjectMapper;
 
 public class HTTPClientConnection implements ClientConnection {
 
+    private static final Logger LOGGER = Logger.getLogger(HTTPClientConnection.class.getName());
+
     private String transactionId;
     private boolean transacted;
 
     private HttpClientContext context;
 
-    private CloseableHttpClient httpclient;
-    private ClientConfiguration configuration;
-    private static boolean debug = Boolean.getBoolean("majordodo.client.debug");
-    private BrokerAddress broker;
+    private final CloseableHttpClient httpclient;
+    private final ClientConfiguration configuration;
+    private static final boolean debug = Boolean.getBoolean("majordodo.client.debug");
+    private BrokerAddress _broker;
     private final BrokerDiscoveryService discoveryService;
 
-    public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerAddress broker, BrokerDiscoveryService discoveryService) {
+    public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerDiscoveryService discoveryService) {
         this.httpclient = client;
         this.configuration = configuration;
-        this.broker = broker;
         this.discoveryService = discoveryService;
     }
 
-    private HttpClientContext getContext() {
+    private BrokerAddress getBroker() throws IOException {
+        if (_broker == null) {
+            _broker = discoveryService.getLeaderBroker();
+            if (_broker == null) {
+                throw new IOException("not leader broker is available");
+            }
+        }
+        return _broker;
+    }
+
+    private void brokerFailed() {
+        if (_broker != null) {
+            discoveryService.brokerFailed(_broker);
+        }
+        context = null;
+    }
+
+    private HttpClientContext getContext() throws IOException {
         if (context == null) {
+            BrokerAddress broker = getBroker();
             String scheme = broker.getProtocol();
             HttpHost targetHost = new HttpHost(broker.getAddress(), broker.getPort(), scheme);
 
@@ -143,31 +163,48 @@ public class HTTPClientConnection implements ClientConnection {
     private Map<String, Object> request(String method, Map<String, Object> data) throws ClientException {
 
         try {
-            ObjectMapper mapper = new ObjectMapper();
-
-            String s = mapper.writeValueAsString(data);
-            byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-            Map<String, Object> rr;
-            if (method.equals("POST")) {
-                rr = post("application/json;charset=utf-8", bytes);
-            } else if (method.equals("GET")) {
-                String path = data.entrySet().stream().map((entry) -> {
-                    try {
-                        return entry.getKey() + "=" + URLEncoder.encode(entry.getValue().toString(), "utf-8");
-                    } catch (UnsupportedEncodingException err) {
-                        return "";
+            final int MAX_RETRIES = 5;
+            for (int i = 0; i < MAX_RETRIES; i++) {
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String s = mapper.writeValueAsString(data);
+                    byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+                    Map<String, Object> rr;
+                    if (method.equals("POST")) {
+                        rr = post("application/json;charset=utf-8", bytes);
+                    } else if (method.equals("GET")) {
+                        String path = data.entrySet().stream().map((entry) -> {
+                            try {
+                                return entry.getKey() + "=" + URLEncoder.encode(entry.getValue().toString(), "utf-8");
+                            } catch (UnsupportedEncodingException err) {
+                                return "";
+                            }
+                        }).collect(Collectors.joining("&"));
+                        rr = get("?" + path);
+                    } else {
+                        throw new IllegalStateException(method);
                     }
-                }).collect(Collectors.joining("&"));
-                rr = get("?" + path);
-            } else {
-                throw new IllegalStateException(method);
+                    if (!"true".equals(rr.get("ok") + "")) {
+                        LOGGER.severe("error from " + _broker + ": " + rr);
+                        brokerFailed();
+                        String error = rr.get("error") + "";
+                        if (error.equals("broker_not_started")) {
+                            throw new RetryableError(rr + "");
+                        }
+                        throw new Exception("error from broker: " + rr);
+                    }
+                    return rr;
+                } catch (RetryableError retry) {
+                    Thread.sleep(1000);
+                }
             }
-            if (!"true".equals(rr.get("ok") + "")) {
-                throw new Exception("error from broker: " + rr);
-            }
-            return rr;
+            throw new IOException("could not issue request after " + MAX_RETRIES + " trials");
+        } catch (InterruptedException err) {
+            Thread.currentThread().interrupt();
+            brokerFailed();
+            throw new ClientException(err);
         } catch (Exception err) {
-            discoveryService.brokerFailed(broker);
+            brokerFailed();
             throw new ClientException(err);
         }
     }
@@ -203,6 +240,9 @@ public class HTTPClientConnection implements ClientConnection {
         reqdata.put("tasktype", request.getTasktype());
         reqdata.put("data", request.getData());
         reqdata.put("maxattempts", request.getMaxattempts() + "");
+        if (request.getAttempt() > 0) {
+            reqdata.put("attempt", request.getAttempt() + "");
+        }
         if (request.getSlot() != null && !request.getSlot().isEmpty()) {
             reqdata.put("slot", request.getSlot());
         }
@@ -250,11 +290,17 @@ public class HTTPClientConnection implements ClientConnection {
             if (request.getMaxattempts() < 0) {
                 throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
             }
+            if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
+                throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
+            }
 
             reqdata.put("userid", request.getUserid());
             reqdata.put("tasktype", request.getTasktype());
             reqdata.put("data", request.getData());
             reqdata.put("maxattempts", request.getMaxattempts() + "");
+            if (request.getAttempt() > 0) {
+                reqdata.put("attempt", request.getAttempt() + "");
+            }
             if (request.getSlot() != null && !request.getSlot().isEmpty()) {
                 reqdata.put("slot", request.getSlot());
             }
@@ -344,14 +390,21 @@ public class HTTPClientConnection implements ClientConnection {
         }
     }
 
-    private String getBaseUrl() {
+    private String getBaseUrl() throws IOException {
+        BrokerAddress broker = getBroker();
         String base = broker.getProtocol() + "://" + broker.getAddress() + ":" + broker.getPort() + "" + broker.getPath();
         return base;
+    }
+
+    public static final class RetryableError extends IOException {
+
+        public RetryableError(String message) {
+            super(message);
+        }
 
     }
 
     private Map<String, Object> post(String contentType, byte[] content) throws IOException {
-
         HttpPost httpget = new HttpPost(getBaseUrl());
         RequestConfig requestConfig = RequestConfig.custom()
                 .setSocketTimeout(configuration.getSotimeout())
@@ -364,6 +417,7 @@ public class HTTPClientConnection implements ClientConnection {
         httpget.setEntity(body);
         try (CloseableHttpResponse response1 = httpclient.execute(httpget, getContext());) {
             if (response1.getStatusLine().getStatusCode() != 200) {
+                brokerFailed();
                 throw new IOException("HTTP request failed: " + response1.getStatusLine());
             }
             ObjectMapper mapper = new ObjectMapper();
@@ -383,6 +437,7 @@ public class HTTPClientConnection implements ClientConnection {
         try (CloseableHttpResponse response1 = httpclient.execute(httpget, getContext());) {
 
             if (response1.getStatusLine().getStatusCode() != 200) {
+                brokerFailed();
                 throw new IOException("HTTP request failed: " + response1.getStatusLine());
             }
             ObjectMapper mapper = new ObjectMapper();

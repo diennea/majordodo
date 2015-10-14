@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPOutputStream;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -115,6 +116,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         return lastReceivedMessageTs;
     }
 
+    public boolean validate() {
+        return channel != null && channel.isValid();
+    }
+
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();
@@ -125,7 +130,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
-                LOGGER.log(Level.FINE, "connection request {0}", message);
+                LOGGER.log(Level.INFO, "connection request {0}", message);
+                String sharedSecret = (String) message.parameters.get("secret");
+                if (sharedSecret == null || !sharedSecret.equals(broker.getConfiguration().getSharedSecret())) {
+                    answerConnectionNotAcceptedAndClose(message, new Exception("invalid network secret"));
+                    return;
+                }
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
@@ -146,11 +156,18 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
                 LOGGER.log(Level.SEVERE, "registering connection " + connectionId + ", workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
-                BrokerSideConnection actual = this.broker.getAcceptor().getWorkersConnections().get(_workerId);
+                BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_workerId);
                 if (actual != null) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
-                    return;
+                    LOGGER.log(Level.SEVERE, "there is already a connection id: {0}, workerId:{1}, {2}", new Object[]{actual.getConnectionId(), _workerId, actual});
+                    if (!actual.validate()) {
+                        LOGGER.log(Level.SEVERE, "connection id: {0}, is no more valid", actual.getConnectionId());
+                        actual.close();
+                    } else {
+                        answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _workerId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
+                        return;
+                    }
                 }
+
                 this.workerId = _workerId;
                 this.workerProcessId = (String) message.parameters.get("processId");
                 this.location = (String) message.parameters.get("location");
@@ -160,7 +177,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     answerConnectionNotAcceptedAndClose(message, error);
                     return;
                 }
-                broker.getAcceptor().getWorkersConnections().put(workerId, this);
+                broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
                 manager.activateConnection(this);
                 answerConnectionAccepted(message);
@@ -202,17 +219,19 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
+                LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent shutdown message");
                 /// ignore
                 break;
             case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
                 LOGGER.log(Level.SEVERE, "creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from " + this.channel);
                 try {
                     BrokerStatusSnapshot snapshot = broker.getBrokerStatus().createSnapshot();
-                    Map<String, Object> filedata = BrokerStatusSnapshot.serializeSnapshot(snapshot);
-                    ObjectMapper mapper = new ObjectMapper();
+
                     byte[] data;
-                    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                        mapper.writeValue(out, filedata);
+                    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            GZIPOutputStream zout = new GZIPOutputStream(out)) {
+                        BrokerStatusSnapshot.serializeSnapshot(snapshot, zout);
+                        zout.close();
                         data = out.toByteArray();
                     } catch (IOException err) {
                         throw new LogNotAvailableException(err);
@@ -220,11 +239,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     LOGGER.log(Level.SEVERE, "sending snapshot data..." + data.length + " bytes");
                     channel.sendReplyMessage(message, Message.SNAPSHOT_DOWNLOAD_RESPONSE(data));
                 } catch (Exception error) {
+                    LOGGER.log(Level.SEVERE, "Error", error);
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
 
             default:
+                LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent unknown message " + message);
                 channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
 
         }
@@ -233,6 +254,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     @Override
     public void channelClosed() {
+        LOGGER.log(Level.SEVERE, "worker " + workerId + " connection " + this + " closed");
         channel = null;
         if (workerId != null) {
             broker.getWorkers().getWorkerManager(workerId).deactivateConnection(this);
@@ -245,9 +267,18 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     void answerConnectionNotAcceptedAndClose(Message connectionRequestMessage, Throwable ex
     ) {
-        channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
-        channel.close();
-        channelClosed();
+        if (channel != null) {
+            channel.sendReplyMessage(connectionRequestMessage, Message.ERROR(workerProcessId, ex));
+        }
+        close();
+    }
+
+    public void close() {
+        if (channel != null) {
+            channel.close();
+        } else {
+            channelClosed();
+        }
     }
 
     void answerConnectionAccepted(Message connectionRequestMessage
@@ -272,6 +303,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     }
 
     public void workerDied() {
+        LOGGER.log(Level.SEVERE, "worker " + workerId + " connection " + this + ": workerDied");
         if (channel != null) {
             channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
                 @Override
@@ -305,6 +337,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             return false;
         }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return "BrokerSideConnection{" + "workerId=" + workerId + ", workerProcessId=" + workerProcessId + ", connectionId=" + connectionId + ", location=" + location + ", channel=" + channel + ", lastReceivedMessageTs=" + lastReceivedMessageTs + '}';
     }
 
 }

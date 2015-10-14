@@ -41,13 +41,17 @@ do
   CLASSPATH=$CLASSPATH:$file
 done
 
+for file in $BASE_DIR/extra/*.jar;
+do
+  CLASSPATH=$CLASSPATH:$file
+done
+
 
 if [ -z "$JAVA_OPTS" ]; then
   JAVA_OPTS=""
 fi
 
 JAVA="$JAVA_HOME/bin/java"
-echo $@
 
 while [ $# -gt 0 ]; do
   COMMAND=$1
@@ -64,8 +68,6 @@ done
 
 SERVICE=$1
 shift
-
-echo $@
 
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
   CONSOLE_OUTPUT_FILE=$SERVICE.service.log  

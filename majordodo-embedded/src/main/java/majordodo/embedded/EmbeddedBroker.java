@@ -19,6 +19,7 @@
  */
 package majordodo.embedded;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import majordodo.network.netty.NettyChannelAcceptor;
@@ -34,6 +35,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import majordodo.clientfacade.AuthenticationManager;
+import majordodo.network.BrokerHostData;
 
 /**
  * Utility to embed a Majordodo Broker
@@ -54,6 +57,36 @@ public class EmbeddedBroker implements AutoCloseable {
     private StatusChangesLog statusChangesLog;
     private NettyChannelAcceptor server;
     private final EmbeddedBrokerConfiguration configuration;
+    private Runnable brokerDiedCallback;
+    private AuthenticationManager authenticationManager;
+
+    public AuthenticationManager getAuthenticationManager() {
+        return authenticationManager;
+    }
+
+    public void setAuthenticationManager(AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
+    }
+
+    /**
+     * This callback wil be called when the broker dies, for example in case of
+     * "leadership lost" or "broker commit log"
+     *
+     * @return
+     */
+    public Runnable getBrokerDiedCallback() {
+        return brokerDiedCallback;
+    }
+
+    /**
+     * This callback wil be called when the broker dies, for example in case of
+     * "leadership lost" or "broker commit log"
+     *
+     * @param brokerDiedCallback
+     */
+    public void setBrokerDiedCallback(Runnable brokerDiedCallback) {
+        this.brokerDiedCallback = brokerDiedCallback;
+    }
 
     public EmbeddedBroker(EmbeddedBrokerConfiguration configuration) {
         this.configuration = configuration;
@@ -86,6 +119,10 @@ public class EmbeddedBroker implements AutoCloseable {
         }
         String host = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_HOST, "localhost");
         int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
+        boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
+        File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
+        File certchainfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
+        String certpassword = configuration.getStringProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_PASSWORD, null);
         String mode = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_MODE, EmbeddedBrokerConfiguration.MODE_SIGLESERVER);
         String logDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_LOGSDIRECTORY, "txlog");
         String snapshotsDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SNAPSHOTSDIRECTORY, "snapshots");
@@ -119,7 +156,9 @@ public class EmbeddedBroker implements AutoCloseable {
                 if (!Files.isDirectory(_snapshotsDirectory)) {
                     Files.createDirectory(_snapshotsDirectory);
                 }
-                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory, Broker.formatHostdata(host, port, additionalInfo));
+                ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
+                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo))
+                );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
                 int writeQuorumSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_WRITEQUORUMSIZE, _statusChangesLog.getWriteQuorumSize());
@@ -134,8 +173,11 @@ public class EmbeddedBroker implements AutoCloseable {
             }
         }
         brokerConfiguration = new BrokerConfiguration();
+        String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
+        brokerConfiguration.setSharedSecret(sharedSecret);
         brokerConfiguration.read(configuration.getProperties());
         broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), groupMapperFunction));
+        broker.setAuthenticationManager(authenticationManager);
         broker.setBrokerId(id);
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY:
@@ -143,8 +185,13 @@ public class EmbeddedBroker implements AutoCloseable {
             case EmbeddedBrokerConfiguration.MODE_SIGLESERVER:
             case EmbeddedBrokerConfiguration.MODE_CLUSTERED:
                 server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
+                server.setSslCertChainFile(certchainfile);
+                server.setSslCertFile(certfile);
+                server.setSslCertPassword(certpassword);
+                server.setSsl(ssl);
                 break;
         }
+        broker.setBrokerDiedCallback(brokerDiedCallback);
         broker.start();
         if (server != null) {
             server.start();

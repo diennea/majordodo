@@ -32,7 +32,7 @@ import majordodo.client.BrokerDiscoveryService;
  */
 public class StaticBrokerDiscoveryService implements BrokerDiscoveryService {
 
-    private BrokerAddress address;
+    private final BrokerAddress address;
 
     public StaticBrokerDiscoveryService(BrokerAddress address) {
         this.address = address;

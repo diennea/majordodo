@@ -148,6 +148,11 @@ public class JVMChannel extends Channel {
     }
 
     @Override
+    public boolean isValid() {
+        return active;
+    }
+    
+    @Override
     public void close() {
         active = false;
         pendingReplyMessages.forEach((key, callback) -> {

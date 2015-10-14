@@ -156,8 +156,17 @@ public class EmbeddedClient implements AutoCloseable {
                 deadline = (System.currentTimeMillis() + request.getTimeToLive());
             }
             try {
+                if (request.getTasktype() == null || request.getTasktype().isEmpty()) {
+                    throw new ClientException("invalid tasktype " + request.getTasktype());
+                }
+                if (request.getMaxattempts() < 0) {
+                    throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
+                }
+                if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
+                    throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
+                }
                 SubmitTaskResult submitTask = broker.getClient().submitTask(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot()));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt()));
                 SubmitTaskResponse resp = new SubmitTaskResponse();
                 resp.setTaskId(submitTask.getTaskId() + "");
                 if (submitTask.getOutcome() != null) {
@@ -180,8 +189,17 @@ public class EmbeddedClient implements AutoCloseable {
                 if (request.getTimeToLive() > 0) {
                     deadline = (System.currentTimeMillis() + request.getTimeToLive());
                 }
+                if (request.getTasktype() == null || request.getTasktype().isEmpty()) {
+                    throw new ClientException("invalid tasktype " + request.getTasktype());
+                }
+                if (request.getMaxattempts() < 0) {
+                    throw new ClientException("invalid Maxattempts " + request.getMaxattempts());
+                }
+                if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
+                    throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
+                }
                 requests.add(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot()));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt()));
             }
             try {
                 List<SubmitTaskResult> submitTasks = broker.getClient().submitTasks(requests);

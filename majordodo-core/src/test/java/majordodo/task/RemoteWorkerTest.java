@@ -37,7 +37,7 @@ public class RemoteWorkerTest extends SimpleBrokerSuite {
 
     @Override
     protected BrokerLocator createBrokerLocator() {
-        return new NettyBrokerLocator(server.getHost(), server.getPort());
+        return new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl());
     }
 
     @Before

@@ -26,12 +26,12 @@ import majordodo.network.BrokerLocator;
 import majordodo.network.ConnectionRequestInfo;
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorFactory;
-import majordodo.executors.TaskExecutorStatus;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
 import majordodo.network.SendResultCallback;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.network.ReplyCallback;
 import majordodo.utils.ErrorUtils;
 
 /**
@@ -110,7 +111,16 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public Set<Long> getRunningTaskIds() {
-        return runningTasks.keySet();
+        Set<Long> res = new HashSet<>();
+        res.addAll(runningTasks.keySet());
+        for (FinishedTaskNotification f : this.pendingFinishedTaskNotifications) {
+            res.add(f.taskId);
+        }
+        return res;
+    }
+
+    public List<FinishedTaskNotification> getPendingFinishedTaskNotifications() {
+        return new ArrayList<>(pendingFinishedTaskNotifications);
     }
 
     public TaskExecutorFactory getExecutorFactory() {
@@ -121,7 +131,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.executorFactory = executorFactory;
     }
 
+    private volatile boolean requestNewTasksPending = false;
+
     private void requestNewTasks() {
+        if (requestNewTasksPending) {
+            return;
+        }
         Channel _channel = channel;
         if (_channel != null) {
             Map<String, Integer> availableSpace = new HashMap<>(config.getMaxThreadsByTaskType());
@@ -140,19 +155,20 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
-            try {
-                Message reply = _channel.sendMessageWithReply(
-                        Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
-                        config.getTasksRequestTimeout()
-                );
-                Integer count = (Integer) reply.parameters.get("countAssigned");
-                LOGGER.log(Level.SEVERE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
-            } catch (InterruptedException | TimeoutException err) {
-                if (!stopped) {
-                    LOGGER.log(Level.SEVERE, "requestNewTasks error ", err);
-                }
-                return;
-            }
+            requestNewTasksPending = true;
+            _channel.sendMessageWithAsyncReply(Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
+                    (Message originalMessage, Message message, Throwable error) -> {
+                        requestNewTasksPending = false;
+                        if (error != null) {
+                            if (!stopped) {
+                                LOGGER.log(Level.SEVERE, "requestNewTasks error ", error);
+                                disconnect();
+                            }
+                        } else {
+                            Integer count = (Integer) message.parameters.get("countAssigned");
+                            LOGGER.log(Level.FINE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
+                        }
+                    });
         } else {
             LOGGER.log(Level.FINER, "requestNewTasks not connected");
         }
@@ -191,6 +207,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             executorFactory = new NotImplementedTaskExecutorFactory();
         }
         this.coreThread.start();
+        JVMWorkersRegistry.registerWorker(workerId, this);
     }
 
     @Override
@@ -209,9 +226,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     public void channelClosed() {
         LOGGER.log(Level.SEVERE, "channel closed");
         disconnect();
+        brokerLocator.brokerDisconnected();
     }
 
     BlockingQueue<FinishedTaskNotification> pendingFinishedTaskNotifications = new LinkedBlockingQueue<>();
+    private long lastFinishedTaskNotificationSent;
 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
@@ -277,6 +296,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+        JVMWorkersRegistry.unregisterWorker(workerId);
     }
 
     @Override
@@ -300,10 +320,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     }
 
                 } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
                     break;
                 } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] no broker available:" + retry);
+                    LOGGER.log(Level.SEVERE, "no broker available:" + retry);
                 }
 
                 if (channel == null) {
@@ -311,40 +331,37 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
                         Thread.sleep(5000);
                     } catch (InterruptedException exit) {
-                        LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                        LOGGER.log(Level.SEVERE, "exit loop " + exit);
                         break;
                     }
                     continue;
                 }
 
-                FinishedTaskNotification notification;
                 try {
-                    notification = pendingFinishedTaskNotifications.poll(500, TimeUnit.MILLISECONDS);
+                    sendPendingNotifications(false);
                 } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "[WORKER] exit loop " + exit);
+                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
                     break;
-                }
-                if (notification != null) {
-                    int max = 1000;
-                    List<FinishedTaskNotification> batch = new ArrayList<>();
-                    batch.add(notification);
-                    notification = pendingFinishedTaskNotifications.poll();
-                    while (notification != null && max-- > 0) {
-                        batch.add(notification);
-                        notification = pendingFinishedTaskNotifications.poll();
-                    }
-                    long _start = System.currentTimeMillis();
-                    notifyTasksFinished(batch);
-                    long _stop = System.currentTimeMillis();
-                    LOGGER.log(Level.SEVERE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
                 }
 
                 requestNewTasks();
+                if (externalProcessChecker != null) {
+                    try {
+                        externalProcessChecker.call();
+                    } catch (Exception err) {
+                        err.printStackTrace();
+                        killWorkerHandler.killWorker(WorkerCore.this);
+                    }
+                }
             }
+            LOGGER.log(Level.SEVERE, "shutting down " + processId);
 
-            LOGGER.log(Level.SEVERE, "shutting down");
             Channel _channel = channel;
             if (_channel != null) {
+                try {
+                    sendPendingNotifications(true);
+                } catch (InterruptedException ignore) {
+                }
                 _channel.sendOneWayMessage(Message.WORKER_SHUTDOWN(processId), new SendResultCallback() {
 
                     @Override
@@ -354,14 +371,31 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 });
                 disconnect();
             }
-            if (externalProcessChecker != null) {
-                try {
-                    externalProcessChecker.call();
-                } catch (Exception err) {
-                    err.printStackTrace();
-                    killWorkerHandler.killWorker(WorkerCore.this);
-                }
+        }
+
+        private void sendPendingNotifications(boolean force) throws InterruptedException {
+            long now = System.currentTimeMillis();
+            long delta = now - lastFinishedTaskNotificationSent;
+            int count = pendingFinishedTaskNotifications.size();
+            if (force || (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
+                Thread.sleep(100);
+                return;
             }
+            lastFinishedTaskNotificationSent = now;
+            int max = 1000;
+            List<FinishedTaskNotification> batch = new ArrayList<>();
+            FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
+            while (notification != null && max-- > 0) {
+                batch.add(notification);
+                notification = pendingFinishedTaskNotifications.poll();
+            }
+            if (batch.isEmpty()) {
+                return;
+            }
+            long _start = System.currentTimeMillis();
+            notifyTasksFinished(batch);
+            long _stop = System.currentTimeMillis();
+            LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
         }
     }
 
@@ -373,14 +407,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.SEVERE, "[WORKER] connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
+        LOGGER.log(Level.SEVERE, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
         disconnect();
         channel = brokerLocator.connect(this, this);
-        LOGGER.log(Level.SEVERE, "[WORKER] connected, channel:" + channel);
+        LOGGER.log(Level.SEVERE, "connected, channel:" + channel);
         listener.connectionEvent("connected", this);
     }
 
     public void disconnect() {
+        requestNewTasksPending = false;
         try {
             Channel c = channel;
             if (c != null) {
@@ -394,16 +429,45 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     }
 
+    @Override
     public String getProcessId() {
         return processId;
     }
 
+    @Override
     public String getWorkerId() {
         return workerId;
     }
 
+    @Override
     public String getLocation() {
         return location;
+    }
+
+    @Override
+    public String getSharedSecret() {
+        return config.getSharedSecret();
+    }
+        
+
+    public WorkerStatusView createWorkerStatusView() {
+        WorkerStatusView res = new WorkerStatusView();
+        if (stopped) {
+            res.setStatus("STOPPED");
+        } else if (channel != null) {
+
+            if (requestNewTasksPending) {
+                res.setStatus("REQUESTNEWTASKS");
+            } else {
+                res.setStatus("CONNECTED");
+            }
+            res.setConnectionInfo(channel + "");
+        } else {
+            res.setStatus("DISCONNECTED");
+        }
+        res.setRunningTasks(this.runningTasks.size());
+        res.setFinishedTasksPendingNotification(this.pendingFinishedTaskNotifications.size());
+        return res;
     }
 
 }

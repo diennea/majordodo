@@ -20,7 +20,6 @@
 package majordodo.worker;
 
 import majordodo.executors.TaskExecutor;
-import majordodo.executors.TaskExecutorStatus;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;

@@ -26,7 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Servlet per API Client Majordodo Broker
+ * Servlet  API Client Majordodo Broker
  *
  * @author enrico.olivelli
  */

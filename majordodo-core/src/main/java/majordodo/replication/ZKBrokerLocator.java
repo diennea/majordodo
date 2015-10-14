@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.network.BrokerHostData;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
@@ -49,18 +50,18 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
                 try {
                     String brokerData = new String(data, StandardCharsets.UTF_8);
                     LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " " + brokerData);
-                    leaderBroker = Broker.parseHostdata(data);
+                    leaderBroker = BrokerHostData.parseHostdata(data);
                 } catch (Throwable t) {
                     LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
                 }
             } else {
                 LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " path=" + path);
-                lookForLeader();
             }
         }
     };
 
     private void lookForLeader() {
+        LOGGER.severe("lookingForLeader broker");
         if (zk != null) {
             zk.getData(basePath + "/leader", workerWatcher, leaderData, null);
         }
@@ -75,9 +76,15 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     };
 
+    @Override
+    public void brokerDisconnected() {
+        leaderBroker = null;
+        lookForLeader();
+    }
+
     private ZooKeeper zk;
     private final String basePath;
-    private InetSocketAddress leaderBroker;
+    private BrokerHostData leaderBroker;
 
     public ZKBrokerLocator(String zkAddress, int zkSessiontimeout, String basePath) throws Exception {
         zk = new ZooKeeper(zkAddress, zkSessiontimeout, workerWatcher);
@@ -87,7 +94,10 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
     }
 
     @Override
-    protected InetSocketAddress getServer() {
+    protected BrokerHostData getServer() {
+        if (leaderBroker == null) {
+            lookForLeader();
+        }
         return leaderBroker;
     }
 

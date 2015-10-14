@@ -17,7 +17,7 @@
  under the License.
 
  */
-package majordodo.executors;
+package majordodo.worker;
 
 /**
  * Status of the task (worker-side)

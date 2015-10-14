@@ -30,9 +30,32 @@ import java.util.function.BiConsumer;
  */
 public abstract class StatusChangesLog implements AutoCloseable {
 
+    protected BrokerFailureListener failureListener;
+
+    public String getSharedSecret() {
+        return null;
+    }
+
+    public void setSharedSecret(String secret) {
+    }
+
+    public BrokerFailureListener getFailureListener() {
+        return failureListener;
+    }
+
+    public void setFailureListener(BrokerFailureListener failureListener) {
+        this.failureListener = failureListener;
+    }
+
+    public final void signalBrokerFailed() {
+        if (failureListener != null) {
+            failureListener.brokerFailed();
+        }
+    }
+
     public abstract LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException;
 
-    public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException;
+    public abstract void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException;
 
     public void clear() throws LogNotAvailableException {
     }

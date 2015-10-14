@@ -74,6 +74,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -93,7 +94,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -108,7 +109,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
             todo.add(taskId);
         }
 
@@ -131,6 +132,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -170,7 +172,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
             todo.add(taskId);
         }
 
@@ -193,6 +195,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -234,7 +237,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         List<AddTaskRequest> requests = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            requests.add(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null));
+            requests.add(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0));
         }
         List<SubmitTaskResult> results = getClient().submitTasks(requests);
         for (SubmitTaskResult result : results) {
@@ -263,6 +266,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -305,7 +309,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         long transaction = getClient().beginTransaction();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            requests.add(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null));
+            requests.add(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0));
         }
         List<SubmitTaskResult> results = getClient().submitTasks(requests);
         for (SubmitTaskResult result : results) {
@@ -335,6 +339,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 10);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -370,7 +375,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
             todo.add(taskId);
         }
 
@@ -393,6 +398,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
@@ -427,7 +433,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 20; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
             todo.add(taskId);
         }
 
@@ -457,6 +463,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
             Map<String, Integer> tags = new HashMap<>();
             tags.put(TASKTYPE_MYTYPE, 1);
             WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+            config.setMaxPendingFinishedTaskNotifications(1);
             config.setWorkerId("workerid_" + i);
             config.setMaxThreadsByTaskType(tags);
             config.setGroups(Arrays.asList(group));
@@ -497,7 +504,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         long transaction = getClient().beginTransaction();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
             todo.add(taskId);
         }
         getClient().commitTransaction(transaction);
@@ -521,6 +528,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Map<String, Integer> tags = new HashMap<>();
         tags.put(TASKTYPE_MYTYPE, 1);
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));

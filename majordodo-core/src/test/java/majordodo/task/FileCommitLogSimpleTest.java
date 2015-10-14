@@ -55,12 +55,12 @@ public class FileCommitLogSimpleTest {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                 fail();
-            });
+            }, false);
             log.startWriting();
             assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
             assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
             assertTrue(snapshot.getTasks().isEmpty());
-            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0, null);
+            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0, null,0);
             StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
             StatusEdit edit3 = StatusEdit.ASSIGN_TASK_TO_WORKER(1, "worker1", 1);
             StatusEdit edit4 = StatusEdit.TASK_STATUS_CHANGE(1, "node1", Task.STATUS_FINISHED, "theresult");
@@ -83,7 +83,7 @@ public class FileCommitLogSimpleTest {
                 assertTrue(a.sequenceNumber > last.get());
                 edits.add(b);
                 last.set(a.sequenceNumber);
-            });
+            }, false);
             log.startWriting();
             assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
             assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);

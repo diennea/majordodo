@@ -74,5 +74,7 @@ public abstract class Channel implements AutoCloseable {
             throw new RuntimeException(err.getCause());
         }
     }
+    
+    public abstract boolean isValid();
 
 }

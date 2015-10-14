@@ -162,18 +162,19 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
         brokerConfig.setMaxWorkerIdleTime(5000);
         try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null)).getTaskId();
+            taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null,0)).getTaskId();
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
 
                 // startAsWritable a worker, connection will be dropped during the execution of the task
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
                     CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));

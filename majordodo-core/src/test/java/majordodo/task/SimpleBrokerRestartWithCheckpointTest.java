@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
@@ -141,7 +135,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
     @Test
     public void snapshotTest() throws Exception {
-
+        Broker.PERFORM_CHECKPOINT_AT_LEADERSHIP = false;
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
         System.out.println("SETUPWORKDIR:" + workDir);
@@ -150,11 +144,11 @@ public class SimpleBrokerRestartWithCheckpointTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -177,6 +171,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
 
                     WorkerCoreConfiguration config = new WorkerCoreConfiguration();
                     config.setWorkerId(workerId);
+                    config.setMaxPendingFinishedTaskNotifications(1);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
                     try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
@@ -195,7 +190,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams,0,0,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -219,7 +214,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         }
 
         // startAsWritable another broker
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir,1024*1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
             broker.startAsWritable();
             // ask for task status and worker status
             TaskStatusView task = broker.getClient().getTask(taskId);

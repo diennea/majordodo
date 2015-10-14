@@ -123,7 +123,7 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
             List<BrokerAddress> aa = new ArrayList<>();
             List<String> all = zk.getChildren(discoveryPath, false);
             for (String s : all) {
-                LOGGER.log(Level.SEVERE, "getting " + s);
+//                LOGGER.log(Level.SEVERE, "getting " + s);
                 try {
                     byte[] data = zk.getData(s, false, null);
                     BrokerAddress address = parseBrokerAddress(data);

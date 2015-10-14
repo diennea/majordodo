@@ -49,12 +49,10 @@ public class JVMBrokersRegistry {
     }
 
     public static void clear() {
-        LOGGER.log(Level.SEVERE, "clear");
         brokers.clear();
     }
 
     public static void unregisterBroker(String brokerId) {
-        LOGGER.log(Level.SEVERE, "unregisterBroker {0}", brokerId);
         brokers.remove(brokerId);
     }
 }

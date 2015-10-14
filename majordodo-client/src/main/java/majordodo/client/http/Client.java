@@ -46,6 +46,7 @@ import org.apache.http.protocol.HttpContext;
 
 /**
  * HTTP Client of Majordodo. Provides connection pooling
+ *
  * @author enrico.olivelli
  */
 public class Client implements AutoCloseable {
@@ -88,11 +89,8 @@ public class Client implements AutoCloseable {
         if (_client == null) {
             throw new IOException("shared connection pool is closed");
         }
-        BrokerAddress address = configuration.getBrokerDiscoveryService().getLeaderBroker();
-        if (address == null) {
-              throw new IOException("no broker available");
-        }
-        return new HTTPClientConnection(_client, configuration, address,configuration.getBrokerDiscoveryService());
+
+        return new HTTPClientConnection(_client, configuration, configuration.getBrokerDiscoveryService());
     }
 
     public void close() {

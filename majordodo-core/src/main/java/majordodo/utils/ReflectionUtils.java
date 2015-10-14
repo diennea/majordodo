@@ -39,7 +39,7 @@ public class ReflectionUtils {
     private static final Logger LOGGER = Logger.getLogger(ReflectionUtils.class.getName());
 
     public static void apply(Map<String, Object> properties, Object object) {
-        LOGGER.log(Level.SEVERE, "Applying " + properties + " to " + object);
+        LOGGER.log(Level.FINEST, "Applying " + properties + " to " + object);
         Map<String, Object> notCaseSensitive = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         notCaseSensitive.putAll(properties);
         try {
@@ -49,7 +49,7 @@ public class ReflectionUtils {
                     Object value = notCaseSensitive.get(desc.getName());
                     if (value != null) {
                         Object coerced = corceValue(value, desc.getWriteMethod().getParameterTypes()[0]);
-                        LOGGER.log(Level.SEVERE, "applying " + desc.getName() + "=" + coerced + " to " + object);
+                        LOGGER.log(Level.CONFIG, "applying " + desc.getName() + "=" + coerced + " to " + object);
                         desc.getWriteMethod().invoke(object, new Object[]{coerced});
                     }
                 }

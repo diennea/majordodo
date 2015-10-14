@@ -19,7 +19,6 @@
  */
 package majordodo.replication;
 
-import majordodo.clientfacade.TaskStatusView;
 import majordodo.task.GroupMapperFunction;
 import majordodo.task.TasksHeap;
 import majordodo.task.Broker;
@@ -30,10 +29,10 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.utils.TestUtils;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -121,19 +120,19 @@ public class AcquireLeadershipTest {
             Broker broker2 = null;
             Broker broker3 = null;
             try {
-                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), Broker.formatHostdata(host, port, null)), new TasksHeap(1000, createGroupMapperFunction()));
+                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server1 = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server1.start();
 
                     try {
-                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), Broker.formatHostdata(host2, port2, null)), new TasksHeap(1000, createGroupMapperFunction()));
+                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
                         broker2.start();
                         Broker _broker2 = broker2;
                         try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
                             server2.start();
 
-                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0,TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null)).getTaskId();
+                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
 
                             // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                             broker1.noop();
@@ -156,7 +155,7 @@ public class AcquireLeadershipTest {
 
                         // start a third broker, wait to get the new task
                         try {
-                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), Broker.formatHostdata(host3, port3, null)), new TasksHeap(1000, createGroupMapperFunction()));
+                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host3, port3, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
                             broker3.start();
                             Broker _broker3 = broker3;
                             try (NettyChannelAcceptor server3 = new NettyChannelAcceptor(broker3.getAcceptor(), host3, port3)) {
@@ -164,7 +163,7 @@ public class AcquireLeadershipTest {
 
                                 // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                                 broker2.noop();
-                                
+
                                 // wait for the follower to actually have followed the stream of data
                                 TestUtils.waitForCondition(() -> {
                                     return _broker3.getClient().getTask(taskId) != null;

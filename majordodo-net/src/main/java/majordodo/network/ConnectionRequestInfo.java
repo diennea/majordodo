@@ -36,5 +36,7 @@ public interface ConnectionRequestInfo {
     String getProcessId();
 
     String getLocation();
+    
+    String getSharedSecret();
 
 }

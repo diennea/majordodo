@@ -19,6 +19,8 @@
  */
 package majordodo.task;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -29,6 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 class SlotsManager {
 
     private final ConcurrentHashMap<String, Object> actualSlots = new ConcurrentHashMap<>();
+
+    public Set<String> getBusySlots() {
+        return new HashSet<>(actualSlots.keySet());
+    }
 
     public boolean assignSlot(String slot) {
         return actualSlots.putIfAbsent(slot, Boolean.TRUE) == null;

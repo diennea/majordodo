@@ -19,7 +19,10 @@
  */
 package majordodo.executors;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Factory for task executors
@@ -29,4 +32,5 @@ import java.util.Map;
 public interface TaskExecutorFactory {
 
     public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters);
+
 }
