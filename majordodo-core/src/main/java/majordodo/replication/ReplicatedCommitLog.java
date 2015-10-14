@@ -120,8 +120,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         return actualLedgersList;
     }
 
-    private byte[] downloadSnapshotFromMaster(byte[] actualMaster) throws Exception {
-        BrokerHostData brokerData = BrokerHostData.parseHostdata(actualMaster);
+    private byte[] downloadSnapshotFromMaster(BrokerHostData brokerData) throws Exception {
+
         InetSocketAddress hostdata = brokerData.getSocketAddress();
         boolean ssl = brokerData.isSsl();
         LOGGER.log(Level.SEVERE, "Downloading snapshot from " + hostdata + " ssl=" + ssl);
@@ -727,33 +727,26 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         currentLedgerId = -1;
-        if (_actualLedgersList.getFirstLedger() < 0) {
-            LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
-            return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
-        } else if (_actualLedgersList.getActiveLedgers().contains(_actualLedgersList.getFirstLedger())) {
-            LOGGER.log(Level.SEVERE, "No valid snapshot present, But the first ledger of history " + _actualLedgersList.getFirstLedger() + ", is still present in active ledgers list. I can use an empty snapshot in order to boot");
-            return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
-        } else {
-            LOGGER.log(Level.SEVERE, "No valid snapshot present, I will try to download a snapshot from the actual master");
 
-            byte[] actualLeader;
-            try {
-                actualLeader = zKClusterManager.getActualMaster();
-            } catch (Exception err) {
-                throw new LogNotAvailableException(err);
-            }
-            if (actualLeader == null || actualLeader.length == 0) {
-                LOGGER.log(Level.SEVERE, "No snapshot present, no leader is present, cannot boot");
-                throw new LogNotAvailableException(new Exception("No valid snapshot present, no leader is present, cannot boot"));
+        // download a snapshot from the actual leaer if present (this will be generally faster then recoverying from BK)                
+        byte[] actualLeader;
+        BrokerHostData leaderData = null;
+        try {
+            actualLeader = zKClusterManager.getActualMaster();
+            if (actualLeader != null && actualLeader.length > 0) {
+                leaderData = BrokerHostData.parseHostdata(actualLeader);
+                LOGGER.log(Level.SEVERE, "actual leader is at " + leaderData.getHost() + ":" + leaderData.getPort());
             } else {
-                byte[] snapshot;
-                try {
-                    snapshot = downloadSnapshotFromMaster(actualLeader);
-                } catch (Exception err) {
-                    throw new LogNotAvailableException(err);
-                }
-                ObjectMapper mapper = new ObjectMapper();
+                LOGGER.log(Level.SEVERE, "no leader is present");
+            }
 
+        } catch (Exception err) {
+            throw new LogNotAvailableException(err);
+        }
+        if (leaderData != null && !isLeader()) {
+            byte[] snapshot;
+            try {
+                snapshot = downloadSnapshotFromMaster(leaderData);
                 LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
                 try (InputStream in = new ByteArrayInputStream(snapshot);
                         GZIPInputStream gzip = new GZIPInputStream(in)) {
@@ -761,14 +754,23 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     writeSnapshotOnDisk(result);
                     currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                     return result;
-                } catch (IOException err) {
-                    LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
-                    throw new LogNotAvailableException(err);
                 }
+            } catch (Exception err) {
+                LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
             }
 
         }
 
+        if (_actualLedgersList.getFirstLedger() < 0) {
+            LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
+            return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
+        } else if (_actualLedgersList.getActiveLedgers().contains(_actualLedgersList.getFirstLedger())) {
+            LOGGER.log(Level.SEVERE, "No valid snapshot present, But the first ledger of history " + _actualLedgersList.getFirstLedger() + ", is still present in active ledgers list. I can use an empty snapshot in order to boot");
+            return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
+        } else {
+            LOGGER.log(Level.SEVERE, "No snapshot present, no leader is present, cannot boot");
+            throw new LogNotAvailableException(new Exception("No valid snapshot present, no leader is present, cannot boot"));
+        }
     }
 
     private volatile boolean closed = false;
