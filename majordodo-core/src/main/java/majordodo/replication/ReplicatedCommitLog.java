@@ -525,6 +525,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
             }
         } catch (Exception err) {
+            LOGGER.log(Level.SEVERE, "Fatal error during recovery", err);
             signalBrokerFailed();
             throw new LogNotAvailableException(err);
         }

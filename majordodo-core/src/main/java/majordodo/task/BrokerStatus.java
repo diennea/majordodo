@@ -650,6 +650,7 @@ public class BrokerStatus {
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
+            LOGGER.log(Level.SEVERE, "error during recovery",err);
             throw new RuntimeException(err);
         } finally {
             lock.writeLock().unlock();
