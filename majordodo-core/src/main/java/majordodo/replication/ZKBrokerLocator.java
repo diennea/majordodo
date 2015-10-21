@@ -20,18 +20,13 @@
 package majordodo.replication;
 
 import majordodo.network.netty.GenericNettyBrokerLocator;
-import majordodo.task.Broker;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.network.BrokerHostData;
-import org.apache.zookeeper.AsyncCallback;
-import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 
 /**
  * Locates master broker using ZK
@@ -42,28 +37,19 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     private static final Logger LOGGER = Logger.getLogger(ZKBrokerLocator.class.getName());
 
-    private final AsyncCallback.DataCallback leaderData = new AsyncCallback.DataCallback() {
-
-        @Override
-        public void processResult(int rc, String path, Object param, byte[] data, Stat arg4) {
-            if (Code.get(rc) == Code.OK) {
-                try {
-                    String brokerData = new String(data, StandardCharsets.UTF_8);
-                    LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " " + brokerData);
-                    leaderBroker = BrokerHostData.parseHostdata(data);
-                } catch (Throwable t) {
-                    LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
-                }
-            } else {
-                LOGGER.log(Level.SEVERE, "processResult:" + Code.get(rc) + " path=" + path);
+    private BrokerHostData lookForLeader() {
+        ZooKeeper actualClient = zk.get();
+        LOGGER.severe("lookingForLeader broker zkclient=" + actualClient);
+        if (actualClient != null) {
+            try {
+                byte[] result = actualClient.getData(basePath + "/leader", workerWatcher, null);
+                return BrokerHostData.parseHostdata(result);
+            } catch (Throwable t) {
+                LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
+                return null;
             }
-        }
-    };
-
-    private void lookForLeader() {
-        LOGGER.severe("lookingForLeader broker");
-        if (zk != null) {
-            zk.getData(basePath + "/leader", workerWatcher, leaderData, null);
+        } else {
+            return null;
         }
     }
 
@@ -71,6 +57,7 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
         @Override
         public void process(WatchedEvent event) {
+            // only for debug purposes
             LOGGER.info("event " + event.getPath() + " " + event.getState() + " " + event.getType());
         }
 
@@ -78,37 +65,42 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
 
     @Override
     public void brokerDisconnected() {
-        leaderBroker = null;
-        lookForLeader();
     }
 
-    private ZooKeeper zk;
+    private Supplier<ZooKeeper> zk;
+    private ZooKeeper ownedZk;
     private final String basePath;
-    private BrokerHostData leaderBroker;
 
     public ZKBrokerLocator(String zkAddress, int zkSessiontimeout, String basePath) throws Exception {
-        zk = new ZooKeeper(zkAddress, zkSessiontimeout, workerWatcher);
+        ownedZk = new ZooKeeper(zkAddress, zkSessiontimeout, workerWatcher);
+        zk = () -> ownedZk;
         this.basePath = basePath;
         LOGGER.info("zkAddress:" + zkAddress + ", zkSessionTimeout:" + zkSessiontimeout + " basePath:" + basePath);
         lookForLeader();
     }
 
+    public ZKBrokerLocator(Supplier<ZooKeeper> zk, String basePath) throws Exception {
+        this.zk = zk;
+        this.basePath = basePath;
+        LOGGER.info("basePath:" + basePath + " using system-provided Zookeeper Client");
+        lookForLeader();
+    }
+
     @Override
     protected BrokerHostData getServer() {
-        if (leaderBroker == null) {
-            lookForLeader();
-        }
-        return leaderBroker;
+        return lookForLeader();
     }
 
     @Override
     public void close() {
         try {
-            zk.close();
+            if (ownedZk != null) {
+                ownedZk.close();
+            }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         } finally {
-            zk = null;
+            ownedZk = null;
         }
     }
 

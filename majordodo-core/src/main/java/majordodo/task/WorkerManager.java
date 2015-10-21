@@ -58,6 +58,9 @@ public class WorkerManager {
     }
 
     public void wakeUp() {
+        if (broker.isStopped()) {
+            return;
+        }
         WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
         if (status == null) {
             LOGGER.log(Level.SEVERE, "wakeup {0} -> no status?", workerId);
