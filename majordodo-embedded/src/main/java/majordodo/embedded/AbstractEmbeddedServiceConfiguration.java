@@ -32,6 +32,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
     public static String KEY_ZKADDRESS = "zk.address";
     public static String KEY_ZKSESSIONTIMEOUT = "zk.sessiontimeout";
     public static String KEY_ZKPATH = "zk.path";
+    public static String KEY_ZKCLIENTSUPPLIER = "zk.client.supplier";
 
     public static final String MODE_SIGLESERVER = "singleserver";
     public static final String MODE_CLUSTERED = "clustered";
@@ -47,8 +48,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
     public Map<String, Object> getProperties() {
         return properties;
     }
-    
-    
+
     public Object getProperty(String key, Object defaultValue) {
         Object value = properties.get(key);
         if (value == null) {
@@ -72,6 +72,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
         }
         return Integer.parseInt(value.toString());
     }
+
     public boolean getBooleanProperty(String key, boolean defaultValue) {
         Object value = properties.get(key);
         if (value == null) {

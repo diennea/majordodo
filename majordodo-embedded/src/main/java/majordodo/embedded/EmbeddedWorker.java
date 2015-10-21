@@ -28,6 +28,8 @@ import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
 import java.lang.management.ManagementFactory;
 import java.util.UUID;
+import java.util.function.Supplier;
+import org.apache.zookeeper.ZooKeeper;
 
 /**
  * Tools for embedded Majordodo worker
@@ -78,6 +80,7 @@ public class EmbeddedWorker {
         String zkAdress = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_ZKADDRESS, "localhost:1281");
         String zkPath = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_ZKPATH, "/majordodo");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedWorkerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
+        Supplier<ZooKeeper> supplier = (Supplier<ZooKeeper>) configuration.getProperty(EmbeddedWorkerConfiguration.KEY_ZKCLIENTSUPPLIER, null);
 
         switch (mode) {
             case EmbeddedWorkerConfiguration.MODE_JVMONLY:
@@ -87,7 +90,11 @@ public class EmbeddedWorker {
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
                 break;
             case EmbeddedWorkerConfiguration.MODE_CLUSTERED:
-                brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
+                if (supplier != null) {
+                    brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
+                } else {
+                    brokerLocator = new ZKBrokerLocator(supplier, zkPath);
+                }
                 break;
         }
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
