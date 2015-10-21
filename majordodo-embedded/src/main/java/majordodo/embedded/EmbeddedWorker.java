@@ -91,9 +91,9 @@ public class EmbeddedWorker {
                 break;
             case EmbeddedWorkerConfiguration.MODE_CLUSTERED:
                 if (supplier != null) {
-                    brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
-                } else {
                     brokerLocator = new ZKBrokerLocator(supplier, zkPath);
+                } else {
+                    brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
                 }
                 break;
         }
