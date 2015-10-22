@@ -451,7 +451,7 @@ public class BrokerStatus {
                     if (workerId == null || workerId.isEmpty()) {
                         throw new RuntimeException("bug " + edit);
                     }
-                    task.setWorkerId(workerId);
+                    task.setWorkerId(workerId.intern());
                     task.setAttempts(edit.attempt);
                     stats.taskStatusChange(oldStatus, task.getStatus());
                     return new ModificationResult(num, null, null);
@@ -524,8 +524,8 @@ public class BrokerStatus {
                     }
                     task.setCreatedTimestamp(System.currentTimeMillis());
                     task.setParameter(edit.parameter);
-                    task.setType(edit.taskType);
-                    task.setUserId(edit.userid);
+                    task.setType(edit.taskType.intern());
+                    task.setUserId(edit.userid.intern());
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
@@ -553,8 +553,8 @@ public class BrokerStatus {
                     }
                     task.setCreatedTimestamp(System.currentTimeMillis());
                     task.setParameter(edit.parameter);
-                    task.setType(edit.taskType);
-                    task.setUserId(edit.userid);
+                    task.setType(edit.taskType.intern());
+                    task.setUserId(edit.userid.intern());
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);

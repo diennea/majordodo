@@ -298,15 +298,15 @@ public class BrokerStatusSnapshot {
                     break;
                 case "userId":
                     nextToken(jParser);
-                    task.setUserId(readValue(jParser));
+                    task.setUserId(readValue(jParser).intern());
                     break;
                 case "type":
                     nextToken(jParser);
-                    task.setType(readValue(jParser));
+                    task.setType(readValue(jParser).intern());
                     break;
                 case "workerId":
                     nextToken(jParser);
-                    task.setWorkerId(readValue(jParser));
+                    task.setWorkerId(readValue(jParser).intern());
                     break;
                 case "createdTimestamp":
                     nextToken(jParser);
