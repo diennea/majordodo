@@ -377,7 +377,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             long now = System.currentTimeMillis();
             long delta = now - lastFinishedTaskNotificationSent;
             int count = pendingFinishedTaskNotifications.size();
-            if (force || (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
+            if (!force && (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
                 Thread.sleep(100);
                 return;
             }
@@ -385,8 +385,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             int max = 1000;
             List<FinishedTaskNotification> batch = new ArrayList<>();
             FinishedTaskNotification notification = pendingFinishedTaskNotifications.poll();
-            while (notification != null && max-- > 0) {
+            while (notification != null) {
                 batch.add(notification);
+                if (max-- <= 0) {
+                    break;
+                }
                 notification = pendingFinishedTaskNotifications.poll();
             }
             if (batch.isEmpty()) {
@@ -448,7 +451,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     public String getSharedSecret() {
         return config.getSharedSecret();
     }
-        
 
     public WorkerStatusView createWorkerStatusView() {
         WorkerStatusView res = new WorkerStatusView();
