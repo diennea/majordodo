@@ -173,4 +173,26 @@ public class TasksHeapTest {
 
     }
 
+    @Test
+    public void testAutoGrow() throws Exception {
+        TasksHeap instance = new TasksHeap(1, DEFAULT_FUNCTION);
+        Map< String, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 3);
+        availableSpace.put(TASKTYPE_MYTASK2, 1);
+        AtomicLong newTaskId = new AtomicLong(0);
+        long task1 = newTaskId.incrementAndGet();
+        long task2 = newTaskId.incrementAndGet();
+        long task3 = newTaskId.incrementAndGet();
+        instance.insertTask(task1, TASKTYPE_MYTASK1, USERID1);
+        instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
+        instance.insertTask(task3, TASKTYPE_MYTASK2, USERID2);
+
+        {
+            List<Long> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace);
+            assertEquals(1, taskids.size());
+            assertEquals(task3, taskids.get(0).longValue());
+        }
+
+    }
+
 }

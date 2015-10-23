@@ -20,6 +20,7 @@
 package majordodo.task;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,17 +48,29 @@ public class TasksHeap {
 
     private static final Logger LOGGER = Logger.getLogger(TasksHeap.class.getName());
 
-    private final TaskEntry[] actuallist;
     private static final int TASKTYPE_ANYTASK = 0;
 
     private int actualsize;
     private int fragmentation;
     private int maxFragmentation;
     private int minValidPosition;
+    private int autoGrowPercent = 25;
 
-    private final int size;
+    private int size;
+    private TaskEntry[] actuallist;
     private final GroupMapperFunction groupMapper;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+    public int getAutoGrowPercent() {
+        return autoGrowPercent;
+    }
+
+    public void setAutoGrowPercent(int autoGrowPercent) {
+        if (autoGrowPercent <= 0) {
+            throw new IllegalArgumentException(autoGrowPercent + "");
+        }
+        this.autoGrowPercent = autoGrowPercent;
+    }
 
     public int getActualsize() {
         return actualsize;
@@ -107,16 +120,33 @@ public class TasksHeap {
         }
     }
 
-    private Map<String, Integer> taskTypesIds = new HashMap<>();
-    private Map<Integer, String> taskTypes = new HashMap<>();
+    private final Map<String, Integer> taskTypesIds = new HashMap<>();
+    private final Map<Integer, String> taskTypes = new HashMap<>();
     private int newIdtaskType = 0;
 
-    public boolean insertTask(long taskid, String tasktype, String userid) {
+    private void doAutoGrow() {
+        int delta = (int) (((actuallist.length * 1L * autoGrowPercent)) / 100);
+        if (delta <= 0) {
+            // be sure taht we always increment by one, in tore to have space for a new task
+            delta = 1;
+        }
+        int newSize = actuallist.length + delta;
+        LOGGER.log(Level.SEVERE, "doAutoGrow size {0}, newsize {1}", new Object[]{size, newSize});
+        TaskEntry[] newList = new TaskEntry[newSize];
+        System.arraycopy(actuallist, 0, newList, 0, actuallist.length);
+        for (int i = actuallist.length; i < newList.length; i++) {
+            newList[i] = new TaskEntry(0, 0, null, 0);
+        }
+        this.size = newList.length;
+        this.actuallist = newList;
+    }
+
+    public void insertTask(long taskid, String tasktype, String userid) {
         int groupid = groupMapper.getGroup(taskid, tasktype, userid);
         lock.writeLock().lock();
         try {
             if (actualsize == size) {
-                return false;
+                doAutoGrow();
             }
             Integer taskTypeId = taskTypesIds.get(tasktype);
             if (taskTypeId == null) {
@@ -129,7 +159,6 @@ public class TasksHeap {
             entry.tasktype = taskTypeId;
             entry.userid = userid;
             entry.groupid = groupid;
-            return true;
         } finally {
             lock.writeLock().unlock();
         }
@@ -204,13 +233,13 @@ public class TasksHeap {
         }
     }
 
-    public void runCompaction() {        
+    public void runCompaction() {
         lock.writeLock().lock();
-        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize+", size "+size+", minValidPosition "+minValidPosition);
+        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
         try {
             int[] nonemptypositions = new int[size];
             int insertpos = 0;
-            int pos = 0;            
+            int pos = 0;
             for (TaskEntry entry : actuallist) {
                 if (entry.taskid > 0) {
                     nonemptypositions[insertpos++] = pos + 1; // NOTE_A: 0 means "empty", so we are going to add "+1" to every position
@@ -238,9 +267,9 @@ public class TasksHeap {
             }
 
             minValidPosition = 0;
-            actualsize = writepos+1;
+            actualsize = writepos + 1;
             fragmentation = 0;
-            LOGGER.log(Level.SEVERE, "after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize+", size "+size+", minValidPosition "+minValidPosition);
+            LOGGER.log(Level.SEVERE, "after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
         } finally {
             lock.writeLock().unlock();
         }
