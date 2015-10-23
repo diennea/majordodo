@@ -91,7 +91,10 @@ public class BrokerStatusMonitor {
                     + ", waiting:" + brokerStatusView.getWaitingTasks()
                     + ", running:" + brokerStatusView.getRunningTasks()
                     + ", error:" + brokerStatusView.getErrorTasks()
-                    + ", finished:" + brokerStatusView.getFinishedTasks() + ",Transactions: count " + transactions.getTransactions().size() + ", oldest " + oldestTransaction + ", TasksHeap: size " + heap.getTasks().size() + ", first " + first + ", last " + last);
+                    + ", finished:" + brokerStatusView.getFinishedTasks() + ","
+                    + "Transactions: count " + transactions.getTransactions().size() + ", oldest " + oldestTransaction + ", "
+                    + "TasksHeap: size " + heap.getTasks().size() + ", first " + first + ", last " + last + ", "
+                    + "Slots: " + slots.getBusySlots().size());
         }
 
     }
