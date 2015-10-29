@@ -152,6 +152,9 @@ public class NettyChannel extends Channel {
             public void messageSent(Message originalMessage, Throwable error) {
                 if (error != null) {
                     LOGGER.log(Level.SEVERE, this + ": error while sending reply message to " + originalMessage, error);
+                    submitCallback(() -> {
+                        callback.replyReceived(message, null, new Exception(this + ": error while sending reply message to " + originalMessage, error));
+                    });
                 }
             }
         });

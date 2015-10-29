@@ -42,8 +42,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.network.ReplyCallback;
@@ -266,11 +264,15 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 tasksData.add(params);
             });
             Message msg = Message.TASK_FINISHED(processId, tasksData);
-            _channel.sendOneWayMessage(msg, new SendResultCallback() {
+            _channel.sendMessageWithAsyncReply(msg, new ReplyCallback() {
+
                 @Override
-                public void messageSent(Message originalMessage, Throwable error) {
+                public void replyReceived(Message originalMessage, Message msg, Throwable error) {
                     if (error != null) {
                         LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker comunication failure", error);
+                        pendingFinishedTaskNotifications.addAll(notifications);
+                    } else if (msg.type != Message.TYPE_ACK) {
+                        LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker error anwser {0}", msg);
                         pendingFinishedTaskNotifications.addAll(notifications);
                     }
                 }
