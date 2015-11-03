@@ -113,4 +113,15 @@ public class EmbeddedWorker {
             workerCore.stop();
         }
     }
+
+    public boolean waitForAllExecutorsToFinish(int timeout) throws InterruptedException {
+        long now = System.currentTimeMillis();
+        while (System.currentTimeMillis() - now <= timeout) {
+            if (workerCore.getRunningTaskIds().isEmpty()) {
+                return true;
+            }
+            Thread.sleep(100);
+        }
+        return false;
+    }
 }
