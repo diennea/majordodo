@@ -59,7 +59,7 @@ public class TasksHeapBenchTest {
 
         {
             long _start = System.currentTimeMillis();
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < 100000; i++) {
                 instance.insertTask(i + 1, TASKTYPE_MYTASK1, USERID1);
             }
             long _stop = System.currentTimeMillis();

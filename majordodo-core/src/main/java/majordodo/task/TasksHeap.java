@@ -59,7 +59,7 @@ public class TasksHeap {
     private int size;
     private TaskEntry[] actuallist;
     private final GroupMapperFunction groupMapper;
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     public int getAutoGrowPercent() {
         return autoGrowPercent;
@@ -277,7 +277,11 @@ public class TasksHeap {
 
     public List<Long> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace) {
         Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
-        lock.readLock().lock();
+        Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
+        if (forAny != null) {
+            availableSpaceByTaskTaskId.put(TasksHeap.TASKTYPE_ANYTASK, forAny);
+        }
+        lock.writeLock().lock();
         try {
             for (Map.Entry<String, Integer> entry : availableSpace.entrySet()) {
                 Integer typeId = taskTypesIds.get(entry.getKey());
@@ -285,59 +289,40 @@ public class TasksHeap {
                     availableSpaceByTaskTaskId.put(typeId, entry.getValue());
                 }
             }
-        } finally {
-            lock.readLock().unlock();
-        }
-        Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
-        if (forAny != null) {
-            availableSpaceByTaskTaskId.put(TasksHeap.TASKTYPE_ANYTASK, forAny);
-        }
-
-        while (true) {
             TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, max);
-            lock.readLock().lock();
-            try {
-                for (int i = minValidPosition; i < actualsize; i++) {
-                    TaskEntry entry = this.actuallist[i];
-                    if (entry.taskid > 0) {
-                        if (chooser.accept(i, entry)) {
-                            break;
-                        }
-                    }
+            for (int i = minValidPosition; i < actualsize; i++) {
+                TaskEntry entry = this.actuallist[i];
+                if (entry.taskid > 0) {
+                    chooser.accept(i, entry);
                 }
-            } finally {
-                lock.readLock().unlock();
             }
             List<TasksChooser.Entry> choosen = chooser.getChoosenTasks();
             if (choosen.isEmpty()) {
                 return Collections.emptyList();
             }
-
             List<Long> result = new ArrayList<>();
-            lock.writeLock().lock();
-            try {
-                for (TasksChooser.Entry choosenentry : choosen) {
-                    int pos = choosenentry.position;
-                    TaskEntry entry = this.actuallist[pos];
-                    if (entry.taskid == choosenentry.taskid) {
-                        entry.taskid = 0;
-                        entry.tasktype = 0;
-                        entry.userid = null;
-                        this.fragmentation++;
-                        result.add(choosenentry.taskid);
-                        if (pos == minValidPosition) {
-                            minValidPosition++;
-                        }
+            for (TasksChooser.Entry choosenentry : choosen) {
+                int pos = choosenentry.position;
+                TaskEntry entry = this.actuallist[pos];
+                if (entry.taskid == choosenentry.taskid) {
+                    entry.taskid = 0;
+                    entry.tasktype = 0;
+                    entry.userid = null;
+                    this.fragmentation++;
+                    result.add(choosenentry.taskid);
+                    if (pos == minValidPosition) {
+                        minValidPosition++;
                     }
                 }
-                if (this.fragmentation > maxFragmentation) {
-                    runCompaction();
-                }
-            } finally {
-                lock.writeLock().unlock();
+            }
+            if (this.fragmentation > maxFragmentation) {
+                runCompaction();
             }
             return result;
+        } finally {
+            lock.writeLock().unlock();
         }
+
     }
 
 }

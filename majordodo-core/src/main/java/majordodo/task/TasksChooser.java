@@ -32,7 +32,7 @@ import java.util.logging.Logger;
  *
  * @author enrico.olivelli
  */
-public class TasksChooser {
+public final class TasksChooser {
 
     private final List<Integer> groups;
     private final Set<Integer> excludedGroups;
@@ -43,8 +43,7 @@ public class TasksChooser {
     private final Map<Integer, List<Entry>> bestbyTasktype = new HashMap<>();
     private final List<Entry> matchAllTypesQueue;
     private final Integer availableSpaceForAnyTask;
-    private int found;
-    private final int fastStop;
+    
 
     public static final class Entry {
 
@@ -134,13 +133,7 @@ public class TasksChooser {
         } else {
             matchAllTypesQueue = null;
         }
-
-        int stopAt = max;
-        for (int maxByTaskType : availableSpace.values()) {
-            stopAt += maxByTaskType;
-        }
-        // limit the scan in order not to scan always the full heap
-        fastStop = stopAt;
+               
     }
 
     public List<Entry> getChoosenTasks() {
@@ -162,7 +155,7 @@ public class TasksChooser {
 
     private static final Logger LOGGER = Logger.getLogger(TasksChooser.class.getName());
 
-    boolean accept(int position, TasksHeap.TaskEntry entry) {
+    void accept(int position, TasksHeap.TaskEntry entry) {
         final int idgroup = entry.groupid;
         if ((matchAllGroups && !excludedGroups.contains(idgroup)) || groups.contains(idgroup)) {
             int tasktype = entry.tasktype;
@@ -185,17 +178,12 @@ public class TasksChooser {
                         priority = Integer.MIN_VALUE; // possibile if using "matchAllGroups"
                     }
                     if (queue.size() < availableSpaceForTaskType) {  //TODO: use better implementation of bounded priority queue
-                        queue.add(new Entry(position, entry.taskid, priority));
-                        found++;
-                        if (found == fastStop) {
-                            return true;
-                        }
+                        queue.add(new Entry(position, entry.taskid, priority));                        
                     }
                 }
             }
 
-        }
-        return false;
+        }        
     }
 
 }
