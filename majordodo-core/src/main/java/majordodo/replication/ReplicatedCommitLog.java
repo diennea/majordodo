@@ -80,6 +80,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class ReplicatedCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());
+    private static final long DOWNLOAD_FROM_MASTER_TIMEOUT = Long.parseLong(System.getProperty("majordodo.downloadfrommaster.timeout", "240000"));
 
     private String sharedSecret = "dodo";
     private BookKeeper bookKeeper;
@@ -144,7 +145,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
                 Message acceptMessage = Message.SNAPSHOT_DOWNLOAD_REQUEST();
                 try {
-                    Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
+                    Message connectionResponse = channel.sendMessageWithReply(acceptMessage, DOWNLOAD_FROM_MASTER_TIMEOUT);
                     if (connectionResponse.type == Message.TYPE_SNAPSHOT_DOWNLOAD_RESPONSE) {
                         byte[] data = (byte[]) connectionResponse.parameters.get("data");
                         return data;
