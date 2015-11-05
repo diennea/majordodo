@@ -670,10 +670,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     @Override
     public BrokerStatusSnapshot loadBrokerStatusSnapshot() throws LogNotAvailableException {
-        Path snapshotfilename = null;        
+        Path snapshotfilename = null;
         ensureDirectories();
-        
-         // download a snapshot from the actual leaer if present (this will be generally faster then recoverying from BK)                
+
+        // download a snapshot from the actual leaer if present (this will be generally faster then recoverying from BK)                
         byte[] actualLeader;
         BrokerHostData leaderData = null;
         try {
@@ -705,7 +705,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
 
         }
-        
+
         LogSequenceNumber latest = null;
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
@@ -761,8 +761,6 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         currentLedgerId = -1;
-
-       
 
         if (_actualLedgersList.getFirstLedger() < 0) {
             LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
@@ -836,7 +834,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
         try {
             long nextEntry = skipPast.sequenceNumber + 1;
-            LOGGER.log(Level.SEVERE, "followTheLeader skipPast:" + skipPast + " toRead: " + toRead + " actualList:" + actualList + ", nextEntry:" + nextEntry);
+            LOGGER.log(Level.SEVERE, "followTheLeader skipPast:{0} toRead: {1} actualList:{2}, nextEntry:{3}", new Object[]{skipPast, toRead, actualList, nextEntry});
             for (Long previous : toRead) {
                 //LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
                 LedgerHandle lh;
@@ -847,27 +845,37 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     LOGGER.log(Level.SEVERE, "error", e);
                     return;
                 }
-                long lastAddConfirmed = lh.getLastAddConfirmed();
-                LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " -> lastAddConfirmed:" + lastAddConfirmed + ", nextEntry:" + nextEntry);
-                if (nextEntry > lastAddConfirmed) {
-                    nextEntry = 0;
-                    continue;
-                }
-                Enumeration<LedgerEntry> entries
-                        = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
+                try {
+                    long lastAddConfirmed = lh.getLastAddConfirmed();
+                    LOGGER.log(Level.FINE, "followTheLeader openLedger {0} -> lastAddConfirmed:{1}, nextEntry:{2}", new Object[]{previous, lastAddConfirmed, nextEntry});
+                    if (nextEntry > lastAddConfirmed) {
+                        nextEntry = 0;
+                        continue;
+                    }
+                    Enumeration<LedgerEntry> entries
+                            = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
 
-                while (entries.hasMoreElements()) {
-                    LedgerEntry e = entries.nextElement();
-                    long entryId = e.getEntryId();
+                    while (entries.hasMoreElements()) {
+                        LedgerEntry e = entries.nextElement();
+                        long entryId = e.getEntryId();
 
-                    byte[] entryData = e.getEntry();
-                    StatusEdit statusEdit = StatusEdit.read(entryData);
-                    LOGGER.log(Level.FINEST, "entry " + previous + "," + entryId + " -> " + statusEdit);
-                    LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
-                    consumer.accept(number, statusEdit);
-                    lastSequenceNumber = number.sequenceNumber;
-                    currentLedgerId = number.ledgerId;
-
+                        byte[] entryData = e.getEntry();
+                        StatusEdit statusEdit = StatusEdit.read(entryData);
+                        LOGGER.log(Level.FINEST, "entry {0},{1} -> {2}", new Object[]{previous, entryId, statusEdit});
+                        LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
+                        consumer.accept(number, statusEdit);
+                        lastSequenceNumber = number.sequenceNumber;
+                        currentLedgerId = number.ledgerId;
+                    }
+                } finally {
+                    try {
+                        lh.close();
+                    } catch (BKException err) {
+                        LOGGER.log(Level.SEVERE, "error while closing ledger", err);
+                    } catch (InterruptedException err) {
+                        LOGGER.log(Level.SEVERE, "error while closing ledger", err);
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
         } catch (InterruptedException | IOException | BKException err) {
