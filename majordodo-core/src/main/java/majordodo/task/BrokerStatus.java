@@ -206,28 +206,28 @@ public class BrokerStatus {
             purgeAbandonedTransactions(transactionsTtl);
         }
 
-        BrokerStatusSnapshot snapshot;
-        lock.readLock().lock();
-        try {
-            snapshot = createSnapshot();
-        } finally {
-            lock.readLock().unlock();
-        }
+        BrokerStatusSnapshot snapshot = createSnapshot();
+
         this.log.checkpoint(snapshot);
     }
 
     public BrokerStatusSnapshot createSnapshot() {
-        BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, lastLogSequenceNumber);
-        for (Task task : tasks.values()) {
-            snap.tasks.add(task.cloneForSnapshot());
+        lock.readLock().lock();
+        try {
+            BrokerStatusSnapshot snap = new BrokerStatusSnapshot(maxTaskId, maxTransactionId, lastLogSequenceNumber);
+            for (Task task : tasks.values()) {
+                snap.tasks.add(task.cloneForSnapshot());
+            }
+            for (WorkerStatus status : workers.values()) {
+                snap.workers.add(status.cloneForSnapshot());
+            }
+            for (Transaction status : transactions.values()) {
+                snap.transactions.add(status.cloneForSnapshot());
+            }
+            return snap;
+        } finally {
+            lock.readLock().unlock();
         }
-        for (WorkerStatus status : workers.values()) {
-            snap.workers.add(status.cloneForSnapshot());
-        }
-        for (Transaction status : transactions.values()) {
-            snap.transactions.add(status.cloneForSnapshot());
-        }
-        return snap;
     }
 
     public void close() {
@@ -457,11 +457,11 @@ public class BrokerStatus {
                     return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_TASK_STATUS_CHANGE: {
-                    long taskId = edit.taskId;                   
+                    long taskId = edit.taskId;
                     Task task = tasks.get(taskId);
                     if (task == null) {
-                        throw new IllegalStateException("task "+taskId+" does not exist");
-                    }                    
+                        throw new IllegalStateException("task " + taskId + " does not exist");
+                    }
                     int oldStatus = task.getStatus();
                     task.setStatus(edit.taskStatus);
                     task.setResult(edit.result);
@@ -650,7 +650,7 @@ public class BrokerStatus {
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
-            LOGGER.log(Level.SEVERE, "error during recovery",err);
+            LOGGER.log(Level.SEVERE, "error during recovery", err);
             throw new RuntimeException(err);
         } finally {
             lock.writeLock().unlock();
