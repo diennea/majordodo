@@ -24,8 +24,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.logging.Logger;
+
+import majordodo.utils.DiscardingBoundedPriorityQueue;
 
 /**
  * Chooses tasks
@@ -40,12 +44,39 @@ public final class TasksChooser {
     private final Map<Integer, Integer> priorityByGroup = new HashMap<>();
     private final boolean matchAllGroups;
     private final int max;
-    private final Map<Integer, List<Entry>> bestbyTasktype = new HashMap<>();
-    private final List<Entry> matchAllTypesQueue;
+    private final Map<Integer, PriorityQueue<Entry>> bestbyTasktype = new HashMap<>();
+    private final PriorityQueue<Entry> matchAllTypesQueue;
     private final Integer availableSpaceForAnyTask;
     
 
-    public static final class Entry {
+    public static final class Entry implements Comparable<Entry>
+    {
+    	
+    	/** Natural ordering comparator */
+		public static final Comparator<Entry> STANTARD_COMPARATOR = new Comparator<Entry>() {
+
+			@Override
+			public int compare( Entry o1, Entry o2 )
+			{
+				
+				return o1.compareTo(o2);
+				
+			}
+			
+		};
+		
+		/** Inverse ordering comparator */
+		public static final Comparator<Entry> INVERSE_COMPARATOR = new Comparator<Entry>() {
+
+			@Override
+			public int compare( Entry o1, Entry o2 )
+			{
+				
+				return o2.compareTo(o1);
+				
+			}
+			
+		};
 
         final int position;
         final long taskid;
@@ -91,37 +122,46 @@ public final class TasksChooser {
         public String toString() {
             return "Entry{" + "position=" + position + ", taskid=" + taskid + ", priorityByGroup=" + priorityByGroup + '}';
         }
-
-    }
-    private static final Comparator<Entry> PRIORITY_COMPARATOR = new Comparator<Entry>() {
-
-        @Override
-        public int compare(Entry o1, Entry o2) {
-            // order entires by priority and than by position, a lower position means an "older task", which it is best to take for first
-            int diff = o1.priorityByGroup - o2.priorityByGroup;
+        
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * Entries with less priority are <i>smaller</i>. On ties newer entries
+		 * (bigger position) are <i>smaller</i>
+		 */
+		@Override
+		public int compareTo(Entry o)
+		{
+			
+			int diff = this.priorityByGroup - o.priorityByGroup;
             if (diff != 0) {
                 return diff;
             }
-            if (o1.position > o2.position) {
+            if (this.position < o.position)
                 return 1;
-            } else {
-                // please not that it is impossible that o1.taskid == o1.task
+            else
                 return -1;
-            }
-        }
+		}
 
-    };
+    }
 
     TasksChooser(List<Integer> groups, Set<Integer> excludedGroups, Map<Integer, Integer> availableSpace, int max) {
         this.availableSpace = new HashMap<>(availableSpace);
         this.groups = groups;
         this.excludedGroups = excludedGroups;
         this.max = max;
-        availableSpace.keySet().stream().forEach((tasktype) -> {
-            if (tasktype > 0) {
-                bestbyTasktype.put(tasktype, new ArrayList<>());
+        
+		/*
+		 * Bonded priority queues will be used. each add will request log(n)
+		 * operations but n represent maximum task number for a type (enough
+		 * small) and not all existing tasks (possibly really big).
+		 */
+        availableSpace.entrySet().stream().forEach((entry) -> {
+            if (entry.getKey() > 0) {
+                bestbyTasktype.put(entry.getKey() , new DiscardingBoundedPriorityQueue<Entry>(entry.getValue()));
             }
         });
+        
         availableSpaceForAnyTask = availableSpace.get(0);
         this.matchAllGroups = groups.contains(Task.GROUP_ANY);
         int priority = groups.size();
@@ -129,61 +169,73 @@ public final class TasksChooser {
             this.priorityByGroup.put(idgroup, priority--);
         }
         if (availableSpaceForAnyTask != null) {
-            matchAllTypesQueue = new ArrayList<>();
+            matchAllTypesQueue = new DiscardingBoundedPriorityQueue<Entry>(availableSpaceForAnyTask);
         } else {
             matchAllTypesQueue = null;
         }
                
     }
-
-    public List<Entry> getChoosenTasks() {
-        List<Entry> result = new ArrayList<>();
-        bestbyTasktype.values().forEach(result::addAll);
-        if (matchAllTypesQueue != null) {
-            result.addAll(matchAllTypesQueue);
-        }
-        if (result.size() == 1) {
-            return result;
-        }
-        result.sort(PRIORITY_COMPARATOR);
-        if (result.size() > max) {
-            return result.subList(0, max);
-        } else {
-            return result;
-        }
-    }
+	
+	public List<Entry> getChoosenTasks()
+	{
+		
+		final List<Entry> result = new ArrayList<>();
+		
+		bestbyTasktype.values().forEach(result::addAll);
+		
+		if (matchAllTypesQueue != null)
+			result.addAll(matchAllTypesQueue);
+		
+		if (result.size() == 1)
+			return result;
+		
+		result.sort(Entry.INVERSE_COMPARATOR);
+		
+		return result.size() > max ? result.subList(0, max) : result;
+		
+	}
 
     private static final Logger LOGGER = Logger.getLogger(TasksChooser.class.getName());
 
-    void accept(int position, TasksHeap.TaskEntry entry) {
-        final int idgroup = entry.groupid;
-        if ((matchAllGroups && !excludedGroups.contains(idgroup)) || groups.contains(idgroup)) {
-            int tasktype = entry.tasktype;
-            Integer availableSpaceForTaskType = availableSpace.get(tasktype);
-            if (availableSpaceForTaskType == null) {
-                availableSpaceForTaskType = availableSpaceForAnyTask;
-            }
+	void accept(int position, TasksHeap.TaskEntry entry)
+	{
+		
+		final int idgroup = entry.groupid;
+		
+		if ((matchAllGroups && !excludedGroups.contains(idgroup)) || groups.contains(idgroup))
+		{
+			
+			int tasktype = entry.tasktype;
+			
+			Integer availableSpaceForTaskType = availableSpace.get(tasktype);
+			
+			if ( availableSpaceForTaskType == null )
+				availableSpaceForTaskType = availableSpaceForAnyTask;
 
-            if (availableSpaceForTaskType != null) {
-                List<Entry> queue;
-                List<Entry> bytasktype = bestbyTasktype.get(tasktype);
-                if (bytasktype != null) {
-                    queue = bytasktype;
-                } else {
-                    queue = matchAllTypesQueue;
-                }
-                if (queue != null) {
-                    Integer priority = priorityByGroup.get(idgroup);
-                    if (priority == null) {
-                        priority = Integer.MIN_VALUE; // possibile if using "matchAllGroups"
-                    }
-                    if (queue.size() < availableSpaceForTaskType) {  //TODO: use better implementation of bounded priority queue
-                        queue.add(new Entry(position, entry.taskid, priority));                        
-                    }
-                }
-            }
+			if ( availableSpaceForTaskType != null )
+			{
+				
+				Queue<Entry> queue;
+				Queue<Entry> bytasktype = bestbyTasktype.get(tasktype);
+				
+				
+				/*
+				 * If availableSpaceForTaskType is not null bytasktype or
+				 * matchAllTypesQueue aren't null... so queue is not null
+				 */
+				queue = bytasktype != null ? bytasktype : matchAllTypesQueue;
+				
+				
+				Integer priority = priorityByGroup.get(idgroup);
+				
+				// possibile if using "matchAllGroups"
+				if (priority == null)
+					priority = Integer.MIN_VALUE;
 
-        }        
-    }
+				queue.add(new Entry(position, entry.taskid, priority));
+				
+			}
+		}
+	}
 
 }
