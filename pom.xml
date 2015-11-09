@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.1.19</version>
+    <version>0.1.19-BETA1</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
     <licenses>
