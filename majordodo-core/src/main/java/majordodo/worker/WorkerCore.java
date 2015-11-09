@@ -147,9 +147,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
             });
 
-            int maxnewthreads = config.getMaxThreads() - runningTasks.size();
+            int running = runningTasks.size();
+            int maxnewthreads = config.getMaxThreads() - running;
             long _start = System.currentTimeMillis();
-            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
+            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", running: "+running+", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
