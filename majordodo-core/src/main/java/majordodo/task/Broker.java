@@ -243,6 +243,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     };
 
     private void shutdown() {
+        try {
+            checkpoint();
+        } catch (LogNotAvailableException cannotCheckpoint) {
+            LOGGER.log(Level.SEVERE, "checkpoint on shutdown failed", cannotCheckpoint);
+        }
         stopperLatch.countDown();
         stopped = true;
         JVMBrokersRegistry.unregisterBroker(brokerId);
@@ -392,14 +397,12 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         BrokerStatusView res = new BrokerStatusView();
         if (recoveryInProgress) {
             res.setClusterMode("RECOVERY");
+        } else if (log.isClosed()) {
+            res.setClusterMode("CLOSED");
+        } else if (log.isLeader()) {
+            res.setClusterMode("LEADER");
         } else {
-            if (log.isClosed()) {
-                res.setClusterMode("CLOSED");
-            } else if (log.isLeader()) {
-                res.setClusterMode("LEADER");
-            } else {
-                res.setClusterMode("FOLLOWER");
-            }
+            res.setClusterMode("FOLLOWER");
         }
         res.setCurrentLedgerId(log.getCurrentLedgerId());
         res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
@@ -608,7 +611,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
 
     @Override
     public void brokerFailed() {
-        LOGGER.log(Level.SEVERE,"brokerFailed!");
+        LOGGER.log(Level.SEVERE, "brokerFailed!");
         failed = true;
         if (brokerStatus != null) {
             brokerStatus.brokerFailed();
