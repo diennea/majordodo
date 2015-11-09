@@ -51,6 +51,7 @@ public class ExecutorRunnable implements Runnable {
 
     @Override
     public void run() {
+        long _start = System.currentTimeMillis();
         try {
             String taskType = (String) parameters.get("tasktype");
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.RUNNING, null, null);
@@ -60,6 +61,11 @@ public class ExecutorRunnable implements Runnable {
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "error while executing task " + parameters, t);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, null, t);
+        } finally {
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                long _end = System.currentTimeMillis();
+                LOGGER.log(Level.FINEST, "task time " + parameters + " " + (_end - _start) + " ms");
+            }
         }
     }
 }
