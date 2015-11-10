@@ -37,11 +37,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.network.ReplyCallback;
@@ -60,7 +60,8 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final String processId;
     private final String workerId;
     private final String location;
-    private final Map<Long, String> runningTasks = new ConcurrentHashMap<>();
+    private final Map<Long, String> runningTasks = new HashMap<>();
+    private final ReentrantReadWriteLock runningTasksLock = new ReentrantReadWriteLock(true);
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
     private volatile boolean stopped = false;
@@ -104,13 +105,24 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private TaskExecutorFactory executorFactory;
 
     public Map<Long, String> getRunningTasks() {
-        return runningTasks;
+        runningTasksLock.readLock().lock();
+        try {
+            // clone only the structure, not the task status
+            return new HashMap<>(runningTasks);
+        } finally {
+            runningTasksLock.readLock().unlock();
+        }
     }
 
     @Override
     public Set<Long> getRunningTaskIds() {
         Set<Long> res = new HashSet<>();
-        res.addAll(runningTasks.keySet());
+        runningTasksLock.readLock().lock();
+        try {
+            res.addAll(runningTasks.keySet());
+        } finally {
+            runningTasksLock.readLock().unlock();
+        }
         for (FinishedTaskNotification f : this.pendingFinishedTaskNotifications) {
             res.add(f.taskId);
         }
@@ -138,19 +150,24 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         Channel _channel = channel;
         if (_channel != null) {
             Map<String, Integer> availableSpace = new HashMap<>(config.getMaxThreadsByTaskType());
-            runningTasks.values().forEach(tasktype -> {
-                Integer count = availableSpace.get(tasktype);
-                if (count != null && count > 1) {
-                    availableSpace.put(tasktype, count - 1);
-                } else {
-                    availableSpace.remove(tasktype);
-                }
-            });
-
-            int running = runningTasks.size();
+            int running;
+            runningTasksLock.readLock().lock();
+            try {
+                runningTasks.values().forEach(tasktype -> {
+                    Integer count = availableSpace.get(tasktype);
+                    if (count != null && count > 1) {
+                        availableSpace.put(tasktype, count - 1);
+                    } else {
+                        availableSpace.remove(tasktype);
+                    }
+                });
+                running = runningTasks.size();
+            } finally {
+                runningTasksLock.readLock().unlock();
+            }
             int maxnewthreads = config.getMaxThreads() - running;
             long _start = System.currentTimeMillis();
-            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", running: "+running+", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
+            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", running: " + running + ", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
             if (availableSpace.isEmpty() || maxnewthreads <= 0) {
                 return;
             }
@@ -238,7 +255,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             switch (finalStatus) {
                 case TaskExecutorStatus.ERROR:
                 case TaskExecutorStatus.FINISHED:
-                    runningTasks.remove(taskId);
+                    runningTasksLock.writeLock().lock();
+                    try {
+                        runningTasks.remove(taskId);
+                    } finally {
+                        runningTasksLock.writeLock().unlock();
+                    }
                     pendingFinishedTaskNotifications.add(new FinishedTaskNotification(taskId, finalStatus, results, error));
                     break;
                 case TaskExecutorStatus.RUNNING:
@@ -287,7 +309,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private void startTask(Message message) {
         Long taskid = (Long) message.parameters.get("taskid");
         String tasktype = (String) message.parameters.get("tasktype");
-        runningTasks.put(taskid, tasktype);
+        runningTasksLock.writeLock().lock();
+        try {
+            runningTasks.put(taskid, tasktype);
+        } finally {
+            runningTasksLock.writeLock().unlock();
+        }
         ExecutorRunnable runnable = new ExecutorRunnable(this, taskid, message.parameters, executionCallback);
         threadpool.submit(runnable);
     }
@@ -470,7 +497,12 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         } else {
             res.setStatus("DISCONNECTED");
         }
-        res.setRunningTasks(this.runningTasks.size());
+        runningTasksLock.readLock().lock();
+        try {
+            res.setRunningTasks(this.runningTasks.size());
+        } finally {
+            runningTasksLock.readLock().unlock();
+        }
         res.setFinishedTasksPendingNotification(this.pendingFinishedTaskNotifications.size());
         return res;
     }

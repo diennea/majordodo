@@ -62,15 +62,15 @@ public class Workers {
             }
             Set<Long> toRecoverForWorker = new HashSet<>();
             deadWorkerTasks.put(workerId, toRecoverForWorker);
-            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:" + workerStatus.getWorkerId() + ", actual status: " + workerStatus.getStatus() + " " + WorkerStatus.statusToString(workerStatus.getStatus()));
+            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:{0}, actual status: {1} {2}", new Object[]{workerStatus.getWorkerId(), workerStatus.getStatus(), WorkerStatus.statusToString(workerStatus.getStatus())});
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId())) {
                     if (task.getStatus() == Task.STATUS_RUNNING) {
                         if (workerStatus.getStatus() == WorkerStatus.STATUS_DEAD) {
-                            LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId() + ", but worker is DEAD");
+                            LOGGER.log(Level.FINE, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
                             toRecoverForWorker.add(task.getTaskId());
                         } else {
-                            LOGGER.log(Level.INFO, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId());
+                            LOGGER.log(Level.FINE, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId());
                             manager.taskShouldBeRunning(task.getTaskId());
                         }
                     } else {
