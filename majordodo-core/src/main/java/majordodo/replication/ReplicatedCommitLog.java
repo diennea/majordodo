@@ -576,7 +576,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             snapshotLock.unlock();
         }
 
-        if (zKClusterManager.isLeader()) {
+        if (zKClusterManager != null && zKClusterManager.isLeader()) {
             dropOldLedgers();
         }
     }
