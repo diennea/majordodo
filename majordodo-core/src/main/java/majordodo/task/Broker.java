@@ -210,7 +210,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                             LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + " is to be scheduled");
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                             break;
-                    }
+                    }                    
                 }
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();

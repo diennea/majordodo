@@ -224,6 +224,8 @@ public class BrokerStatus {
             for (Transaction status : transactions.values()) {
                 snap.transactions.add(status.cloneForSnapshot());
             }
+            // actually slotsManager is not handle on "general lock", this could be improved
+            snap.busySlots.addAll(slotsManager.getBusySlots());
             return snap;
         } finally {
             lock.readLock().unlock();
@@ -417,6 +419,7 @@ public class BrokerStatus {
                 }
             } else {
                 // slot already assigned
+                LOGGER.log(Level.FINEST, "slot {0} already assigned", edit.slot);
                 return new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned");
             }
         } else {
@@ -640,6 +643,7 @@ public class BrokerStatus {
             for (Transaction tx : snapshot.getTransactions()) {
                 this.transactions.put(tx.getTransactionId(), tx);
             }
+            this.slotsManager.loadBusySlots(snapshot.busySlots);
             log.recovery(snapshot.getActualLogSequenceNumber(),
                     (logSeqNumber, edit) -> {
                         applyEdit(logSeqNumber, edit);

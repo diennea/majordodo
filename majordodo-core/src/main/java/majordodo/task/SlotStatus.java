@@ -19,36 +19,19 @@
  */
 package majordodo.task;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Managers execution slots
- *
+ * Status of a slot
  * @author enrico.olivelli
  */
-class SlotsManager {
+public class SlotStatus {
+    private String slot;
 
-    private final ConcurrentHashMap<String, Object> actualSlots = new ConcurrentHashMap<>();
-
-    public Set<String> getBusySlots() {
-        return new HashSet<>(actualSlots.keySet());
+    public String getSlot() {
+        return slot;
     }
 
-    public boolean assignSlot(String slot) {
-        return actualSlots.putIfAbsent(slot, Boolean.TRUE) == null;
+    public void setSlot(String slot) {
+        this.slot = slot;
     }
-
-    public void releaseSlot(String slot) {
-        actualSlots.remove(slot);
-    }
-
-    void loadBusySlots(Set<String> busySlots) {
-        actualSlots.clear();
-        busySlots.forEach(slot -> {
-            actualSlots.put(slot, Boolean.TRUE);
-        });
-    }
-
+    
 }

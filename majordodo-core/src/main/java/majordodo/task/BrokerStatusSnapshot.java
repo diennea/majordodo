@@ -24,8 +24,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonParser;
@@ -54,9 +56,16 @@ public class BrokerStatusSnapshot {
         g.writeEndObject();
     }
 
+    private static void serializeSlotStatus(String slot, JsonGenerator g) throws IOException {
+        g.writeStartObject();
+        writeSimpleProperty(g, "slotId", slot);
+        g.writeEndObject();
+    }
+
     List<Task> tasks = new ArrayList<>();
     List<WorkerStatus> workers = new ArrayList<>();
     List<Transaction> transactions = new ArrayList<>();
+    Set<String> busySlots = new HashSet<>();
     long maxTaskId;
     long maxTransactionId;
     LogSequenceNumber actualLogSequenceNumber;
@@ -81,6 +90,14 @@ public class BrokerStatusSnapshot {
 
     public void setActualLogSequenceNumber(LogSequenceNumber actualLogSequenceNumber) {
         this.actualLogSequenceNumber = actualLogSequenceNumber;
+    }
+
+    public Set<String> getBusySlots() {
+        return busySlots;
+    }
+
+    public void setBusySlots(Set<String> busySlots) {
+        this.busySlots = busySlots;
     }
 
     public List<Task> getTasks() {
@@ -138,6 +155,7 @@ public class BrokerStatusSnapshot {
         List< Transaction> transactions = new ArrayList<>();
         List<Task> tasks = new ArrayList<>();
         List<WorkerStatus> workers = new ArrayList<>();
+        Set<String> busySlots = new HashSet<>();
         nextToken(jParser);
 
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
@@ -186,6 +204,16 @@ public class BrokerStatusSnapshot {
                     }
                     break;
                 }
+                case "slots": {
+                    nextToken(jParser); // field name                                        
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        SlotStatus slotStatus = readSlotStatus(jParser);
+                        if (slotStatus.getSlot() != null) {
+                            busySlots.add(slotStatus.getSlot());
+                        }
+                    }
+                    break;
+                }
                 default:
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
             }
@@ -194,6 +222,7 @@ public class BrokerStatusSnapshot {
         res.setTransactions(transactions);
         res.setWorkers(workers);
         res.setTasks(tasks);
+        res.setBusySlots(busySlots);
         return res;
     }
 
@@ -221,6 +250,23 @@ public class BrokerStatusSnapshot {
                 case "lastConnectionTs":
                     nextToken(jParser);
                     res.setLastConnectionTs(Long.parseLong(readValue(jParser)));
+                    break;
+                default:
+                    throw new IOException("Unexpected field " + jParser.getCurrentName());
+            }
+        }
+
+        return res;
+    }
+
+    private static SlotStatus readSlotStatus(JsonParser jParser) throws IOException {
+        SlotStatus res = new SlotStatus();
+
+        while (jParser.nextToken() != JsonToken.END_OBJECT) {
+            switch (jParser.getCurrentName() + "") {
+                case "slotId":
+                    nextToken(jParser);
+                    res.setSlot(readValue(jParser));
                     break;
                 default:
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
@@ -342,7 +388,7 @@ public class BrokerStatusSnapshot {
         g.writeStartObject();
         LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
 
-        Map<String, Object> filedata = new HashMap<>();
+        
         writeSimpleProperty(g, "ledgerid", actualLogSequenceNumber.ledgerId);
         writeSimpleProperty(g, "sequenceNumber", actualLogSequenceNumber.sequenceNumber);
         writeSimpleProperty(g, "maxTaskId", snapshotData.maxTaskId);
@@ -365,6 +411,12 @@ public class BrokerStatusSnapshot {
         g.writeStartArray();
         for (Transaction t : snapshotData.getTransactions()) {
             serializeTransaction(t, g);
+        }
+        g.writeEndArray();
+        g.writeFieldName("slots");
+        g.writeStartArray();
+        for (String t : snapshotData.getBusySlots()) {
+            serializeSlotStatus(t, g);
         }
         g.writeEndArray();
 
