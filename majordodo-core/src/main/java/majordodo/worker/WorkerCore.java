@@ -182,7 +182,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                             }
                         } else {
                             Integer count = (Integer) message.parameters.get("countAssigned");
-                            LOGGER.log(Level.FINE, "requestNewTasks finished {0} ms got {1} tasks", new Object[]{System.currentTimeMillis() - _start, count});
+                            LOGGER.log(Level.FINE, "requestNewTasks {0} ms got {1}/{2} tasks", new Object[]{System.currentTimeMillis() - _start, count, maxnewthreads});
                         }
                     });
         } else {
