@@ -152,7 +152,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             Map<String, Integer> availableSpace = config.getMaxThreadsByTaskType();            
             int maxnewthreads = config.getMaxThreads();
             int estimatedRunning;
-            runningTasksLock.readLock();
+            runningTasksLock.readLock().lock();
             try {
                 estimatedRunning = runningTasks.size();
             } finally {
