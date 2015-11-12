@@ -358,8 +358,13 @@ public class BrokerStatus {
                 running.incrementAndGet();
                 String taskType = t.getType();
                 Integer count = availableSpace.get(taskType);
-                if (count != null && count > 0) {
-                    availableSpace.put(taskType, count - 1);
+                if (count != null) {
+                    int newCount = count - 1;
+                    if (newCount > 0) {
+                        availableSpace.put(taskType, newCount);
+                    } else {
+                        availableSpace.remove(taskType);
+                    }
                 }
             });
             return running.get();
