@@ -200,9 +200,16 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
                 try {
                     broker.tasksFinished(workerId, finishedTasksInfo);
-                    channel.sendReplyMessage(message, Message.ACK(workerProcessId));
+                    Channel _channel = channel;
+                    if (_channel != null) {
+                        _channel.sendReplyMessage(message, Message.ACK(workerProcessId));
+                    }
                 } catch (LogNotAvailableException error) {
-                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+                    Channel _channel = channel;
+                    if (_channel != null) {
+                        _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+                    }
+                    LOGGER.log(Level.SEVERE,"error",error);
                 }
                 break;
             case Message.TYPE_WORKER_TASKS_REQUEST:
@@ -210,10 +217,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 List<Integer> groups = (List<Integer>) message.parameters.get("groups");
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.get("excludedGroups");
                 Integer max = (Integer) message.parameters.get("max");
-                try {
+                try {         
+                    availableSpace =new HashMap<>(availableSpace);                   
                     int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
                     max = max - actuallyRunning;
-                    List<Long> taskIds;
+                    List<Long> taskIds;                    
                     if (max > 0 && !availableSpace.isEmpty()) {
                         taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
                         taskIds.forEach(manager::taskAssigned);
