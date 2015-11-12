@@ -214,7 +214,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
                     max = max - actuallyRunning;
                     List<Long> taskIds;
-                    if (max > 0) {
+                    if (max > 0 && !availableSpace.isEmpty()) {
                         taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
                         taskIds.forEach(manager::taskAssigned);
                     } else {
