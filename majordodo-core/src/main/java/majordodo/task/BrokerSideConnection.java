@@ -30,6 +30,7 @@ import majordodo.task.Broker;
 import majordodo.network.SendResultCallback;
 import majordodo.network.ServerSideConnection;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -210,8 +211,15 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.get("excludedGroups");
                 Integer max = (Integer) message.parameters.get("max");
                 try {
-                    List<Long> taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
-                    taskIds.forEach(manager::taskAssigned);
+                    int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
+                    max = max - actuallyRunning;
+                    List<Long> taskIds;
+                    if (max > 0) {
+                        taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
+                        taskIds.forEach(manager::taskAssigned);
+                    } else {
+                        taskIds = Collections.emptyList();
+                    }
                     // worker will wait for an ack before requesting new tasks again
                     channel.sendReplyMessage(message, Message.ACK(workerProcessId).setParameter("countAssigned", taskIds.size()));
                 } catch (LogNotAvailableException error) {

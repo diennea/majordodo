@@ -149,26 +149,18 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         }
         Channel _channel = channel;
         if (_channel != null) {
-            Map<String, Integer> availableSpace = new HashMap<>(config.getMaxThreadsByTaskType());
-            int running;
-            runningTasksLock.readLock().lock();
+            Map<String, Integer> availableSpace = config.getMaxThreadsByTaskType();            
+            int maxnewthreads = config.getMaxThreads();
+            int estimatedRunning;
+            runningTasksLock.readLock();
             try {
-                runningTasks.values().forEach(tasktype -> {
-                    Integer count = availableSpace.get(tasktype);
-                    if (count != null && count > 1) {
-                        availableSpace.put(tasktype, count - 1);
-                    } else {
-                        availableSpace.remove(tasktype);
-                    }
-                });
-                running = runningTasks.size();
+                estimatedRunning = runningTasks.size();
             } finally {
                 runningTasksLock.readLock().unlock();
             }
-            int maxnewthreads = config.getMaxThreads() - running;
             long _start = System.currentTimeMillis();
-            LOGGER.log(Level.FINER, "requestNewTasks maxnewthreads:" + maxnewthreads + ", running: " + running + ", availableSpace:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
-            if (availableSpace.isEmpty() || maxnewthreads <= 0) {
+            LOGGER.log(Level.FINER, "requestNewTasks maxthreads:" + maxnewthreads + ", running: "+estimatedRunning+" maxThreadsByTaskType:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
+            if (estimatedRunning >= maxnewthreads) {
                 return;
             }
             requestNewTasksPending = true;

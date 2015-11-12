@@ -347,6 +347,27 @@ public class BrokerStatus {
         LOGGER.log(Level.SEVERE, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
     }
 
+    int applyRunningTasksFilterToAssignTasksRequest(String workerId, Map<String, Integer> availableSpace) {
+        lock.readLock().lock();
+        try {
+            AtomicInteger running = new AtomicInteger();
+            tasks.values().forEach(t -> {
+                if (t.getStatus() != Task.STATUS_RUNNING || !workerId.equals(t.getWorkerId())) {
+                    return;
+                }
+                running.incrementAndGet();
+                String taskType = t.getType();
+                Integer count = availableSpace.get(taskType);
+                if (count != null && count > 0) {
+                    availableSpace.put(taskType, count - 1);
+                }
+            });
+            return running.get();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
