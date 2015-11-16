@@ -19,10 +19,9 @@
  */
 package majordodo.task;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +31,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import majordodo.network.Message;
 
 /**
  * Runtime status manager for a Node
@@ -70,7 +68,14 @@ public class WorkerManager {
             Set<Integer> excludedGroups) {
         LOGGER.log(Level.SEVERE, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
-        this.maxThreadsByTaskType = maxThreadsByTaskType;
+        Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
+        for (Iterator<Map.Entry<String, Integer>> it = maxThreadsByTaskTypeNoZero.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<String, Integer> entry = it.next();
+            if (entry.getValue() == null || entry.getValue() <= 0) {
+                it.remove();
+            }
+        }
+        this.maxThreadsByTaskType = maxThreadsByTaskTypeNoZero;
         this.groups = groups;
         this.excludedGroups = excludedGroups;
     }
@@ -81,7 +86,7 @@ public class WorkerManager {
         try {
             Map<String, Integer> availableSpace = new HashMap<>(this.maxThreadsByTaskType);
             int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
-            LOGGER.log(Level.FINEST, "{0} requestNewTasks availableSpace {1}, actuallyRunning {2} max {3} groups {4},excludedGroups {5} maxThreadsByTaskType {6} ",
+            LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1} maxThreadsByTaskType {6} ",
                     new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
             max = max - actuallyRunning;
             List<Long> taskIds;
@@ -92,10 +97,11 @@ public class WorkerManager {
                 taskIds = Collections.emptyList();
             }
             long _stop = System.currentTimeMillis();
+
             if (!taskIds.isEmpty()) {
                 LOGGER.log(Level.SEVERE, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, taskIds.size(), _stop - _start});
             }
-        } catch (LogNotAvailableException error) {
+        } catch (Exception error) {
             LOGGER.log(Level.SEVERE, "error assigning tasks", error);
         }
     }
@@ -118,9 +124,12 @@ public class WorkerManager {
         return new Runnable() {
             @Override
             public void run() {
+                String name = Thread.currentThread().getName();
                 try {
+                    Thread.currentThread().setName(name + "_" + workerId);
                     manageWorker();
                 } finally {
+                    Thread.currentThread().setName(name);
                     threadAssigned = false;
                 }
             }
@@ -128,7 +137,7 @@ public class WorkerManager {
     }
 
     private void manageWorker() {
-        if (broker.isStopped()) {
+        if (broker.isStopped() || !broker.isWritable()) {
             return;
         }
         WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);

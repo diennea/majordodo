@@ -19,6 +19,7 @@
  */
 package majordodo.task;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,7 +103,6 @@ public class Workers {
         }
         workersThreadpool.shutdown();
     }
-   
 
     private class Life implements Runnable {
 
@@ -113,7 +113,14 @@ public class Workers {
                     synchronized (waitForEvent) {
                         waitForEvent.wait(500);
                     }
-                    nodeManagers.values().stream().forEach((man) -> {
+                    Collection<WorkerManager> managers;
+                    lock.readLock().lock();
+                    try {
+                        managers = new ArrayList<>(nodeManagers.values());
+                    } finally {
+                        lock.readLock().unlock();
+                    }
+                    for (WorkerManager man : managers) {
                         if (!man.isThreadAssigned()) {
                             man.threadAssigned();
                             try {
@@ -122,7 +129,7 @@ public class Workers {
                                 LOGGER.log(Level.SEVERE, "workers manager rejected task", rejected);
                             }
                         }
-                    });
+                    }
                 }
             } catch (Throwable exit) {
                 // exiting loop                
