@@ -384,6 +384,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             long delta = now - lastFinishedTaskNotificationSent;
             int count = pendingFinishedTaskNotifications.size();
             if (!force && (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
+                LOGGER.log(Level.FINEST, "sendPendingNotifications count {0} elapsed {1}", new Object[]{count, delta + " ms"});
                 Thread.sleep(100);
                 return;
             }
