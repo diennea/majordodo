@@ -164,6 +164,20 @@ public class BrokerConfiguration {
     public void setTasksHeapSize(int tasksHeapSize) {
         this.tasksHeapSize = tasksHeapSize;
     }
+    
+    /**
+     * Parallelism of worker assigment operations
+     */
+    private int workersThreadpoolSize = 4;
+
+    public int getWorkersThreadpoolSize() {
+        return workersThreadpoolSize;
+    }
+
+    public void setWorkersThreadpoolSize(int workersThreadpoolSize) {
+        this.workersThreadpoolSize = workersThreadpoolSize;
+    }
+
 
     public void read(Map<String, Object> properties) {
         ReflectionUtils.apply(properties, this);

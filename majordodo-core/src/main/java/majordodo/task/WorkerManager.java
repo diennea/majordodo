@@ -19,8 +19,12 @@
  */
 package majordodo.task;
 
-import majordodo.task.Broker;
-import majordodo.task.BrokerSideConnection;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -28,6 +32,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.network.Message;
 
 /**
  * Runtime status manager for a Node
@@ -42,6 +47,12 @@ public class WorkerManager {
     private final Broker broker;
     private BrokerSideConnection connection;
     private final int maxWorkerIdleTime;
+
+    private int maxThreads = 0;
+    private Map<String, Integer> maxThreadsByTaskType = Collections.emptyMap();
+    private List<Integer> groups = Collections.emptyList();
+    private Set<Integer> excludedGroups = Collections.emptySet();
+
     private long lastActivity = System.currentTimeMillis();
 
     public WorkerManager(String workerId, Broker broker) {
@@ -53,11 +64,70 @@ public class WorkerManager {
         this.maxWorkerIdleTime = broker.getConfiguration().getMaxWorkerIdleTime();
     }
 
+    public void applyConfiguration(int maxThreads,
+            Map<String, Integer> maxThreadsByTaskType,
+            List<Integer> groups,
+            Set<Integer> excludedGroups) {
+        LOGGER.log(Level.SEVERE, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
+        this.maxThreads = maxThreads;
+        this.maxThreadsByTaskType = maxThreadsByTaskType;
+        this.groups = groups;
+        this.excludedGroups = excludedGroups;
+    }
+
+    private void requestNewTasks() {
+        long _start = System.currentTimeMillis();
+        int max = this.maxThreads;
+        try {
+            Map<String, Integer> availableSpace = new HashMap<>(this.maxThreadsByTaskType);
+            int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
+            LOGGER.log(Level.FINEST, "{0} requestNewTasks availableSpace {1}, actuallyRunning {2} max {3} groups {4},excludedGroups {5} maxThreadsByTaskType {6} ",
+                    new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
+            max = max - actuallyRunning;
+            List<Long> taskIds;
+            if (max > 0 && !availableSpace.isEmpty()) {
+                taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
+                taskIds.forEach(this::taskAssigned);
+            } else {
+                taskIds = Collections.emptyList();
+            }
+            long _stop = System.currentTimeMillis();
+            if (!taskIds.isEmpty()) {
+                LOGGER.log(Level.SEVERE, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, taskIds.size(), _stop - _start});
+            }
+        } catch (LogNotAvailableException error) {
+            LOGGER.log(Level.SEVERE, "error assigning tasks", error);
+        }
+    }
+
     public Broker getBroker() {
         return broker;
     }
 
-    public void wakeUp() {
+    private volatile boolean threadAssigned;
+
+    public boolean isThreadAssigned() {
+        return threadAssigned;
+    }
+
+    public void threadAssigned() {
+        threadAssigned = true;
+    }
+
+    public Runnable operation() {
+        return new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    manageWorker();
+                } finally {
+                    threadAssigned = false;
+                }
+            }
+        };
+    }
+
+    private void manageWorker() {
         if (broker.isStopped()) {
             return;
         }
@@ -103,6 +173,7 @@ public class WorkerManager {
                 }
                 LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1}  taskToBeSubmittedToRemoteWorker {2} tasksRunningOnRemoteWorker {3}", new Object[]{workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker});
                 if (connection != null) {
+                    requestNewTasks();
                     int max = 100;
                     while (max-- > 0) {
                         Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
@@ -146,7 +217,7 @@ public class WorkerManager {
     private final BlockingQueue<Long> taskToBeSubmittedToRemoteWorker = new LinkedBlockingDeque<>();
 
     public void activateConnection(BrokerSideConnection connection) {
-        LOGGER.log(Level.INFO, "activateConnection {0}", connection);        
+        LOGGER.log(Level.INFO, "activateConnection {0}", connection);
         connectionLock.lock();
         try {
             lastActivity = System.currentTimeMillis();

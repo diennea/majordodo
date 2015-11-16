@@ -19,6 +19,7 @@
  */
 package majordodo.network;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,7 +37,14 @@ public interface ConnectionRequestInfo {
     String getProcessId();
 
     String getLocation();
-    
+
     String getSharedSecret();
 
+    public int getMaxThreads();
+
+    public Map<String, Integer> getMaxThreadsByTaskType();
+
+    public List<Integer> getGroups();
+
+    public Set<Integer> getExcludedGroups();
 }

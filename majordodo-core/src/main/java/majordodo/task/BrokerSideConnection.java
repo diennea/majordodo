@@ -21,12 +21,9 @@ package majordodo.task;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
-import majordodo.task.Broker;
 import majordodo.network.SendResultCallback;
 import majordodo.network.ServerSideConnection;
 import java.util.ArrayList;
@@ -39,7 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Connection to a node from the broker side
@@ -155,7 +151,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not yet writable"));
                     return;
                 }
-                Set<Long> actualRunningTasks = (Set<Long>) message.parameters.get("actualRunningTasks");
+                Set<Long> actualRunningTasks = (Set<Long>) message.parameters.getOrDefault("actualRunningTasks", Collections.emptySet());
+                Integer maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
+                Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
+                List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
+                Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
+
                 LOGGER.log(Level.SEVERE, "registering connection " + connectionId + ", workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_workerId);
                 if (actual != null) {
@@ -180,6 +181,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
+                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups);
                 manager.activateConnection(this);
                 answerConnectionAccepted(message);
                 break;
@@ -209,30 +211,27 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     if (_channel != null) {
                         _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                     }
-                    LOGGER.log(Level.SEVERE,"error",error);
+                    LOGGER.log(Level.SEVERE, "error", error);
                 }
                 break;
-            case Message.TYPE_WORKER_TASKS_REQUEST:
-                Map<String, Integer> availableSpace = (Map<String, Integer>) message.parameters.get("availableSpace");
-                List<Integer> groups = (List<Integer>) message.parameters.get("groups");
-                Set<Integer> excludedGroups = (Set<Integer>) message.parameters.get("excludedGroups");
-                Integer max = (Integer) message.parameters.get("max");
-                try {         
-                    availableSpace =new HashMap<>(availableSpace);                   
-                    int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
-                    max = max - actuallyRunning;
-                    List<Long> taskIds;                    
-                    if (max > 0 && !availableSpace.isEmpty()) {
-                        taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
-                        taskIds.forEach(manager::taskAssigned);
-                    } else {
-                        taskIds = Collections.emptyList();
-                    }
-                    // worker will wait for an ack before requesting new tasks again
-                    channel.sendReplyMessage(message, Message.ACK(workerProcessId).setParameter("countAssigned", taskIds.size()));
-                } catch (LogNotAvailableException error) {
-                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+            case Message.TYPE_WORKER_PING:
+                String processId = (String) message.parameters.getOrDefault("processId", "");
+                Integer maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
+                Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
+                List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
+                Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
+                LOGGER.log(Level.SEVERE, "ping connection " + connectionId + ", workerId:" + workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
+                if (workerProcessId != null && !message.workerProcessId.equals(processId)) {
+                    // worker process is not the same as the one we expect, send a "die" message and close the channel
+                    Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
+                    channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
+                        // any way we are closing the channel
+                        channel.close();
+                    });
+                    return;
                 }
+                this.manager = broker.getWorkers().getWorkerManager(workerId);
+                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups);
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
                 LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent shutdown message");

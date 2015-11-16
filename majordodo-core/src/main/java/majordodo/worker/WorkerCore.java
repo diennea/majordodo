@@ -141,44 +141,26 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.executorFactory = executorFactory;
     }
 
-    private volatile boolean requestNewTasksPending = false;
-
-    private void requestNewTasks() {
-        if (requestNewTasksPending) {
+    private void ping() {
+        long now = System.currentTimeMillis();
+        long delta = now - lastPingSent;
+        if (delta < config.getMaxKeepAliveTime()) {
             return;
         }
+        lastPingSent = now;
         Channel _channel = channel;
         if (_channel != null) {
-            Map<String, Integer> availableSpace = config.getMaxThreadsByTaskType();            
-            int maxnewthreads = config.getMaxThreads();
-            int estimatedRunning;
-            runningTasksLock.readLock().lock();
-            try {
-                estimatedRunning = runningTasks.size();
-            } finally {
-                runningTasksLock.readLock().unlock();
-            }
-            long _start = System.currentTimeMillis();
-            LOGGER.log(Level.FINER, "requestNewTasks maxthreads:" + maxnewthreads + ", running: "+estimatedRunning+" maxThreadsByTaskType:" + availableSpace + " groups:" + config.getGroups() + " excludedGroups" + config.getExcludedGroups());
-            if (estimatedRunning >= maxnewthreads) {
-                return;
-            }
-            requestNewTasksPending = true;
-            _channel.sendMessageWithAsyncReply(Message.WORKER_TASKS_REQUEST(processId, config.getGroups(), config.getExcludedGroups(), availableSpace, maxnewthreads),
-                    (Message originalMessage, Message message, Throwable error) -> {
-                        requestNewTasksPending = false;
+            _channel.sendOneWayMessage(Message.WORKER_PING(processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads()),
+                    (Message originalMessage, Throwable error) -> {
                         if (error != null) {
                             if (!stopped) {
-                                LOGGER.log(Level.SEVERE, "requestNewTasks error ", error);
+                                LOGGER.log(Level.SEVERE, "ping error ", error);
                                 disconnect();
                             }
-                        } else {
-                            Integer count = (Integer) message.parameters.get("countAssigned");
-                            LOGGER.log(Level.FINE, "requestNewTasks {0} ms got {1}/{2} tasks", new Object[]{System.currentTimeMillis() - _start, count, maxnewthreads});
                         }
                     });
         } else {
-            LOGGER.log(Level.FINER, "requestNewTasks not connected");
+            LOGGER.log(Level.FINER, "ping not connected");
         }
     }
 
@@ -239,6 +221,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     BlockingQueue<FinishedTaskNotification> pendingFinishedTaskNotifications = new LinkedBlockingQueue<>();
     private long lastFinishedTaskNotificationSent;
+    private long lastPingSent;
 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
@@ -366,7 +349,8 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     break;
                 }
 
-                requestNewTasks();
+                ping();
+
                 if (externalProcessChecker != null) {
                     try {
                         externalProcessChecker.call();
@@ -440,7 +424,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     public void disconnect() {
-        requestNewTasksPending = false;
         try {
             Channel c = channel;
             if (c != null) {
@@ -474,17 +457,32 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         return config.getSharedSecret();
     }
 
+    @Override
+    public int getMaxThreads() {
+        return config.getMaxThreads();
+    }
+
+    @Override
+    public Map<String, Integer> getMaxThreadsByTaskType() {
+        return config.getMaxThreadsByTaskType();
+    }
+
+    @Override
+    public List<Integer> getGroups() {
+        return config.getGroups();
+    }
+
+    @Override
+    public Set<Integer> getExcludedGroups() {
+        return config.getExcludedGroups();
+    }
+
     public WorkerStatusView createWorkerStatusView() {
         WorkerStatusView res = new WorkerStatusView();
         if (stopped) {
             res.setStatus("STOPPED");
         } else if (channel != null) {
-
-            if (requestNewTasksPending) {
-                res.setStatus("REQUESTNEWTASKS");
-            } else {
-                res.setStatus("CONNECTED");
-            }
+            res.setStatus("CONNECTED");
             res.setConnectionInfo(channel + "");
         } else {
             res.setStatus("DISCONNECTED");

@@ -25,6 +25,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,12 +47,19 @@ public class Workers {
     private final Broker broker;
     private final Thread workersActivityThread;
     private volatile boolean stop;
+    private final ExecutorService workersThreadpool;
 
     private final Object waitForEvent = new Object();
 
     public Workers(Broker broker) {
         this.broker = broker;
         this.workersActivityThread = new Thread(new Life(), "workers-life");
+        this.workersThreadpool = Executors.newFixedThreadPool(broker.getConfiguration().getWorkersThreadpoolSize(), new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, "workers-life-thread");
+            }
+        });
     }
 
     public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot) {
@@ -89,12 +100,9 @@ public class Workers {
             workersActivityThread.join();
         } catch (InterruptedException exit) {
         }
+        workersThreadpool.shutdown();
     }
-
-    public void wakeUpOnTaskAssigned(String workerId, long taskId) {
-        getWorkerManager(workerId).taskAssigned(taskId);
-        wakeUp();
-    }
+   
 
     private class Life implements Runnable {
 
@@ -106,7 +114,14 @@ public class Workers {
                         waitForEvent.wait(500);
                     }
                     nodeManagers.values().stream().forEach((man) -> {
-                        man.wakeUp();
+                        if (!man.isThreadAssigned()) {
+                            man.threadAssigned();
+                            try {
+                                workersThreadpool.submit(man.operation());
+                            } catch (RejectedExecutionException rejected) {
+                                LOGGER.log(Level.SEVERE, "workers manager rejected task", rejected);
+                            }
+                        }
                     });
                 }
             } catch (Throwable exit) {

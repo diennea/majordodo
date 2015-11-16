@@ -178,6 +178,21 @@ public class WorkerCoreConfiguration {
     public void setMaxWaitPendingFinishedTaskNotifications(long maxWaitPendingFinishedTaskNotifications) {
         this.maxWaitPendingFinishedTaskNotifications = maxWaitPendingFinishedTaskNotifications;
     }
+    
+    
+    /**
+     * Maximum time to wait before issuing a ping (anche configuration change) to the broker
+     */
+    private long maxKeepAliveTime = 10000;
+
+    public long getMaxKeepAliveTime() {
+        return maxKeepAliveTime;
+    }
+
+    public void setMaxKeepAliveTime(long maxKeepAliveTime) {
+        this.maxKeepAliveTime = maxKeepAliveTime;
+    }
+    
 
     /**
      * Shared secret among all the brokers and workers. Provides minimum

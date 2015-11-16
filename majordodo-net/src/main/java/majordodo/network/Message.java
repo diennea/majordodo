@@ -68,13 +68,17 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads,Map<String,Integer> maxThreadsByTaskType,List<Integer> groups, Set<Integer> excludedGroups) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
         params.put("actualRunningTasks", actualRunningTasks);
         params.put("location", location);
         params.put("secret", sharedSecret);
+        params.put("maxThreads", maxThreads);
+        params.put("maxThreadsByTaskType", maxThreadsByTaskType);
+        params.put("groups", groups);
+        params.put("excludedGroups", excludedGroups);                
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
@@ -86,15 +90,15 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_TASKS_REQUEST(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace, int max) {
+    public static Message WORKER_PING(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> maxThreadsByTaskType, int max) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);
         params.put("groups", groups);
-        params.put("availableSpace", availableSpace);
-        params.put("max", max);
-        params.put("excludedGroups", excludedGroups);
-        return new Message(processId, TYPE_WORKER_TASKS_REQUEST, params);
+        params.put("maxThreadsByTaskType", maxThreadsByTaskType);
+        params.put("maxThreads", max);
+        params.put("excludedGroups", excludedGroups);        
+        return new Message(processId, TYPE_WORKER_PING, params);
     }
 
     public final String workerProcessId;
@@ -119,7 +123,7 @@ public final class Message {
     public static final int TYPE_WORKER_SHUTDOWN = 5;
     public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
     public static final int TYPE_TASK_ASSIGNED = 7;
-    public static final int TYPE_WORKER_TASKS_REQUEST = 8;
+    public static final int TYPE_WORKER_PING = 8;
     public static final int TYPE_SNAPSHOT_DOWNLOAD_REQUEST = 9;
     public static final int TYPE_SNAPSHOT_DOWNLOAD_RESPONSE = 10;
 
@@ -143,6 +147,8 @@ public final class Message {
                 return "TYPE_WORKER_CONNECTION_REQUEST";
             case TYPE_TASK_ASSIGNED:
                 return "TYPE_TASK_ASSIGNED";
+            case TYPE_WORKER_PING:
+                return "TYPE_WORKER_PING";
             default:
                 return "?" + type;
         }
