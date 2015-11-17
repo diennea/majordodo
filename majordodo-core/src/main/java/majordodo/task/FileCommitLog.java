@@ -55,15 +55,15 @@ public class FileCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(FileCommitLog.class.getName());
 
-    Path snapshotsDirectory;
-    Path logDirectory;
+    private Path snapshotsDirectory;
+    private Path logDirectory;
 
-    long currentLedgerId = 0;
-    long currentSequenceNumber = 0;
-    long maxLogFileSize = 1024 * 1024;
-    long writtenBytes = 0;
+    private long currentLedgerId = 0;
+    private long currentSequenceNumber = 0;
+    private long maxLogFileSize = 1024 * 1024;
+    private long writtenBytes = 0;
 
-    CommitFileWriter writer;
+    private volatile CommitFileWriter writer;
 
     private final ReentrantLock writeLock = new ReentrantLock();
     private final ReentrantLock snapshotLock = new ReentrantLock();

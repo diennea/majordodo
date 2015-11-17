@@ -36,6 +36,8 @@ public class ClientConfiguration {
     private int maxConnPerRoute = 10;
     private int sotimeout = 240000;
     private int keepAlive = 30000;
+    private int brokerNotAvailableRetries = 20;
+    private int brokerNotAvailableRetryInterval = 1000;
     private BrokerDiscoveryService brokerDiscoveryService = new StaticBrokerDiscoveryService(null);
     private String username;
     private String password;
@@ -126,6 +128,24 @@ public class ClientConfiguration {
 
     public ClientConfiguration setKeepAlive(int keepAlive) {
         this.keepAlive = keepAlive;
+        return this;
+    }
+
+    public int getBrokerNotAvailableRetries() {
+        return brokerNotAvailableRetries;
+    }
+
+    public ClientConfiguration setBrokerNotAvailableRetries(int brokerNotAvailableRetries) {
+        this.brokerNotAvailableRetries = brokerNotAvailableRetries;
+        return this;
+    }
+
+    public int getBrokerNotAvailableRetryInterval() {
+        return brokerNotAvailableRetryInterval;
+    }
+
+    public ClientConfiguration setBrokerNotAvailableRetryInterval(int brokerNotAvailableRetryInterval) {
+        this.brokerNotAvailableRetryInterval = brokerNotAvailableRetryInterval;
         return this;
     }
 

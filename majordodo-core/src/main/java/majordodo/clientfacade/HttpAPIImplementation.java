@@ -84,6 +84,10 @@ public class HttpAPIImplementation {
         }
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("ok", "true");
+        if (broker == null) {
+            resultMap.put("error", "broker_not_started");
+            resultMap.put("ok", "false");
+        }
         switch (view) {
             case "status": {
                 if (broker != null) {
@@ -166,6 +170,8 @@ public class HttpAPIImplementation {
                     if (req.getParameter("max") != null) {
                         max = Integer.parseInt(req.getParameter("max"));
                     }
+                    String worker = req.getParameter("worker");
+
                     String filter = req.getParameter("filter");
                     if (filter == null) {
                         filter = "all";
@@ -173,6 +179,7 @@ public class HttpAPIImplementation {
                     resultMap.put("max", max);
                     List<Map<String, Object>> tt;
                     Predicate<TaskStatusView> filterPred;
+                    Predicate<TaskStatusView> filterWorker;
                     switch (filter) {
                         case "all":
                             filterPred = (t) -> true;
@@ -194,7 +201,16 @@ public class HttpAPIImplementation {
                         default:
                             filterPred = (t) -> false;
                     }
-                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).map(t -> {
+
+                    if (worker != null && !worker.isEmpty()) {
+                        filterWorker = (t) -> {
+                            return worker.equalsIgnoreCase(t.getWorkerId());
+                        };
+                    } else {
+                        filterWorker = (t) -> true;
+                    }
+
+                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).filter(filterWorker).limit(max).map(t -> {
                         Map<String, Object> map = serializeTaskForClient(t);
                         return map;
                     }).collect(Collectors.toList());

@@ -87,7 +87,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private ZKClusterManager zKClusterManager;
     private final ReentrantLock writeLock = new ReentrantLock();
     private final ReentrantLock snapshotLock = new ReentrantLock();
-    private CommitFileWriter writer;
+    private volatile CommitFileWriter writer;
     private long currentLedgerId = 0;
     private long lastSequenceNumber = -1;
     private Path snapshotsDirectory;

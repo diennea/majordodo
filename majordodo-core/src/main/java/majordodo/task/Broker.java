@@ -102,7 +102,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.19-BETA4";
+        return "0.1.19-BETA5";
     }
 
     private final Workers workers;
@@ -210,7 +210,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                             LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + " is to be scheduled");
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                             break;
-                    }                    
+                    }
                 }
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
@@ -354,9 +354,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public long beginTransaction() throws LogNotAvailableException, IllegalActionException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        assertBrokerAvailableForClients();
         long transactionId = brokerStatus.nextTransactionId();
         StatusEdit edit = StatusEdit.BEGIN_TRANSACTION(transactionId, System.currentTimeMillis());
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
@@ -367,9 +365,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public void commitTransaction(long id) throws LogNotAvailableException, IllegalActionException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        assertBrokerAvailableForClients();
         StatusEdit edit = StatusEdit.COMMIT_TRANSACTION(id);
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
         if (result.error != null) {
@@ -382,10 +378,17 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
 
     }
 
-    public void rollbackTransaction(long id) throws LogNotAvailableException, IllegalActionException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
+    private void assertBrokerAvailableForClients() throws LogNotAvailableException {
+        if (recoveryInProgress) {
+            throw new LogNotAvailableException(new Exception("recovery_in_progress"));
         }
+        if (!started) {
+            throw new LogNotAvailableException(new Exception("broker_not_leader"));
+        }
+    }
+
+    public void rollbackTransaction(long id) throws LogNotAvailableException, IllegalActionException {
+        assertBrokerAvailableForClients();
         StatusEdit edit = StatusEdit.ROLLBACK_TRANSACTION(id);
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
         if (result.error != null) {
@@ -445,9 +448,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public AddTaskResult addTask(AddTaskRequest request) throws LogNotAvailableException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        assertBrokerAvailableForClients();
         Long taskId = brokerStatus.nextTaskId();
         if (request.transaction > 0) {
             StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
@@ -465,9 +466,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public List<AddTaskResult> addTasks(List<AddTaskRequest> requests) throws LogNotAvailableException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        assertBrokerAvailableForClients();
         int size = requests.size();
         List<AddTaskResult> res = new ArrayList<>(size);
         List<StatusEdit> edits = new ArrayList<>(size);
@@ -519,9 +518,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
-        if (!started) {
-            throw new LogNotAvailableException(new Exception("broker not yet started"));
-        }
+        assertBrokerAvailableForClients();
         LOGGER.log(Level.FINE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();

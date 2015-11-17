@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
@@ -163,7 +164,7 @@ public class HTTPClientConnection implements ClientConnection {
     private Map<String, Object> request(String method, Map<String, Object> data) throws ClientException {
 
         try {
-            final int MAX_RETRIES = 5;
+            final int MAX_RETRIES = this.configuration.getBrokerNotAvailableRetries();
             for (int i = 0; i < MAX_RETRIES; i++) {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
@@ -185,17 +186,24 @@ public class HTTPClientConnection implements ClientConnection {
                         throw new IllegalStateException(method);
                     }
                     if (!"true".equals(rr.get("ok") + "")) {
-                        LOGGER.severe("error from " + _broker + ": " + rr);
+                        LOGGER.log(Level.SEVERE, "error from {0}: {1}", new Object[]{_broker, rr});
                         brokerFailed();
                         String error = rr.get("error") + "";
-                        if (error.equals("broker_not_started")) {
+                        if (error.contains("broker_not_started") // broker does not exist on JVM
+                                || error.contains("recovery_in_progress") // broker is in recovery mode, maybe it would become leader                                
+                                || error.contains("broker_not_leader")) // broker is not leader
+                        {
                             throw new RetryableError(rr + "");
+                        } else {
+                            throw new IOException("error from broker: " + rr);
                         }
-                        throw new Exception("error from broker: " + rr);
+
                     }
                     return rr;
                 } catch (RetryableError retry) {
-                    Thread.sleep(1000);
+                    int interval = this.configuration.getBrokerNotAvailableRetryInterval() * (i + 1);
+                    LOGGER.log(Level.SEVERE, "retry on #{0}error from {1}: {2}: sleep {3} ms", new Object[]{i + 1, _broker, retry, interval});
+                    Thread.sleep(interval);
                 }
             }
             throw new IOException("could not issue request after " + MAX_RETRIES + " trials");
