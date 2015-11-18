@@ -19,6 +19,9 @@
  */
 package majordodo.network.jvm;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledHeapByteBuf;
 import majordodo.network.Channel;
 import majordodo.network.Message;
 import majordodo.network.ReplyCallback;
@@ -29,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import majordodo.network.netty.DodoMessageUtils;
 
 /**
  * In-JVM comunications
@@ -53,7 +57,14 @@ public class JVMChannel extends Channel {
     public JVMChannel() {
     }
 
+    private Message cloneMessage(Message message) {
+        ByteBuf buf = Unpooled.buffer();
+        DodoMessageUtils.encodeMessage(buf, message);
+        return DodoMessageUtils.decodeMessage(buf);
+    }
+
     private void receiveMessageFromPeer(Message message) {
+        message = cloneMessage(message);
         if (message.getReplyMessageId() != null) {
             handleReply(message);
         } else {
@@ -73,14 +84,16 @@ public class JVMChannel extends Channel {
 
     @Override
     public void sendOneWayMessage(Message message, SendResultCallback callback) {
+        message.setMessageId(UUID.randomUUID().toString());
+        Message _message = cloneMessage(message);
 //        System.out.println("[JVM] sendOneWayMessage " + message);
         if (!active || executionserializer.isShutdown()) {
             return;
         }
         executionserializer.submit(() -> {
-            otherSide.receiveMessageFromPeer(message);
+            otherSide.receiveMessageFromPeer(_message);
             sumitCallback(() -> {
-                callback.messageSent(message, null);
+                callback.messageSent(_message, null);
             });
         });
 
@@ -103,19 +116,20 @@ public class JVMChannel extends Channel {
 
     @Override
     public void sendReplyMessage(Message inAnswerTo, Message message) {
+        message.setMessageId(UUID.randomUUID().toString());
+        Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
-            System.out.println("[JVM] channel shutdown, discarding reply message " + message);
+            System.out.println("[JVM] channel shutdown, discarding reply message " + _message);
             return;
         }
         executionserializer.submit(() -> {
 //        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
             if (!active) {
-                System.out.println("[JVM] channel not active, discarding reply message " + message);
+                System.out.println("[JVM] channel not active, discarding reply message " + _message);
                 return;
-            }
-            message.setMessageId(UUID.randomUUID().toString());
-            message.setReplyMessageId(inAnswerTo.messageId);
-            otherSide.receiveMessageFromPeer(message);
+            }            
+            _message.setReplyMessageId(inAnswerTo.messageId);
+            otherSide.receiveMessageFromPeer(_message);
         });
     }
 
@@ -128,6 +142,8 @@ public class JVMChannel extends Channel {
 
     @Override
     public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
+        message.setMessageId(UUID.randomUUID().toString());
+        Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
             System.out.println("[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
             return;
@@ -136,14 +152,13 @@ public class JVMChannel extends Channel {
 //        System.out.println("[JVM] sendMessageWithAsyncReply " + message);
             if (!active) {
                 callbackexecutor.submit(() -> {
-                    callback.replyReceived(message, null, new Exception("connection is not active"));
+                    callback.replyReceived(_message, null, new Exception("connection is not active"));
                 });
                 return;
             }
-            message.setMessageId(UUID.randomUUID().toString());
-            pendingReplyMessages.put(message.getMessageId(), callback);
-            pendingReplyMessagesSource.put(message.getMessageId(), message);
-            otherSide.receiveMessageFromPeer(message);
+            pendingReplyMessages.put(_message.getMessageId(), callback);
+            pendingReplyMessagesSource.put(_message.getMessageId(), _message);
+            otherSide.receiveMessageFromPeer(_message);
         });
     }
 
@@ -151,7 +166,7 @@ public class JVMChannel extends Channel {
     public boolean isValid() {
         return active;
     }
-    
+
     @Override
     public void close() {
         active = false;
