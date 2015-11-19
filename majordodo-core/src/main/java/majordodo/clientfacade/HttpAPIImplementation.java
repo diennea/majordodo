@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -170,7 +171,9 @@ public class HttpAPIImplementation {
                     if (req.getParameter("max") != null) {
                         max = Integer.parseInt(req.getParameter("max"));
                     }
-                    String worker = req.getParameter("worker");
+                    String worker = req.getParameter("workerId");
+
+                    String tasktype = req.getParameter("tasktype");
 
                     String filter = req.getParameter("filter");
                     if (filter == null) {
@@ -180,6 +183,7 @@ public class HttpAPIImplementation {
                     List<Map<String, Object>> tt;
                     Predicate<TaskStatusView> filterPred;
                     Predicate<TaskStatusView> filterWorker;
+                    Predicate<TaskStatusView> filterTasktype;
                     switch (filter) {
                         case "all":
                             filterPred = (t) -> true;
@@ -210,13 +214,85 @@ public class HttpAPIImplementation {
                         filterWorker = (t) -> true;
                     }
 
-                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).filter(filterWorker).limit(max).map(t -> {
+                    if (tasktype != null && !tasktype.isEmpty()) {
+                        filterTasktype = (t) -> {
+                            return tasktype.equalsIgnoreCase(t.getType());
+                        };
+                    } else {
+                        filterTasktype = (t) -> true;
+                    }
+
+                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).filter(filterWorker).filter(filterTasktype).limit(max).map(t -> {
                         Map<String, Object> map = serializeTaskForClient(t);
                         return map;
                     }).collect(Collectors.toList());
 
                     resultMap.put("tasks", tt);
                     resultMap.put("count", tt.size());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
+
+            case "tasksoverview":
+                if (broker != null) {
+                    String worker = req.getParameter("workerId");
+                    String tasktype = req.getParameter("tasktype");
+                    String filter = req.getParameter("filter");
+                    if (filter == null) {
+                        filter = "all";
+                    }
+                    List<Map<String, Object>> tt;
+                    Predicate<TaskStatusView> filterPred;
+                    Predicate<TaskStatusView> filterWorker;
+                    Predicate<TaskStatusView> filterTasktype;
+                    switch (filter) {
+                        case "all":
+                            filterPred = (t) -> true;
+
+                            break;
+                        case "waiting":
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_WAITING;
+                            break;
+                        case "running":
+                            filterPred = (t)
+                                    -> t.getStatus() == Task.STATUS_RUNNING;
+                            break;
+                        case "error":
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_ERROR;
+                            break;
+                        case "finished":
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_FINISHED;
+                            break;
+                        default:
+                            filterPred = (t) -> false;
+                    }
+
+                    if (worker != null && !worker.isEmpty()) {
+                        filterWorker = (t) -> {
+                            return worker.equalsIgnoreCase(t.getWorkerId());
+                        };
+                    } else {
+                        filterWorker = (t) -> true;
+                    }
+
+                    if (tasktype != null && !tasktype.isEmpty()) {
+                        filterTasktype = (t) -> {
+                            return tasktype.equalsIgnoreCase(t.getType());
+                        };
+                    } else {
+                        filterTasktype = (t) -> true;
+                    }
+
+                    Map<String, Long> groupByTaskType = broker.getClient().getAllTasks().stream()
+                            .filter(filterPred).filter(filterWorker).filter(filterTasktype)
+                            .collect(
+                                    Collectors.groupingBy(TaskStatusView::getType, Collectors.counting())
+                            );
+
+                    resultMap.put("tasks", groupByTaskType);
+                    resultMap.put("count", groupByTaskType.values().stream().collect(Collectors.summingLong((l) -> l)));
                     resultMap.put("status", broker.getClient().getBrokerStatus());
                 } else {
                     resultMap.put("status", "not_started");
