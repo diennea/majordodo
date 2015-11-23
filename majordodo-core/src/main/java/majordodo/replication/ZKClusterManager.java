@@ -100,7 +100,16 @@ public class ZKClusterManager implements AutoCloseable {
         this.connectionTimeout = zkTimeout; // TODO: specific configuration ?
     }
 
-    public LedgersInfo getActualLedgersList() throws LogNotAvailableException {
+    /**
+     * Let (embedded) brokers read actual list of ledgers used. in order to
+     * perform extrernal clean ups
+     *
+     * @param zk
+     * @param ledgersPath
+     * @return
+     * @throws LogNotAvailableException
+     */
+    public static LedgersInfo readActualLedgersListFromZookeeper(ZooKeeper zk, String ledgersPath) throws LogNotAvailableException {
         while (zk.getState() != ZooKeeper.States.CLOSED) {
             try {
                 Stat stat = new Stat();
@@ -123,6 +132,10 @@ public class ZKClusterManager implements AutoCloseable {
             }
         }
         throw new LogNotAvailableException(new Exception("zk client closed"));
+    }
+
+    public LedgersInfo getActualLedgersList() throws LogNotAvailableException {
+        return readActualLedgersListFromZookeeper(zk, ledgersPath);
     }
 
     public void saveActualLedgersList(LedgersInfo info) throws LogNotAvailableException {
