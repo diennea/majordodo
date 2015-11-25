@@ -181,7 +181,7 @@ public class HttpAPIImplementation {
                     }
                     String slot = req.getParameter("slot");
 
-                    String user = req.getParameter("user");
+                    String user = req.getParameter("userId");
 
                     resultMap.put("max", max);
                     List<Map<String, Object>> tt;
