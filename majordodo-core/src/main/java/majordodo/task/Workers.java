@@ -86,7 +86,7 @@ public class Workers {
                             manager.taskShouldBeRunning(task.getTaskId());
                         }
                     } else {
-                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));
+                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));                        
                     }
                 }
             }

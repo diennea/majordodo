@@ -373,6 +373,10 @@ public class BrokerStatus {
         }
     }
 
+    void reloadBusySlotsAtBoot(Set<String> busySlots) {
+        slotsManager.loadBusySlots(busySlots);
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;

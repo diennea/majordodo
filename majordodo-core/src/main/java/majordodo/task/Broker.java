@@ -22,14 +22,11 @@ package majordodo.task;
 import majordodo.clientfacade.ClientFacade;
 import majordodo.network.jvm.JVMBrokerSupportInterface;
 import majordodo.network.jvm.JVMBrokersRegistry;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +43,6 @@ import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
 import majordodo.clientfacade.TransactionsStatusView;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Global status of the broker
@@ -204,14 +200,25 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 LOGGER.log(Level.SEVERE, "Starting as leader");
                 brokerStatus.recoverForLeadership();
                 brokerStatus.startWriting();
+                Set<String> busySlots = new HashSet<>();
                 for (Task task : brokerStatus.getTasksAtBoot()) {
                     switch (task.getStatus()) {
                         case Task.STATUS_WAITING:
                             LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + " is to be scheduled");
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.add(task.getSlot());
+                            }
                             break;
+                        case Task.STATUS_RUNNING:
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.add(task.getSlot());
+                            }
+                            break;
+
                     }
                 }
+                brokerStatus.reloadBusySlotsAtBoot(busySlots);
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
                 workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot);

@@ -175,26 +175,30 @@ public class HttpAPIImplementation {
 
                     String tasktype = req.getParameter("tasktype");
 
-                    String filter = req.getParameter("filter");
-                    if (filter == null) {
-                        filter = "all";
+                    String status = req.getParameter("status");
+                    if (status == null) {
+                        status = "all";
                     }
+                    String slot = req.getParameter("slot");
+
+                    String user = req.getParameter("user");
+
                     resultMap.put("max", max);
                     List<Map<String, Object>> tt;
                     Predicate<TaskStatusView> filterPred;
                     Predicate<TaskStatusView> filterWorker;
                     Predicate<TaskStatusView> filterTasktype;
-                    switch (filter) {
+                    Predicate<TaskStatusView> filterSlots;
+                    Predicate<TaskStatusView> filterUser;
+                    switch (status) {
                         case "all":
                             filterPred = (t) -> true;
-
                             break;
                         case "waiting":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_WAITING;
                             break;
                         case "running":
-                            filterPred = (t)
-                                    -> t.getStatus() == Task.STATUS_RUNNING;
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_RUNNING;
                             break;
                         case "error":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_ERROR;
@@ -213,6 +217,21 @@ public class HttpAPIImplementation {
                     } else {
                         filterWorker = (t) -> true;
                     }
+                    if (slot != null && !slot.isEmpty()) {
+                        filterSlots = (t) -> {
+                            return slot.equalsIgnoreCase(t.getSlot());
+                        };
+                    } else {
+                        filterSlots = (t) -> true;
+                    }
+
+                    if (user != null && !user.isEmpty()) {
+                        filterUser = (t) -> {
+                            return user.equalsIgnoreCase(t.getUser());
+                        };
+                    } else {
+                        filterUser = (t) -> true;
+                    }
 
                     if (tasktype != null && !tasktype.isEmpty()) {
                         filterTasktype = (t) -> {
@@ -222,7 +241,7 @@ public class HttpAPIImplementation {
                         filterTasktype = (t) -> true;
                     }
 
-                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).filter(filterWorker).filter(filterTasktype).limit(max).map(t -> {
+                    tt = broker.getClient().getAllTasks().stream().filter(filterPred).filter(filterUser).filter(filterSlots).filter(filterWorker).filter(filterTasktype).limit(max).map(t -> {
                         Map<String, Object> map = serializeTaskForClient(t);
                         return map;
                     }).collect(Collectors.toList());
