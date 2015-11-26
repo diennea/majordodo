@@ -98,7 +98,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.19-BETA9";
+        return "0.1.19-BETA10";
     }
 
     private final Workers workers;
@@ -250,13 +250,17 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     };
 
     private void shutdown() {
+        if (stopped) {
+            return;
+        }
+        stopperLatch.countDown();
+        stopped = true;
         try {
             checkpoint();
         } catch (LogNotAvailableException cannotCheckpoint) {
             LOGGER.log(Level.SEVERE, "checkpoint on shutdown failed", cannotCheckpoint);
         }
-        stopperLatch.countDown();
-        stopped = true;
+
         JVMBrokersRegistry.unregisterBroker(brokerId);
         this.brokerStatusMonitor.stop();
         this.finishedTaskCollectorScheduler.stop();
