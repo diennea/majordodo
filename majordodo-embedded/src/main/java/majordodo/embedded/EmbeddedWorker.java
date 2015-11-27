@@ -74,8 +74,8 @@ public class EmbeddedWorker {
 
     public void start() throws Exception {
         String host = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_HOST, "localhost");
-        int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
-        boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, true);
+        int port = configuration.getIntProperty(EmbeddedWorkerConfiguration.KEY_PORT, 7862);
+        boolean ssl = configuration.getBooleanProperty(EmbeddedWorkerConfiguration.KEY_SSL, true);
         String mode = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_MODE, EmbeddedWorkerConfiguration.MODE_SIGLESERVER);
         String zkAdress = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_ZKADDRESS, "localhost:1281");
         String zkPath = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_ZKPATH, "/majordodo");
