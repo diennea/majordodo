@@ -6,22 +6,5 @@
             <goals>
                 <goal>deploy</goal>
             </goals>
-        </action>
-        <action>
-            <actionName>CUSTOM-versions:set</actionName>
-            <displayName>versions:set</displayName>
-            <goals>
-                <goal>versions:set</goal>
-            </goals>
-            <properties>
-                <newVersion>0.1.19-BETA11</newVersion>
-            </properties>
-        </action>
-        <action>
-            <actionName>CUSTOM-versions:commit</actionName>
-            <displayName>versions:commit</displayName>
-            <goals>
-                <goal>versions:commit</goal>
-            </goals>
-        </action>
+        </action>        
     </actions>
