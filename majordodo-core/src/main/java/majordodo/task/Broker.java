@@ -98,7 +98,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
     }
 
     public static String VERSION() {
-        return "0.1.19-BETA12";
+        return "0.1.20-BETA1";
     }
 
     private final Workers workers;
@@ -200,19 +200,20 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 LOGGER.log(Level.SEVERE, "Starting as leader");
                 brokerStatus.recoverForLeadership();
                 brokerStatus.startWriting();
-                Set<String> busySlots = new HashSet<>();
+                Map<String, Long> busySlots = new HashMap<>();
                 for (Task task : brokerStatus.getTasksAtBoot()) {
                     switch (task.getStatus()) {
                         case Task.STATUS_WAITING:
-                            LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + " is to be scheduled");
+                            LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + ",slot=" + task.getSlot() + " is to be scheduled (status=waiting)");
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.add(task.getSlot());
+                                busySlots.put(task.getSlot(), task.getTaskId());
                             }
                             break;
                         case Task.STATUS_RUNNING:
+                            LOGGER.log(Level.SEVERE, "Task " + task.getTaskId() + ", " + task.getType() + ", user=" + task.getUserId() + ",slot=" + task.getSlot() + " is in running status");
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.add(task.getSlot());
+                                busySlots.put(task.getSlot(), task.getTaskId());
                             }
                             break;
 
@@ -449,7 +450,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
 
     public SlotsStatusView getSlotsStatusView() {
         SlotsStatusView res = new SlotsStatusView();
-        res.setBusySlots(brokerStatus.getBusySlots());
+        res.setBusySlots(brokerStatus.getActualSlots());
         return res;
     }
 

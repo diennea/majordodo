@@ -73,8 +73,8 @@ public class BrokerStatus {
         this.log = log;
     }
 
-    public Set<String> getBusySlots() {
-        return slotsManager.getBusySlots();
+    public Map<String,Long> getActualSlots() {
+        return slotsManager.getActualSlots();
     }
 
     public List<TransactionsStatusView.TransactionStatus> getAllTransactions() {
@@ -224,8 +224,6 @@ public class BrokerStatus {
             for (Transaction status : transactions.values()) {
                 snap.transactions.add(status.cloneForSnapshot());
             }
-            // actually slotsManager is not handle on "general lock", this could be improved
-            snap.busySlots.addAll(slotsManager.getBusySlots());
             return snap;
         } finally {
             lock.readLock().unlock();
@@ -373,7 +371,7 @@ public class BrokerStatus {
         }
     }
 
-    void reloadBusySlotsAtBoot(Set<String> busySlots) {
+    void reloadBusySlotsAtBoot(Map<String, Long> busySlots) {
         slotsManager.loadBusySlots(busySlots);
     }
 
@@ -407,7 +405,7 @@ public class BrokerStatus {
         for (StatusEdit edit : edits) {
             if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
                     && edit.slot != null) {
-                if (!slotsManager.assignSlot(edit.slot)) {
+                if (!slotsManager.assignSlot(edit.slot, edit.taskId)) {
                     skip.add(index);
                 } else {
                     toLog.add(edit);
@@ -439,7 +437,7 @@ public class BrokerStatus {
         LOGGER.log(Level.FINEST, "applyModification {0}", edit);
         if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
                 && edit.slot != null) {
-            if (slotsManager.assignSlot(edit.slot)) {
+            if (slotsManager.assignSlot(edit.slot, edit.taskId)) {
                 try {
                     LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
                     return applyEdit(num, edit);
@@ -569,7 +567,7 @@ public class BrokerStatus {
 
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
-                        slotsManager.assignSlot(edit.slot);
+                        slotsManager.assignSlot(edit.slot, edit.taskId);
                     }
                     return new ModificationResult(num, edit.taskId, null);
                 }
@@ -595,7 +593,7 @@ public class BrokerStatus {
                     task.setSlot(edit.slot);
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
-                        slotsManager.assignSlot(edit.slot);
+                        slotsManager.assignSlot(edit.slot, edit.taskId);
                     }
                     // the slot it acquired on prepare (and eventually released on rollback)
                     // task is not really submitted not, it will be submitted on commit
@@ -663,9 +661,19 @@ public class BrokerStatus {
             this.maxTransactionId = snapshot.getMaxTransactionId();
             this.newTransactionId.set(maxTransactionId + 1);
             this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
+            Map<String, Long> busySlots = new HashMap<>();
             for (Task task : snapshot.getTasks()) {
                 this.tasks.put(task.getTaskId(), task);
                 stats.taskStatusChange(-1, task.getStatus());
+                switch (task.getStatus()) {
+                    case Task.STATUS_RUNNING:
+                    case Task.STATUS_WAITING: {
+                        if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                            busySlots.put(task.getSlot(), task.getTaskId());
+                        }
+                    }
+                }
+
             }
             for (WorkerStatus worker : snapshot.getWorkers()) {
                 this.workers.put(worker.getWorkerId(), worker);
@@ -673,7 +681,7 @@ public class BrokerStatus {
             for (Transaction tx : snapshot.getTransactions()) {
                 this.transactions.put(tx.getTransactionId(), tx);
             }
-            this.slotsManager.loadBusySlots(snapshot.busySlots);
+            this.slotsManager.loadBusySlots(busySlots);
             log.recovery(snapshot.getActualLogSequenceNumber(),
                     (logSeqNumber, edit) -> {
                         applyEdit(logSeqNumber, edit);

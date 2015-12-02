@@ -19,7 +19,7 @@
  */
 package majordodo.clientfacade;
 
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Status of busy slots
@@ -28,13 +28,13 @@ import java.util.Set;
  */
 public class SlotsStatusView {
 
-    private Set<String> busySlots;
+    private Map<String, Long> busySlots;
 
-    public Set<String> getBusySlots() {
+    public Map<String, Long> getBusySlots() {
         return busySlots;
     }
 
-    public void setBusySlots(Set<String> busySlots) {
+    public void setBusySlots(Map<String, Long> busySlots) {
         this.busySlots = busySlots;
     }
 

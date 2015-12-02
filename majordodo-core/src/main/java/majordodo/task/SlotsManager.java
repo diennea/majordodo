@@ -20,6 +20,7 @@
 package majordodo.task;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,25 +31,28 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 class SlotsManager {
 
-    private final ConcurrentHashMap<String, Object> actualSlots = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> actualSlots = new ConcurrentHashMap<>();
 
     public Set<String> getBusySlots() {
         return new HashSet<>(actualSlots.keySet());
     }
 
-    public boolean assignSlot(String slot) {
-        return actualSlots.putIfAbsent(slot, Boolean.TRUE) == null;
+    public ConcurrentHashMap<String, Long> getActualSlots() {
+        return actualSlots;
+    }
+
+    public boolean assignSlot(String slot, Long taskId) {
+        return actualSlots.putIfAbsent(slot, taskId) == null;
     }
 
     public void releaseSlot(String slot) {
         actualSlots.remove(slot);
     }
 
-    void loadBusySlots(Set<String> busySlots) {
+    void loadBusySlots(Map<String, Long> busySlots) {
         actualSlots.clear();
-        busySlots.forEach(slot -> {
-            actualSlots.put(slot, Boolean.TRUE);
-        });
+        actualSlots.putAll(busySlots);
+
     }
 
 }
