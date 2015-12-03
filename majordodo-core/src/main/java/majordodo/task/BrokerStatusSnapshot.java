@@ -195,6 +195,14 @@ public class BrokerStatusSnapshot {
                     }
                     break;
                 }
+                case "slots": {
+                    // legacy
+                    nextToken(jParser); // field name                                        
+                    while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                        nextToken(jParser); // field name                                        
+                    }
+                    break;
+                }
 
                 default:
                     throw new IOException("Unexpected field " + jParser.getCurrentName());

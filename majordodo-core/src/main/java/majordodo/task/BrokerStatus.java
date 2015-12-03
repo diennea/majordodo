@@ -73,7 +73,7 @@ public class BrokerStatus {
         this.log = log;
     }
 
-    public Map<String,Long> getActualSlots() {
+    public Map<String, Long> getActualSlots() {
         return slotsManager.getActualSlots();
     }
 
@@ -266,7 +266,7 @@ public class BrokerStatus {
                     case Task.STATUS_ERROR:
                     case Task.STATUS_FINISHED:
                         if (t.getCreatedTimestamp() < finished_deadline) {
-                            LOGGER.log(Level.INFO, "purging finished task {0}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp())});
+                            LOGGER.log(Level.INFO, "purging finished task {0} slot {2}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot()});
                             it.remove();
                             stats.taskStatusChange(t.getStatus(), -1);
                         }
