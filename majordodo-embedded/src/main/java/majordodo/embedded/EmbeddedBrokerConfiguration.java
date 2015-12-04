@@ -45,5 +45,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";
     public static String KEY_BK_ACKQUORUMSIZE = "bookkeeper.ackquorumsize";
     public static String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
+    
+    public static String KEY_BROKERWORKERTHREADS = "broker.worker.threads";
 
 }

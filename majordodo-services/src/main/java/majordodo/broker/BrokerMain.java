@@ -172,6 +172,7 @@ public class BrokerMain implements AutoCloseable {
         String assigner = configuration.getProperty("tasks.groupmapper", "");
         String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
         String clusteringmode = configuration.getProperty("clustering.mode", "singleserver");
+        int workerthreads = Integer.parseInt(configuration.getProperty("io.worker.threads", "16"));
 
         String adminuser = configuration.getProperty("admin.username", "admin");
         String adminpassword = configuration.getProperty("admin.password", "password");
@@ -239,6 +240,7 @@ public class BrokerMain implements AutoCloseable {
 
         System.out.println("Listening for workers connections on " + host + ":" + port + " ssl=" + ssl);
         this.server = new NettyChannelAcceptor(broker.getAcceptor());
+        this.server.setWorkerThreads(workerthreads);
         server.setHost(host);
         server.setPort(port);
         server.setSsl(ssl);

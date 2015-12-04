@@ -56,7 +56,16 @@ public class NettyChannelAcceptor implements AutoCloseable {
     private File sslCertChainFile;
     private File sslCertFile;
     private String sslCertPassword;
+    private int workerThreads = 16;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
+
+    public int getWorkerThreads() {
+        return workerThreads;
+    }
+
+    public void setWorkerThreads(int workerThreads) {
+        this.workerThreads = workerThreads;
+    }
 
     public boolean isSsl() {
         return ssl;
@@ -133,8 +142,8 @@ public class NettyChannelAcceptor implements AutoCloseable {
             }
 
         }
-        bossGroup = new NioEventLoopGroup();
-        workerGroup = new NioEventLoopGroup();
+        bossGroup = new NioEventLoopGroup(workerThreads);
+        workerGroup = new NioEventLoopGroup(workerThreads);
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)

@@ -118,6 +118,7 @@ public class EmbeddedBroker implements AutoCloseable {
             id = UUID.randomUUID().toString();
         }
         String host = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_HOST, "localhost");
+        int workerthreads = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BROKERWORKERTHREADS, 16);
         int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
         boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
         File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
@@ -189,6 +190,7 @@ public class EmbeddedBroker implements AutoCloseable {
                 server.setSslCertFile(certfile);
                 server.setSslCertPassword(certpassword);
                 server.setSsl(ssl);
+                server.setWorkerThreads(workerthreads);
                 break;
         }
         broker.setBrokerDiedCallback(brokerDiedCallback);
