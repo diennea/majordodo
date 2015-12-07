@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import majordodo.task.AddTaskResult;
 import majordodo.task.Broker;
 import java.util.List;
+import majordodo.clientfacade.TransactionStatus;
 
 /**
  * Client API
@@ -50,6 +51,10 @@ public class ClientFacade {
         return new SubmitTaskResult(res.taskId, res.error);
     }
 
+    public TransactionStatus getTransaction(long transactionId) throws Exception {
+        return broker.getTransactionStatus(transactionId);
+    }
+    
     public List<SubmitTaskResult> submitTasks(List<AddTaskRequest> tasks) throws Exception {
         List<AddTaskResult> addressult = broker.addTasks(tasks);
         List<SubmitTaskResult> res = new ArrayList<>(tasks.size());

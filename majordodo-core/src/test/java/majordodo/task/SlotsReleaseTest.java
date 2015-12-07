@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.SubmitTaskResult;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
@@ -51,6 +45,8 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -301,9 +297,9 @@ public class SlotsReleaseTest {
                 for (int i = 0; i < 100; i++) {
                     TaskStatusView task = broker.getClient().getTask(taskId);
                     if (task.getStatus() == Task.STATUS_ERROR) {
-                        System.out.println("result: "+task.getResult());
+                        System.out.println("result: " + task.getResult());
                         okFinishedForBroker = true;
-                        assertEquals("worker abc died",task.getResult());
+                        assertEquals("worker abc died", task.getResult());
                         break;
                     }
                     Thread.sleep(1000);
@@ -342,6 +338,43 @@ public class SlotsReleaseTest {
             // slot is free
             long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0)).getTaskId();
             assertTrue(taskId2 > 0);
+        }
+
+    }
+
+    @Test
+    public void slotReleaseOnAbandonedTransaction() throws Exception {
+
+        Path mavenTargetDir = Paths.get("target").toAbsolutePath();
+        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
+        System.out.println("SETUPWORKDIR:" + workDir);
+        long taskId;
+        String workerId = "abc";
+        String taskParams = "param";
+        final String SLOTID = "myslot";
+
+        // startAsWritable a broker and request a task, with slot
+        BrokerConfiguration brokerConfiguration = new BrokerConfiguration();
+        brokerConfiguration.setTransactionsTtl(1000);
+        try (Broker broker = new Broker(brokerConfiguration, new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+            broker.startAsWritable();
+            long tx = broker.getClient().beginTransaction();
+            assertNotNull(broker.getClient().getTransaction(tx));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(tx, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis(), SLOTID, 0));
+            taskId = res.getTaskId();
+            assertTrue(taskId > 0);
+            assertTrue(res.getOutcome() == null);
+            // slot is busy
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0)).getTaskId());
+            Thread.sleep(5000);
+            // on checkpoint the transaction will be rolled back
+            assertNotNull(broker.getClient().getTransaction(tx));
+            broker.checkpoint();
+            // slot is free
+            long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0)).getTaskId();
+            assertTrue(taskId2 > 0);
+            assertNull(broker.getClient().getTransaction(tx));
+
         }
 
     }

@@ -43,40 +43,4 @@ public class TransactionsStatusView {
         this.transactions = transactions;
     }
 
-    public static class TransactionStatus {
-
-        private final long transactionId;
-        private final long creationTimestamp;
-        private final long preparedTasks;
-        private final Set<String> taskTypes;
-
-        public TransactionStatus(long transactionId, long creationTimestamp, long preparedTasks, Set<String> taskTypes) {
-            this.transactionId = transactionId;
-            this.creationTimestamp = creationTimestamp;
-            this.preparedTasks = preparedTasks;
-            this.taskTypes = taskTypes;
-        }
-
-        public long getTransactionId() {
-            return transactionId;
-        }
-
-        public long getCreationTimestamp() {
-            return creationTimestamp;
-        }
-
-        public long getPreparedTasks() {
-            return preparedTasks;
-        }
-
-        public Set<String> getTaskTypes() {
-            return taskTypes;
-        }
-
-        @Override
-        public String toString() {
-            return "TransactionStatus{" + "transactionId=" + transactionId + ", creationTimestamp=" + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(Instant.ofEpochMilli(creationTimestamp)) + ", preparedTasks=" + preparedTasks + ", taskTypes=" + taskTypes + '}';
-        }
-
-    }
 }

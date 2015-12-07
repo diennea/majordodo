@@ -30,8 +30,9 @@ import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
+import majordodo.clientfacade.TransactionStatus;
 import majordodo.clientfacade.TransactionsStatusView;
-import majordodo.clientfacade.TransactionsStatusView.TransactionStatus;
+import majordodo.clientfacade.TransactionStatus;
 
 /**
  * Periodically log the status of the broker on the logs
@@ -72,7 +73,7 @@ public class BrokerStatusMonitor {
             SlotsStatusView slots = broker.getSlotsStatusView();
             BrokerStatusView brokerStatusView = broker.createBrokerStatusView();
 
-            TransactionsStatusView.TransactionStatus oldestTransaction = transactions
+            TransactionStatus oldestTransaction = transactions
                     .getTransactions()
                     .stream()
                     .sorted(Comparator.comparing(TransactionStatus::getCreationTimestamp))

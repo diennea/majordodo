@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -37,7 +36,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import majordodo.clientfacade.TransactionStatus;
 import majordodo.clientfacade.TransactionsStatusView;
+import majordodo.clientfacade.TransactionStatus;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a
@@ -77,8 +78,8 @@ public class BrokerStatus {
         return slotsManager.getActualSlots();
     }
 
-    public List<TransactionsStatusView.TransactionStatus> getAllTransactions() {
-        List<TransactionsStatusView.TransactionStatus> result = new ArrayList<>();
+    public List<TransactionStatus> getAllTransactions() {
+        List<TransactionStatus> result = new ArrayList<>();
         lock.readLock().lock();
         try {
             transactions.values().stream().forEach((k) -> {
@@ -166,6 +167,10 @@ public class BrokerStatus {
 
     public Collection<Task> getTasksAtBoot() {
         return tasks.values();
+    }
+
+    public Collection<Transaction> getTransactionsAtBoot() {
+        return transactions.values();
     }
 
     public long nextTaskId() {
@@ -304,14 +309,14 @@ public class BrokerStatus {
         }
     }
 
-    private TransactionsStatusView.TransactionStatus createTransactionStatusView(Transaction k) {
+    private TransactionStatus createTransactionStatusView(Transaction k) {
         int countTasks = 0;
         Set<String> taskTypes = Collections.emptySet();
         if (k.getPreparedTasks() != null) {
             countTasks = k.getPreparedTasks().size();
             taskTypes = k.getPreparedTasks().stream().map(Task::getType).collect(Collectors.toSet());
         }
-        return new TransactionsStatusView.TransactionStatus(k.getTransactionId(), k.getCreationTimestamp(), countTasks, taskTypes);
+        return new TransactionStatus(k.getTransactionId(), k.getCreationTimestamp(), countTasks, taskTypes);
     }
 
     private boolean brokerFailed;
@@ -373,6 +378,19 @@ public class BrokerStatus {
 
     void reloadBusySlotsAtBoot(Map<String, Long> busySlots) {
         slotsManager.loadBusySlots(busySlots);
+    }
+
+    public TransactionStatus getTransaction(long transactionId) {
+        lock.readLock().lock();
+        try {
+            Transaction t = transactions.get(transactionId);
+            if (t == null) {
+                return null;
+            }
+            return createTransactionStatusView(t);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public static final class ModificationResult {
@@ -538,7 +556,7 @@ public class BrokerStatus {
                     }
                     // release slots
                     for (Task task : transaction.getPreparedTasks()) {
-                        if (task.getSlot() != null) {
+                        if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                             LOGGER.log(Level.SEVERE, "Rollback transaction {0}, relase slot ", new Object[]{edit.transactionId, task.getSlot()});
                             slotsManager.releaseSlot(task.getSlot());
                         }
