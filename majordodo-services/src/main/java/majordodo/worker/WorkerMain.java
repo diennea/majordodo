@@ -102,18 +102,21 @@ public class WorkerMain implements AutoCloseable {
         pidFileLocker.lock();
         BrokerLocator brokerLocator;
         String mode = configuration.getProperty("clustering.mode", "singleserver");
+        boolean sslUnsecure = Boolean.parseBoolean(configuration.getProperty("broker.ssl.unsecure", "true"));
         switch (mode) {
             case "singleserver":
                 String host = configuration.getProperty("broker.host", "localhost");
                 int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
                 boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
+                ((NettyBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             case "clustered":
                 String zkAddress = configuration.getProperty("zk.address", "localhost:1281");
                 int zkSessionTimeout = Integer.parseInt(configuration.getProperty("zk.sessiontimeout", "40000"));
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 brokerLocator = new ZKBrokerLocator(zkAddress, zkSessionTimeout, zkPath);
+                ((ZKBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             default:
                 throw new RuntimeException("invalid clustering.mode=" + mode);
