@@ -51,7 +51,16 @@ public class NettyConnector implements AutoCloseable {
     private EventLoopGroup group;
     private SslContext sslCtx;
     private boolean ssl;
+    private boolean sslUnsecure = true;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
+
+    public boolean isSslUnsecure() {
+        return sslUnsecure;
+    }
+
+    public void setSslUnsecure(boolean sslUnsecure) {
+        this.sslUnsecure = sslUnsecure;
+    }
 
     public int getPort() {
         return port;
@@ -81,7 +90,11 @@ public class NettyConnector implements AutoCloseable {
 
     public NettyChannel connect() throws Exception {
         if (ssl) {
-            this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+            if (sslUnsecure) {
+                this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+            } else {
+                this.sslCtx = SslContextBuilder.forClient().build();
+            }
         }
         group = new NioEventLoopGroup();
 

@@ -29,4 +29,6 @@ public class EmbeddedWorkerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_HOST = "worker.broker.host";
     public static String KEY_PORT = "worker.broker.port";
     public static String KEY_SSL = "worker.broker.ssl";
+
+    public static String KEY_SSL_UNSECURE = "worker.broker.ssl.unsecure";
 }

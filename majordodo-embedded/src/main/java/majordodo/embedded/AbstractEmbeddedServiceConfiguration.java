@@ -33,7 +33,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
     public static String KEY_ZKSESSIONTIMEOUT = "zk.sessiontimeout";
     public static String KEY_ZKPATH = "zk.path";
     public static String KEY_ZKCLIENTSUPPLIER = "zk.client.supplier";
-
+        
     public static final String MODE_SIGLESERVER = "singleserver";
     public static final String MODE_CLUSTERED = "clustered";
     public static final String MODE_JVMONLY = "jvmonly";

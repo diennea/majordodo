@@ -81,6 +81,7 @@ public class EmbeddedWorker {
         String zkPath = configuration.getStringProperty(EmbeddedWorkerConfiguration.KEY_ZKPATH, "/majordodo");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedWorkerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
         Supplier<ZooKeeper> supplier = (Supplier<ZooKeeper>) configuration.getProperty(EmbeddedWorkerConfiguration.KEY_ZKCLIENTSUPPLIER, null);
+        boolean sslUnsecure = configuration.getBooleanProperty(EmbeddedWorkerConfiguration.KEY_SSL_UNSECURE, true);
 
         switch (mode) {
             case EmbeddedWorkerConfiguration.MODE_JVMONLY:
@@ -88,6 +89,8 @@ public class EmbeddedWorker {
                 break;
             case EmbeddedWorkerConfiguration.MODE_SIGLESERVER:
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
+                
+                ((NettyBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             case EmbeddedWorkerConfiguration.MODE_CLUSTERED:
                 if (supplier != null) {
@@ -95,6 +98,7 @@ public class EmbeddedWorker {
                 } else {
                     brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
                 }
+                ((ZKBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
         }
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);

@@ -39,6 +39,16 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
 
     protected abstract BrokerHostData getServer();
 
+    private boolean sslUnsecure;
+
+    public boolean isSslUnsecure() {
+        return sslUnsecure;
+    }
+
+    public void setSslUnsecure(boolean sslUnsecure) {
+        this.sslUnsecure = sslUnsecure;
+    }
+
     @Override
     public Channel connect(ChannelEventListener messageReceiver, ConnectionRequestInfo workerInfo) throws InterruptedException, BrokerNotAvailableException, BrokerRejectedConnectionException {
         boolean ok = false;
@@ -52,6 +62,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
             connector.setPort(addre.getPort());
             connector.setHost(addre.getAddress().getHostAddress());
             connector.setSsl(broker.isSsl());
+            connector.setSslUnsecure(sslUnsecure);
             NettyChannel channel;
             try {
                 channel = connector.connect();
@@ -59,7 +70,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
                 throw new BrokerNotAvailableException(e);
             }
 
-            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(),workerInfo.getMaxThreads(),workerInfo.getMaxThreadsByTaskType(),workerInfo.getGroups(),workerInfo.getExcludedGroups());
+            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups());
             try {
                 Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
                 if (connectionResponse.type == Message.TYPE_ACK) {
