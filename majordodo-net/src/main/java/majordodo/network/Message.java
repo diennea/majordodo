@@ -68,7 +68,7 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads,Map<String,Integer> maxThreadsByTaskType,List<Integer> groups, Set<Integer> excludedGroups) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads, Map<String, Integer> maxThreadsByTaskType, List<Integer> groups, Set<Integer> excludedGroups) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
@@ -78,7 +78,7 @@ public final class Message {
         params.put("maxThreads", maxThreads);
         params.put("maxThreadsByTaskType", maxThreadsByTaskType);
         params.put("groups", groups);
-        params.put("excludedGroups", excludedGroups);                
+        params.put("excludedGroups", excludedGroups);
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
 
@@ -97,7 +97,7 @@ public final class Message {
         params.put("groups", groups);
         params.put("maxThreadsByTaskType", maxThreadsByTaskType);
         params.put("maxThreads", max);
-        params.put("excludedGroups", excludedGroups);        
+        params.put("excludedGroups", excludedGroups);
         return new Message(processId, TYPE_WORKER_PING, params);
     }
 
@@ -109,11 +109,7 @@ public final class Message {
 
     @Override
     public String toString() {
-        if (replyMessageId != null) {
-            return typeToString(type) + ", parameters=" + parameters + ", id=" + messageId + ", replyMessageId=" + replyMessageId;
-        } else {
-            return typeToString(type) + ", parameters=" + parameters + ", id=" + messageId;
-        }
+        return typeToString(type) + ", " + parameters;
     }
 
     public static final int TYPE_TASK_FINISHED = 1;
@@ -178,7 +174,7 @@ public final class Message {
         return this;
     }
 
-    public Message setParameter(String key, Object value) {        
+    public Message setParameter(String key, Object value) {
         this.parameters.put(key, value);
         return this;
     }
