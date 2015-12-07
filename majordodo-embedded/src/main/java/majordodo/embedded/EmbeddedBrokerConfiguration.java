@@ -40,6 +40,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String SSL_CERTIFICATE_FILE = "broker.ssl.certificatefile";
     public static String SSL_CERTIFICATE_CHAIN_FILE = "broker.ssl.certificatechainfile";
     public static String SSL_CERTIFICATE_PASSWORD = "broker.ssl.certificatefilepassword";
+    public static String SSL_CIPHERS = "broker.ssl.ciphers";
 
     public static String KEY_BK_ENSEMBLE_SIZE = "bookkeeper.ensemblesize";
     public static String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";

@@ -35,6 +35,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import majordodo.clientfacade.AuthenticationManager;
 import majordodo.network.BrokerHostData;
 
@@ -123,6 +125,7 @@ public class EmbeddedBroker implements AutoCloseable {
         boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
         File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
         File certchainfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
+        String sslciphers = configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CIPHERS, "").toString();
         String certpassword = configuration.getStringProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_PASSWORD, null);
         String mode = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_MODE, EmbeddedBrokerConfiguration.MODE_SIGLESERVER);
         String logDirectory = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_LOGSDIRECTORY, "txlog");
@@ -187,6 +190,9 @@ public class EmbeddedBroker implements AutoCloseable {
             case EmbeddedBrokerConfiguration.MODE_CLUSTERED:
                 server = new NettyChannelAcceptor(broker.getAcceptor(), host, port);
                 server.setSslCertChainFile(certchainfile);
+                if (sslciphers != null && !sslciphers.isEmpty()) {
+                    server.setSslCiphers(Stream.of(sslciphers.split(",")).map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList()));
+                }
                 server.setSslCertFile(certfile);
                 server.setSslCertPassword(certpassword);
                 server.setSsl(ssl);

@@ -38,6 +38,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import majordodo.daemons.PidFileLocker;
 import majordodo.network.BrokerHostData;
 import majordodo.replication.ReplicatedCommitLog;
@@ -166,6 +168,7 @@ public class BrokerMain implements AutoCloseable {
         String certfile = configuration.getProperty("broker.ssl.certificatefile", "");
         String certchainfile = configuration.getProperty("broker.ssl.certificatechainfile", "");
         String certpassword = configuration.getProperty("broker.ssl.certificatefilepassword", null);
+        String sslciphers = configuration.getProperty("broker.ssl.ciphers", "");
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
         int taskheapsize = Integer.parseInt(configuration.getProperty("broker.tasksheap.size", "1000000"));
@@ -252,6 +255,9 @@ public class BrokerMain implements AutoCloseable {
         }
         if (certpassword != null) {
             server.setSslCertPassword(certpassword);
+        }
+        if (sslciphers != null && !sslciphers.isEmpty()) {
+            server.setSslCiphers(Stream.of(sslciphers.split(",")).map(s -> s.trim()).filter(s -> !s.isEmpty()).collect(Collectors.toList()));
         }
         server.start();
 
