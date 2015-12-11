@@ -166,7 +166,7 @@ public class EmbeddedClient implements AutoCloseable {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
                 SubmitTaskResult submitTask = broker.getClient().submitTask(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt()));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(),null,null));
                 SubmitTaskResponse resp = new SubmitTaskResponse();
                 resp.setTaskId(submitTask.getTaskId() + "");
                 if (submitTask.getOutcome() != null) {
@@ -199,7 +199,7 @@ public class EmbeddedClient implements AutoCloseable {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
                 requests.add(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt()));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(),null,null));
             }
             try {
                 List<SubmitTaskResult> submitTasks = broker.getClient().submitTasks(requests);

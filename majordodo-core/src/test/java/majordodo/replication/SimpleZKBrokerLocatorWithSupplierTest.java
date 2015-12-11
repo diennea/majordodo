@@ -146,7 +146,7 @@ public class SimpleZKBrokerLocatorWithSupplierTest extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         }

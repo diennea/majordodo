@@ -575,6 +575,12 @@ public class BrokerStatus {
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType.intern());
                     task.setUserId(edit.userid.intern());
+                    if (edit.codepool != null) {
+                        task.setCodepool(edit.codepool.intern());
+                    }
+                    if (edit.mode != null) {
+                        task.setMode(edit.mode.intern());
+                    }
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
@@ -604,6 +610,12 @@ public class BrokerStatus {
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType.intern());
                     task.setUserId(edit.userid.intern());
+                    if (edit.codepool != null) {
+                        task.setCodepool(edit.codepool.intern());
+                    }
+                    if (edit.mode != null) {
+                        task.setMode(edit.mode.intern());
+                    }
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);

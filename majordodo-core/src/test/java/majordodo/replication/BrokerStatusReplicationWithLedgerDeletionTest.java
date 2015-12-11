@@ -119,7 +119,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
+                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
 
                     log1.setLedgersRetentionPeriod(1);
                     log1.setMaxLogicalLogFileSize(10);

@@ -178,7 +178,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                 brokerConfig.setMaxWorkerIdleTime(5000);
                 try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
                     broker.startAsWritable();
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
+                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
                     try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                         server.setHost(host);
                         server.setPort(port);

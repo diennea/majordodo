@@ -80,6 +80,24 @@ public class Task {
     private int attempts;
     private long executionDeadline;
     private String slot;
+    private String codepool;
+    private String mode;
+
+    public String getCodepool() {
+        return codepool;
+    }
+
+    public void setCodepool(String codepool) {
+        this.codepool = codepool;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
     public String getSlot() {
         return slot;

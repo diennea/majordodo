@@ -482,11 +482,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         assertBrokerAvailableForClients();
         Long taskId = brokerStatus.nextTaskId();
         if (request.transaction > 0) {
-            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             return new AddTaskResult((Long) result.data, result.error);
         } else {
-            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             taskId = (Long) result.data;
             if (taskId > 0 && result.error == null) {
@@ -504,10 +504,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         for (AddTaskRequest request : requests) {
             Long taskId = brokerStatus.nextTaskId();
             if (request.transaction > 0) {
-                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
+                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
                 edits.add(addTask);
             } else {
-                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt);
+                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
                 edits.add(addTask);
             }
         }

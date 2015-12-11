@@ -335,6 +335,14 @@ public class BrokerStatusSnapshot {
                     nextToken(jParser);
                     task.setUserId(readValue(jParser).intern());
                     break;
+                case "codepool":
+                    nextToken(jParser);
+                    task.setCodepool(readValue(jParser).intern());
+                    break;
+                case "mode":
+                    nextToken(jParser);
+                    task.setMode(readValue(jParser).intern());
+                    break;
                 case "type":
                     nextToken(jParser);
                     task.setType(readValue(jParser).intern());
@@ -418,6 +426,12 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "parameter", task.getParameter());
         writeSimpleProperty(g, "result", task.getResult());
         writeSimpleProperty(g, "userId", task.getUserId());
+        if (task.getCodepool() != null) {
+            writeSimpleProperty(g, "codepool", task.getCodepool());
+        }
+        if (task.getMode() != null) {
+            writeSimpleProperty(g, "mode", task.getMode());
+        }
         writeSimpleProperty(g, "createdTimestamp", task.getCreatedTimestamp());
         writeSimpleProperty(g, "type", task.getType());
         writeSimpleProperty(g, "workerId", task.getWorkerId());

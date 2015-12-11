@@ -23,6 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -93,6 +94,8 @@ public final class StatusEdit {
     public String workerProcessId;
     public String result;
     public String slot;
+    public String codepool;
+    public String mode;
     public Set<Long> actualRunningTasks;
 
     @Override
@@ -147,7 +150,7 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempt) {
+    public static final StatusEdit ADD_TASK(long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempt, String codePool, String mode) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ADD_TASK;
         action.attempt = attempt;
@@ -158,10 +161,12 @@ public final class StatusEdit {
         action.userid = userid;
         action.maxattempts = maxattempts;
         action.executionDeadline = executionDeadline;
+        action.codepool = codePool;
+        action.mode = mode;
         return action;
     }
 
-    public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempts) {
+    public static final StatusEdit PREPARE_ADD_TASK(long transactionId, long taskId, String taskType, String taskParameter, String userid, int maxattempts, long executionDeadline, String slot, int attempts, String codePool, String mode) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_PREPARE_ADD_TASK;
         action.attempt = attempts;
@@ -173,6 +178,8 @@ public final class StatusEdit {
         action.userid = userid;
         action.maxattempts = maxattempts;
         action.executionDeadline = executionDeadline;
+        action.codepool = codePool;
+        action.mode = mode;
         return action;
     }
 
@@ -237,6 +244,16 @@ public final class StatusEdit {
                     } else {
                         doo.writeUTF("");
                     }
+                    if (codepool != null) {
+                        doo.writeUTF(codepool);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    if (mode != null) {
+                        doo.writeUTF(mode);
+                    } else {
+                        doo.writeUTF("");
+                    }
                     break;
                 case TYPE_PREPARE_ADD_TASK:
                     doo.writeLong(transactionId);
@@ -254,6 +271,16 @@ public final class StatusEdit {
                     }
                     if (slot != null) {
                         doo.writeUTF(slot);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    if (codepool != null) {
+                        doo.writeUTF(codepool);
+                    } else {
+                        doo.writeUTF("");
+                    }
+                    if (mode != null) {
+                        doo.writeUTF(mode);
                     } else {
                         doo.writeUTF("");
                     }
@@ -322,6 +349,17 @@ public final class StatusEdit {
                 if (!slot.isEmpty()) {
                     res.slot = slot;
                 }
+                try {
+                    String codepool = doo.readUTF();
+                    if (!codepool.isEmpty()) {
+                        res.codepool = codepool;
+                    }
+                    String mode = doo.readUTF();
+                    if (!mode.isEmpty()) {
+                        res.mode = mode;
+                    }
+                } catch (EOFException legacy) {
+                }
                 break;
             }
             case TYPE_PREPARE_ADD_TASK: {
@@ -337,6 +375,17 @@ public final class StatusEdit {
                 String slot = doo.readUTF();
                 if (!slot.isEmpty()) {
                     res.slot = slot;
+                }
+                try {
+                    String codepool = doo.readUTF();
+                    if (!codepool.isEmpty()) {
+                        res.codepool = codepool;
+                    }
+                    String mode = doo.readUTF();
+                    if (!mode.isEmpty()) {
+                        res.mode = mode;
+                    }
+                } catch (EOFException legacy) {
                 }
                 break;
             }

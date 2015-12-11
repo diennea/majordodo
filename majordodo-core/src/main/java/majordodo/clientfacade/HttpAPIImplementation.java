@@ -403,6 +403,15 @@ public class HttpAPIImplementation {
                     if (slot != null && slot.trim().isEmpty()) {
                         slot = null;
                     }
+                    String codepool = (String) data.get("codepool");
+                    if (codepool != null && codepool.trim().isEmpty()) {
+                        codepool = null;
+                    }
+                    String mode = (String) data.get("mode");
+                    if (mode != null && mode.trim().isEmpty()) {
+                        mode = null;
+                    }
+
                     if (auth_user.getRole() != UserRole.ADMINISTRATOR
                             && !auth_user.getUserId().equals(user)) {
                         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
@@ -411,7 +420,7 @@ public class HttpAPIImplementation {
 
                     SubmitTaskResult result;
                     try {
-                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
+                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
                         long taskId = result.getTaskId();
                         resultMap.put("taskId", taskId);
                         resultMap.put("result", result.getOutcome());
@@ -463,8 +472,16 @@ public class HttpAPIImplementation {
                             if (slot != null && slot.trim().isEmpty()) {
                                 slot = null;
                             }
+                            String codepool = (String) data.get("codepool");
+                            if (codepool != null && codepool.trim().isEmpty()) {
+                                codepool = null;
+                            }
+                            String mode = (String) data.get("mode");
+                            if (mode != null && mode.trim().isEmpty()) {
+                                mode = null;
+                            }
 
-                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt));
+                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt,codepool,mode));
                         }
                         try {
                             List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);
