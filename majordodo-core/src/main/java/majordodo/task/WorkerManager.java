@@ -66,7 +66,7 @@ public class WorkerManager {
             Map<String, Integer> maxThreadsByTaskType,
             List<Integer> groups,
             Set<Integer> excludedGroups) {
-        LOGGER.log(Level.SEVERE, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
+        LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
         for (Iterator<Map.Entry<String, Integer>> it = maxThreadsByTaskTypeNoZero.entrySet().iterator(); it.hasNext();) {
