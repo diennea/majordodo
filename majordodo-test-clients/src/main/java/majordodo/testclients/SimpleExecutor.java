@@ -17,42 +17,21 @@
  under the License.
 
  */
-package majordodo.codepools;
+package majordodo.testclients;
+
+import java.util.Map;
+import majordodo.executors.TaskExecutor;
 
 /**
- * A pool of Code (JAR files/Java Classes) used for the implementation of Tasks.
- * Code pools are immutable
+ * Simple executor for tests
  *
  * @author enrico.olivelli
  */
-public class CodePool {
+public class SimpleExecutor extends TaskExecutor {
 
-    private final String id;
-    private final long creationTimestamp;
-    private final byte[] codePoolData;
-    private final long ttl;
-
-    public CodePool(String id, long creationTimestamp, byte[] codePoolData, long ttl) {
-        this.id = id;
-        this.creationTimestamp = creationTimestamp;
-        this.codePoolData = codePoolData;
-        this.ttl = ttl;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public long getCreationTimestamp() {
-        return creationTimestamp;
-    }
-
-    public byte[] getCodePoolData() {
-        return codePoolData;
-    }
-
-    public long getTtl() {
-        return ttl;
+    @Override
+    public String executeTask(Map<String, Object> parameters) throws Exception {
+        return "SimpleExecutor run!";
     }
 
 }

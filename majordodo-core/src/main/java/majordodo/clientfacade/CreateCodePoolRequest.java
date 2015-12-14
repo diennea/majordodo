@@ -17,42 +17,25 @@
  under the License.
 
  */
-package majordodo.codepools;
+package majordodo.clientfacade;
 
 /**
- * A pool of Code (JAR files/Java Classes) used for the implementation of Tasks.
- * Code pools are immutable
+ * Creation of a new codepool
  *
  * @author enrico.olivelli
  */
-public class CodePool {
+public class CreateCodePoolRequest {
 
-    private final String id;
-    private final long creationTimestamp;
-    private final byte[] codePoolData;
-    private final long ttl;
+    public final String id;
+    public final long creationTimestamp;
+    public final long ttl;
+    public final byte[] data;
 
-    public CodePool(String id, long creationTimestamp, byte[] codePoolData, long ttl) {
+    public CreateCodePoolRequest(String id, long creationTimestamp, long ttl, byte[] data) {
         this.id = id;
         this.creationTimestamp = creationTimestamp;
-        this.codePoolData = codePoolData;
         this.ttl = ttl;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public long getCreationTimestamp() {
-        return creationTimestamp;
-    }
-
-    public byte[] getCodePoolData() {
-        return codePoolData;
-    }
-
-    public long getTtl() {
-        return ttl;
+        this.data = data;
     }
 
 }

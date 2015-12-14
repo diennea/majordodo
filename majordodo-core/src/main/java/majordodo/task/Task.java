@@ -1,3 +1,4 @@
+
 /*
  Licensed to Diennea S.r.l. under one
  or more contributor license agreements. See the NOTICE file
@@ -36,6 +37,23 @@ public class Task {
 
     public static final int GROUP_ANY = 0;
     public static final String TASKTYPE_ANY = "any";
+
+    /**
+     * On the worker a TaskExecutionFactory will be used in order to execute
+     * task code
+     */
+    public static final String MODE_EXECUTE_FACTORY = "factory";
+
+    /**
+     * The 'data' field of the task contains a stream with Java serialized
+     * object, to be deserialized in the context of a CodePool if provided
+     */
+    public static final String MODE_EXECUTE_OBJECT = "object";
+
+    /**
+     * Default mode (as of Majordodo 1.1.xx)
+     */
+    public static final String MODE_DEFAULT = MODE_EXECUTE_FACTORY;
 
     public static int taskExecutorStatusToTaskStatus(String status) {
         switch (status) {

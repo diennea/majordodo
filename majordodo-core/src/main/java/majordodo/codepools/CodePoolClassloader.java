@@ -43,25 +43,23 @@ public final class CodePoolClassloader extends URLClassLoader {
 
     private final Path directory;
 
-    public CodePoolClassloader(ClassLoader parent, CodePool codePool, Path tmpDirectory) throws IOException {
+    public CodePoolClassloader(ClassLoader parent, String codePoolId, byte[] data, Path tmpDirectory) throws IOException {
         super(new URL[0], parent);
-        directory = tmpDirectory.resolve(codePool.getId());
-        buildCodePoolTmpDirectory(codePool);
+        directory = tmpDirectory.resolve(codePoolId);
+        buildCodePoolTmpDirectory(codePoolId, data);
     }
 
-    private void buildCodePoolTmpDirectory(CodePool codePool) throws IOException {
-        ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(codePool.getCodePoolData()));
+    private void buildCodePoolTmpDirectory(String codePoolId, byte[] data) throws IOException {
+        ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));
         ZipEntry nextEntry = zip.getNextEntry();
         while (nextEntry != null) {
             if (!nextEntry.isDirectory()) {
                 String filename = nextEntry.getName();
-                Path file = directory.resolve(filename);
-                try (OutputStream out = Files.newOutputStream(file, StandardOpenOption.TRUNCATE_EXISTING)) {
-                    long size = nextEntry.getSize();
-                    long written = copyStreams(zip, out);
-                    if (size != written) {
-                        throw new IOException("error while unzipping " + file.toAbsolutePath());
-                    }
+                
+                Path file = directory.resolve(filename);                
+                Files.createDirectories(file.getParent());
+                try (OutputStream out = Files.newOutputStream(file)) {                    
+                    copyStreams(zip, out);                    
                 }
                 addURL(file.toUri().toURL());
             }

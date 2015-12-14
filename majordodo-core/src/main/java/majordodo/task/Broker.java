@@ -38,6 +38,9 @@ import java.util.logging.Logger;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.AuthenticationManager;
 import majordodo.clientfacade.BrokerStatusView;
+import majordodo.clientfacade.CodePoolView;
+import majordodo.clientfacade.CreateCodePoolRequest;
+import majordodo.clientfacade.CreateCodePoolResult;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
@@ -380,6 +383,17 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         this.brokerStatus.applyModification(StatusEdit.NOOP());
     }
 
+    public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws LogNotAvailableException, IllegalActionException {
+        assertBrokerAvailableForClients();
+        StatusEdit edit = StatusEdit.CREATE_CODEPOOL(request.id, request.creationTimestamp, request.data, request.ttl);
+        BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(edit);
+        if (result.error != null) {
+            return new CreateCodePoolResult(false, result.error);
+        } else {
+            return new CreateCodePoolResult(true, "");
+        }
+    }
+
     public long beginTransaction() throws LogNotAvailableException, IllegalActionException {
         assertBrokerAvailableForClients();
         long transactionId = brokerStatus.nextTransactionId();
@@ -473,6 +487,18 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         return brokerStatus.getTransaction(transactionId);
     }
 
+    public void deleteCodePool(String codePoolId) throws IllegalActionException, LogNotAvailableException {        
+        StatusEdit modification = StatusEdit.DELETE_CODEPOOL(codePoolId);
+        BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(modification);
+        if (result.error != null) {
+            throw new IllegalActionException(result.error);
+        }
+    }
+
+    public CodePoolView getCodePool(String codePoolId) {
+        return brokerStatus.getCodePoolView(codePoolId);
+    }
+
     public static interface ActionCallback {
 
         public void actionExecuted(StatusEdit action, ActionResult result);
@@ -482,11 +508,11 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         assertBrokerAvailableForClients();
         Long taskId = brokerStatus.nextTaskId();
         if (request.transaction > 0) {
-            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             return new AddTaskResult((Long) result.data, result.error);
         } else {
-            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
             taskId = (Long) result.data;
             if (taskId > 0 && result.error == null) {
@@ -504,10 +530,10 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
         for (AddTaskRequest request : requests) {
             Long taskId = brokerStatus.nextTaskId();
             if (request.transaction > 0) {
-                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
+                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
                 edits.add(addTask);
             } else {
-                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt,request.codepool,request.mode);
+                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
                 edits.add(addTask);
             }
         }

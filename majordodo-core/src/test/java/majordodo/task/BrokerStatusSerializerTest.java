@@ -24,6 +24,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.zip.GZIPInputStream;
+import majordodo.codepools.CodePool;
+import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 /**
@@ -107,18 +110,25 @@ public class BrokerStatusSerializerTest {
         Transaction tx2 = new Transaction(4343, 2432);
         snapBefore.getTransactions().add(tx2);
 
+        CodePool co1 = new CodePool("pool1", System.currentTimeMillis(), "test".getBytes(), 1000);
+        snapBefore.getCodePools().add(co1);
+
         ByteArrayOutputStream oo = new ByteArrayOutputStream();
         BrokerStatusSnapshot.serializeSnapshot(snapBefore, oo);
-        System.out.println("ser:"+oo.toString("utf-8"));
+        System.out.println("ser:" + oo.toString("utf-8"));
         InputStream in = new ByteArrayInputStream(oo.toByteArray());
         BrokerStatusSnapshot snap = BrokerStatusSnapshot.deserializeSnapshot(in);
+        assertEquals(co1.getId(),snap.getCodePools().get(0).getId());
+        assertEquals(co1.getTtl(),snap.getCodePools().get(0).getTtl());
+        assertEquals(co1.getCreationTimestamp(),snap.getCodePools().get(0).getCreationTimestamp());
+        Assert.assertArrayEquals(co1.getCodePoolData(),snap.getCodePools().get(0).getCodePoolData());
     }
 
     @Test
     public void testReal() throws Exception {
-       
+
         InputStream data = BrokerStatusSerializerTest.class.getClassLoader().getResourceAsStream("examplesnap.json.gz");
-         GZIPInputStream gzip = new GZIPInputStream(data);
+        GZIPInputStream gzip = new GZIPInputStream(data);
         BrokerStatusSnapshot snap = BrokerStatusSnapshot.deserializeSnapshot(gzip);
         BrokerStatusSnapshot.serializeSnapshot(snap, new ByteArrayOutputStream());
     }

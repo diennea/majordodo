@@ -42,6 +42,7 @@ public class WorkerCoreConfiguration {
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
     private Set<Integer> excludedGroups;
+    private String workingDirectory;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
@@ -69,6 +70,20 @@ public class WorkerCoreConfiguration {
     public void setMaxThreads(int maxThreads) {
         this.maxThreads = maxThreads;
     }
+
+    /**
+     * Working directory, default to user.dir if not set
+     * @return 
+     */
+    public String getWorkingDirectory() {
+        return workingDirectory;
+    }
+
+    public void setWorkingDirectory(String workingDirectory) {
+        this.workingDirectory = workingDirectory;
+    }
+    
+    
 
     /**
      * Worker id (not the processId!)

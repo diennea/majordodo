@@ -19,6 +19,9 @@
  */
 package majordodo.worker;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import majordodo.network.BrokerRejectedConnectionException;
 import majordodo.network.BrokerNotAvailableException;
@@ -44,6 +47,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import majordodo.codepools.CodePoolClassloadersManager;
 import majordodo.network.ReplyCallback;
 import majordodo.utils.ErrorUtils;
 
@@ -64,6 +68,8 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final ReentrantReadWriteLock runningTasksLock = new ReentrantReadWriteLock(true);
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
+    private final Path workingDirectory;
+    private final CodePoolClassloadersManager classloadersManager;
     private volatile boolean stopped = false;
     private Channel channel;
     private WorkerStatusListener listener;
@@ -92,6 +98,19 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             coreThread.interrupt();
         }
         this.stop();
+    }
+
+    public byte[] downloadCodePool(String codePoolId) throws Exception {
+        Channel _channel = channel;
+        if (_channel == null) {
+            throw new Exception("not connected");
+        }
+        Message reply = _channel.sendMessageWithReply(Message.DOWNLOAD_CODEPOOL(workerId, codePoolId), 10000);
+        if (reply.type == Message.TYPE_DOWNLOAD_CODEPOOL_RESPONSE) {
+            return (byte[]) reply.parameters.get("data");
+        } else {
+            throw new Exception("error from broker while downloading codepool " + codePoolId + " data:" + reply);
+        }
     }
 
     private static final class NotImplementedTaskExecutorFactory implements TaskExecutorFactory {
@@ -190,11 +209,25 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.location = config.getLocation();
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
+        if (config.getWorkingDirectory() == null || config.getWorkingDirectory().isEmpty()) {
+            workingDirectory = Paths.get("").toAbsolutePath();
+        } else {
+            workingDirectory = Paths.get(config.getWorkingDirectory());
+        }
+        LOGGER.log(Level.SEVERE, "Working directory {0}", workingDirectory);
+        try {
+            this.classloadersManager = new CodePoolClassloadersManager(workingDirectory, this);
+        } catch (IOException err) {
+            throw new RuntimeException(err);
+        }
     }
 
     public void start() {
         if (executorFactory == null) {
-            executorFactory = new NotImplementedTaskExecutorFactory();
+            executorFactory = new CodePoolAwareExecutorFactory(
+                    new TaskModeAwareExecutorFactory(
+                            new NotImplementedTaskExecutorFactory()
+                    ), classloadersManager);
         }
         this.coreThread.start();
         JVMWorkersRegistry.registerWorker(workerId, this);
@@ -301,6 +334,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
+        classloadersManager.close();
         JVMWorkersRegistry.unregisterWorker(workerId);
     }
 
@@ -311,7 +345,6 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
         return executorFactory.createTaskExecutor(taskType, parameters);
-
     }
 
     private class ConnectionManager implements Runnable {

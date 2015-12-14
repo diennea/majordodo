@@ -17,7 +17,7 @@
             <artifactId>majordodo-net</artifactId>
             <version>${project.version}</version>
         </dependency>
-         <dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-worker</artifactId>
             <version>${project.version}</version>
@@ -108,7 +108,7 @@
             <artifactId>curator-test</artifactId>
             <version>2.8.0</version>
             <scope>test</scope>
-        </dependency>
+        </dependency>                
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

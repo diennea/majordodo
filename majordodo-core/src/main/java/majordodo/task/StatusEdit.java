@@ -48,6 +48,8 @@ public final class StatusEdit {
     public static final short TYPE_ROLLBACK_TRANSACTION = 9;
     public static final short TYPE_PREPARE_ADD_TASK = 10;
     public static final short TYPE_NOOP = 11;
+    public static final short TYPE_DELETECODEPOOL = 13;
+    public static final short TYPE_CREATECODEPOOL = 14;
 
     public static String typeToString(short type) {
         switch (type) {
@@ -73,6 +75,10 @@ public final class StatusEdit {
                 return "TYPE_COMMIT_TRANSACTION";
             case TYPE_ROLLBACK_TRANSACTION:
                 return "TYPE_ROLLBACK_TRANSACTION";
+            case TYPE_DELETECODEPOOL:
+                return "TYPE_DELETECODEPOOL";
+            case TYPE_CREATECODEPOOL:
+                return "TYPE_CREATECODEPOOL";
             default:
                 return "?" + type;
         }
@@ -97,6 +103,7 @@ public final class StatusEdit {
     public String codepool;
     public String mode;
     public Set<Long> actualRunningTasks;
+    public byte[] payload;
 
     @Override
     public String toString() {
@@ -106,6 +113,23 @@ public final class StatusEdit {
     public static final StatusEdit NOOP() {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_NOOP;
+        return action;
+    }
+
+    public static final StatusEdit DELETE_CODEPOOL(String codePoolId) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_DELETECODEPOOL;
+        action.codepool = codePoolId;
+        return action;
+    }
+
+    public static final StatusEdit CREATE_CODEPOOL(String codePoolId, long timestamp, byte[] payload, long ttl) {
+        StatusEdit action = new StatusEdit();
+        action.editType = TYPE_CREATECODEPOOL;
+        action.codepool = codePoolId;
+        action.timestamp = timestamp;
+        action.payload = payload;
+        action.executionDeadline = ttl;// a bit weird
         return action;
     }
 
@@ -319,6 +343,16 @@ public final class StatusEdit {
                     break;
                 case TYPE_NOOP:
                     break;
+                case TYPE_DELETECODEPOOL:
+                    doo.writeUTF(codepool);
+                    break;
+                case TYPE_CREATECODEPOOL:
+                    doo.writeUTF(codepool);
+                    doo.writeLong(timestamp);
+                    doo.writeLong(executionDeadline);
+                    doo.writeInt(payload.length);
+                    doo.write(payload);
+                    break;
                 default:
                     throw new UnsupportedOperationException();
 
@@ -427,6 +461,16 @@ public final class StatusEdit {
                 res.transactionId = doo.readLong();
                 break;
             case TYPE_NOOP:
+                break;
+            case TYPE_DELETECODEPOOL:
+                res.codepool = doo.readUTF();
+                break;
+            case TYPE_CREATECODEPOOL:
+                res.codepool = doo.readUTF();
+                res.timestamp = doo.readLong();
+                res.executionDeadline = doo.readLong();
+                res.payload = new byte[doo.readInt()];
+                doo.read(res.payload, 0, res.payload.length);
                 break;
             default:
                 throw new UnsupportedOperationException("editType=" + res.editType);
