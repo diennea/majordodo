@@ -17,25 +17,24 @@
  under the License.
 
  */
-package majordodo.clientfacade;
+package majordodo.client;
 
 /**
- * View of a codepool from the client
+ * Status of a CodePool
  *
  * @author enrico.olivelli
  */
-public class CodePoolView {
+public class CodePoolStatus {
 
-    private String codePoolId;
+    private String id;
     private long creationTimestamp;
-    private long ttl;
 
-    public String getCodePoolId() {
-        return codePoolId;
+    public String getId() {
+        return id;
     }
 
-    public void setCodePoolId(String codePoolId) {
-        this.codePoolId = codePoolId;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public long getCreationTimestamp() {
@@ -44,19 +43,6 @@ public class CodePoolView {
 
     public void setCreationTimestamp(long creationTimestamp) {
         this.creationTimestamp = creationTimestamp;
-    }
-
-    public long getTtl() {
-        return ttl;
-    }
-
-    public void setTtl(long ttl) {
-        this.ttl = ttl;
-    }
-
-    @Override
-    public String toString() {
-        return "CodePoolView{" + "codePoolId=" + codePoolId + ", creationTimestamp=" + creationTimestamp + ", ttl=" + ttl + '}';
     }
 
 }

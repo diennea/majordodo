@@ -38,6 +38,24 @@ public class TaskStatus {
     private String slot;
     private String data;
     private String status;
+    private String codePoolId;
+    private String mode;
+
+    public String getCodePoolId() {
+        return codePoolId;
+    }
+
+    public void setCodePoolId(String codePoolId) {
+        this.codePoolId = codePoolId;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
     public String getTaskId() {
         return taskId;
@@ -140,5 +158,4 @@ public class TaskStatus {
         return "TaskStatus{" + "taskId=" + taskId + ", userId=" + userId + ", deadline=" + deadline + ", createdTimestamp=" + createdTimestamp + ", maxattempts=" + maxattempts + ", attempts=" + attempts + ", tasktype=" + tasktype + ", workerId=" + workerId + ", result=" + result + ", slot=" + slot + ", data=" + data + ", status=" + status + '}';
     }
 
-    
 }

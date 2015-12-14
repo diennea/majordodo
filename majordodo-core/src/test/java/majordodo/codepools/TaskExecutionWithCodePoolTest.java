@@ -220,7 +220,7 @@ public class TaskExecutionWithCodePoolTest {
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
-                            if (task.getStatus() == Task.STATUS_ERROR) {
+                            if (task.getStatus() == Task.STATUS_FINISHED) {
                                 okFinishedForBroker = true;
                                 break;
                             }

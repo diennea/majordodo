@@ -41,6 +41,8 @@ public class TaskStatusView {
     private int attempts;
     private int maxattempts;
     private long executionDeadline;
+    private String mode;
+    private String codePoolId;
 
     public static String convertTaskStatusForClient(int taskStatus) {
         String status;
@@ -162,6 +164,22 @@ public class TaskStatusView {
 
     public void setResult(String result) {
         this.result = result;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public String getCodePoolId() {
+        return codePoolId;
+    }
+
+    public void setCodePoolId(String codePoolId) {
+        this.codePoolId = codePoolId;
     }
 
 }

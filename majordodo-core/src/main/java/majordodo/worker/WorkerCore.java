@@ -68,13 +68,17 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private final ReentrantReadWriteLock runningTasksLock = new ReentrantReadWriteLock(true);
     private final BrokerLocator brokerLocator;
     private final Thread coreThread;
-    private final Path workingDirectory;
+    private final Path codePoolsDirectory;
     private final CodePoolClassloadersManager classloadersManager;
     private volatile boolean stopped = false;
     private Channel channel;
     private WorkerStatusListener listener;
     private KillWorkerHandler killWorkerHandler = KillWorkerHandler.GRACEFULL_STOP;
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
+
+    public CodePoolClassloadersManager getClassloadersManager() {
+        return classloadersManager;
+    }
 
     public KillWorkerHandler getKillWorkerHandler() {
         return killWorkerHandler;
@@ -209,25 +213,36 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         this.location = config.getLocation();
         this.brokerLocator = brokerLocator;
         this.coreThread = new Thread(new ConnectionManager(), "dodo-worker-connection-manager-" + workerId);
-        if (config.getWorkingDirectory() == null || config.getWorkingDirectory().isEmpty()) {
-            workingDirectory = Paths.get("").toAbsolutePath();
+        if (config.isEnableCodePools()) {
+            if (config.getCodePoolsDirectory() == null || config.getCodePoolsDirectory().isEmpty()) {
+                codePoolsDirectory = Paths.get("codepools").toAbsolutePath();
+            } else {
+                codePoolsDirectory = Paths.get(config.getCodePoolsDirectory()).toAbsolutePath();
+            }
+            LOGGER.log(Level.SEVERE, "CodePools Working directory {0}", codePoolsDirectory);
+            try {
+                this.classloadersManager = new CodePoolClassloadersManager(codePoolsDirectory, this);
+            } catch (IOException err) {
+                throw new RuntimeException(err);
+            }
         } else {
-            workingDirectory = Paths.get(config.getWorkingDirectory());
-        }
-        LOGGER.log(Level.SEVERE, "Working directory {0}", workingDirectory);
-        try {
-            this.classloadersManager = new CodePoolClassloadersManager(workingDirectory, this);
-        } catch (IOException err) {
-            throw new RuntimeException(err);
+            this.classloadersManager = null;
+            this.codePoolsDirectory = null;
         }
     }
 
     public void start() {
         if (executorFactory == null) {
-            executorFactory = new CodePoolAwareExecutorFactory(
-                    new TaskModeAwareExecutorFactory(
-                            new NotImplementedTaskExecutorFactory()
-                    ), classloadersManager);
+            if (codePoolsDirectory == null) {
+                executorFactory = new TaskModeAwareExecutorFactory(
+                        new NotImplementedTaskExecutorFactory()
+                );
+            } else {
+                executorFactory = new CodePoolAwareExecutorFactory(
+                        new TaskModeAwareExecutorFactory(
+                                new NotImplementedTaskExecutorFactory()
+                        ), classloadersManager);
+            }
         }
         this.coreThread.start();
         JVMWorkersRegistry.registerWorker(workerId, this);
@@ -334,7 +349,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
-        classloadersManager.close();
+        if (classloadersManager != null) {
+            classloadersManager.close();
+        }
         JVMWorkersRegistry.unregisterWorker(workerId);
     }
 

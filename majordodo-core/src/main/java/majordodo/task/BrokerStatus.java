@@ -135,6 +135,12 @@ public class BrokerStatus {
         s.setMaxattempts(task.getMaxattempts());
         s.setSlot(task.getSlot());
         s.setExecutionDeadline(task.getExecutionDeadline());
+        if (task.getMode() != null && !Task.MODE_EXECUTE_FACTORY.equals(task.getMode())) {
+            s.setMode(task.getMode());
+        }
+        if (task.getCodepool() != null) {
+            s.setCodePoolId(task.getCodepool());
+        }
         return s;
     }
 
@@ -192,22 +198,28 @@ public class BrokerStatus {
         try {
             for (CodePool codePool : codePools.values()) {
                 if (codePool.getTtl() > 0) {
-                    String codePoolId = codePool.getId();
-                    boolean hasTasks = false;
-                    for (Task t : tasks.values()) {
-                        if (codePoolId.equals(t.getCodepool())) {
-                            switch (t.getStatus()) {
-                                case Task.STATUS_RUNNING:
-                                case Task.STATUS_WAITING:
-                                    hasTasks = true;
-                                    toPurge.add(codePoolId);
+                    long delta = System.currentTimeMillis() - codePool.getCreationTimestamp();
+                    if (delta > codePool.getTtl()) {
+                        String codePoolId = codePool.getId();
+                        boolean hasTasks = false;
+                        for (Task t : tasks.values()) {
+                            if (codePoolId.equals(t.getCodepool())) {
+                                switch (t.getStatus()) {
+                                    case Task.STATUS_RUNNING:
+                                    case Task.STATUS_WAITING:
+                                        hasTasks = true;                                        
+                                        break;
+                                }
+                                if (hasTasks) {
                                     break;
-                            }
-                            if (hasTasks) {
-                                break;
+                                }
                             }
                         }
+                        if (!hasTasks) {
+                            toPurge.add(codePoolId);
+                        }
                     }
+                    
                 }
             }
         } finally {

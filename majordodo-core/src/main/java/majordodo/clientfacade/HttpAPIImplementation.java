@@ -165,6 +165,22 @@ public class HttpAPIImplementation {
                     resultMap.put("status", "not_started");
                 }
                 break;
+            case "codePool":
+                if (broker != null) {
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                    try {
+                        String id = req.getParameter("codePoolId") + "";
+                        CodePoolView codePool = broker.getClient().getCodePool(id);
+                        Map<String, Object> map = serializeCodePoolForClient(codePool);
+                        resultMap.put("codePool", codePool);
+                    } catch (Exception err) {
+                        resultMap.put("ok", false);
+                        resultMap.put("error", "bad task id " + err);
+                    }
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
             case "tasks":
                 if (broker != null) {
                     int max = 100;
@@ -332,6 +348,17 @@ public class HttpAPIImplementation {
         resp.getOutputStream().close();
     }
 
+    private static Map<String, Object> serializeCodePoolForClient(CodePoolView t) {
+        Map<String, Object> map = new HashMap<>();
+        if (t == null) {
+            return map;
+        }
+        map.put("codePoolId", t.getCodePoolId());
+        map.put("creationTimestamp", t.getCreationTimestamp() + "");
+        map.put("ttl", t.getTtl() + "");
+        return map;
+    }
+
     private static Map<String, Object> serializeTaskForClient(TaskStatusView t) {
         Map<String, Object> map = new HashMap<>();
         if (t == null) {
@@ -348,9 +375,16 @@ public class HttpAPIImplementation {
         map.put("result", t.getResult());
         map.put("slot", t.getSlot());
         map.put("data", t.getData());
+        if (t.getMode() != null) {
+            map.put("mode", t.getMode());
+        }
+        if (t.getCodePoolId() != null) {
+            map.put("codePoolId", t.getCodePoolId());
+        }
         int taskStatus = t.getStatus();
         String status = TaskStatusView.convertTaskStatusForClient(taskStatus);
         map.put("status", status);
+        System.out.println("restask:" + map);
         return map;
     }
 
@@ -403,7 +437,7 @@ public class HttpAPIImplementation {
                     if (slot != null && slot.trim().isEmpty()) {
                         slot = null;
                     }
-                    String codepool = (String) data.get("codepool");
+                    String codepool = (String) data.get("codePoolId");
                     if (codepool != null && codepool.trim().isEmpty()) {
                         codepool = null;
                     }
@@ -472,7 +506,7 @@ public class HttpAPIImplementation {
                             if (slot != null && slot.trim().isEmpty()) {
                                 slot = null;
                             }
-                            String codepool = (String) data.get("codepool");
+                            String codepool = (String) data.get("codePoolId");
                             if (codepool != null && codepool.trim().isEmpty()) {
                                 codepool = null;
                             }
@@ -481,7 +515,7 @@ public class HttpAPIImplementation {
                                 mode = null;
                             }
 
-                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt,codepool,mode));
+                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
                         }
                         try {
                             List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);
@@ -553,6 +587,55 @@ public class HttpAPIImplementation {
                     resultMap.put("ok", true);
                     resultMap.put("transaction", transactionId);
                     resultMap.put("ok", error == null && transactionId > 0);
+                    break;
+                }
+                case "deleteCodePool": {
+                    String error = "";
+                    String id = (String) data.get("id");
+                    try {
+                        broker.getClient().deleteCodePool(id);
+                        resultMap.put("ok", true);
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        error = err + "";
+                    }
+
+                    if (!error.isEmpty()) {
+                        resultMap.put("ok", false);
+                        resultMap.put("error", error);
+                    }
+                    break;
+                }
+                case "createCodePool": {
+                    String error = "";
+                    String id = (String) data.get("id");
+                    long ttl = 0;
+                    String codepooldata = (String) data.get("data");
+
+                    if (data.containsKey("ttl")) {
+                        ttl = Long.parseLong(data.get("ttl") + "");
+                    }
+
+                    if (auth_user.getRole() != UserRole.ADMINISTRATOR) {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                        return;
+                    }
+
+                    CreateCodePoolResult result;
+                    try {
+                        result = broker.getClient().createCodePool(new CreateCodePoolRequest(id, System.currentTimeMillis(), ttl, codepooldata.getBytes(StandardCharsets.UTF_8)));
+                        resultMap.put("ok", result.ok);
+                        resultMap.put("result", result.outcome);
+                    } catch (Exception err) {
+                        LOGGER.log(Level.SEVERE, "error for " + data, err);
+                        error = err + "";
+                        result = null;
+                    }
+
+                    if (!error.isEmpty()) {
+                        resultMap.put("ok", false);
+                        resultMap.put("error", error);
+                    }
                     break;
                 }
                 default: {

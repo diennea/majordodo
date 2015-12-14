@@ -42,10 +42,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
+import majordodo.client.CodePoolUtils;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.CreateCodePoolRequest;
 import majordodo.clientfacade.CreateCodePoolResult;
-import majordodo.worker.TaskModeAwareExecutorFactory;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -147,7 +147,7 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
         String taskParams = "newinstance:majordodo.testclients.SimpleExecutor";
         final String CODEPOOL = "codepool";
         Path expectedJar = mavenTargetDir.getParent().getParent().resolve("majordodo-test-clients").resolve("target").resolve("majordodo-test-clients-" + Broker.VERSION() + ".jar");
-        byte[] mockCodePoolData = TaskModeAwareExecutorFactory.createZipWithOneEntry("codepooltest.jar", Files.readAllBytes(expectedJar));
+        byte[] mockCodePoolData = CodePoolUtils.createZipWithOneEntry("codepooltest.jar", Files.readAllBytes(expectedJar));
 
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
@@ -166,7 +166,7 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
-                    
+
                     WorkerStatusListener listener = new WorkerStatusListener() {
 
                         @Override
@@ -188,16 +188,15 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
-                    config.setWorkingDirectory("target");
+                    config.setCodePoolsDirectory("target");
+                    config.setEnableCodePools(true);
                     try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
                         core.start();
                         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
 
-                        
-
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
-                            TaskStatusView task = broker.getClient().getTask(taskId);                            
+                            TaskStatusView task = broker.getClient().getTask(taskId);
                             if (task.getStatus() == Task.STATUS_FINISHED) {
                                 okFinishedForBroker = true;
                                 break;

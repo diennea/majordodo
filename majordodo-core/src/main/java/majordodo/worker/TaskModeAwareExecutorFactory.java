@@ -100,38 +100,6 @@ public class TaskModeAwareExecutorFactory implements TaskExecutorFactory {
 
     }
 
-    /**
-     * Serializes an Executor for execution with
-     * {@link  TaskModeAwareExecutorFactory}
-     *
-     * @param executor
-     * @return
-     * @throws Exception
-     */
-    public static String serializeExecutor(TaskExecutor executor) throws Exception {
-        ByteArrayOutputStream oo = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(oo);
-        os.writeUnshared(executor);
-        os.close();
-        return Base64.getEncoder().encodeToString(oo.toByteArray());
-    }
-
-    public static byte[] createZipWithOneEntry(String entryfilename, byte[] filedata) throws IOException {
-        ByteArrayOutputStream oo = new ByteArrayOutputStream();
-        try (ZipOutputStream zipper = new ZipOutputStream(oo, StandardCharsets.UTF_8);) {
-            int posslash = entryfilename.indexOf('/');
-            if (posslash >= 0) { // simple case for directory
-                String dire = entryfilename.substring(0, posslash);
-                ZipEntry entry = new ZipEntry(dire);
-                zipper.putNextEntry(entry);
-                zipper.closeEntry();
-            }
-            ZipEntry entry = new ZipEntry(entryfilename);
-            zipper.putNextEntry(entry);
-            zipper.write(filedata);
-            zipper.closeEntry();
-        }
-        return oo.toByteArray();
-    }
+    
 
 }

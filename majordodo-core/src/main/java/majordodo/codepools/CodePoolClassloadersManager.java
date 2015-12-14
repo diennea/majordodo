@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,7 +42,7 @@ public class CodePoolClassloadersManager {
     private final WorkerCore parent;
 
     public CodePoolClassloadersManager(Path codeTemporaryDirectory, WorkerCore parent) throws IOException {
-        this.codeTemporaryDirectory = codeTemporaryDirectory.resolve("codepools");
+        this.codeTemporaryDirectory = codeTemporaryDirectory;
         Files.createDirectories(codeTemporaryDirectory);
         this.parent = parent;
     }
@@ -55,6 +56,7 @@ public class CodePoolClassloadersManager {
             }
             byte[] data = parent.downloadCodePool(codePoolId);
             cl = new CodePoolClassloader(Thread.currentThread().getContextClassLoader(), codePoolId, data, codeTemporaryDirectory);
+            System.out.println("Classpath: "+Arrays.toString(cl.getURLs()));
             classloaders.put(codePoolId, cl);
             return cl;
         } finally {

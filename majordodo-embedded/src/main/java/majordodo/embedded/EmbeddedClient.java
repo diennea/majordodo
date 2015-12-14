@@ -19,8 +19,11 @@
  */
 package majordodo.embedded;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.client.BrokerStatus;
 import majordodo.clientfacade.BrokerStatusView;
@@ -31,6 +34,10 @@ import majordodo.client.TaskStatus;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.client.ClientConnection;
 import majordodo.client.ClientException;
+import majordodo.client.CodePoolStatus;
+import majordodo.client.CreateCodePoolRequest;
+import majordodo.client.CreateCodePoolResult;
+import majordodo.clientfacade.CodePoolView;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
 
@@ -166,7 +173,7 @@ public class EmbeddedClient implements AutoCloseable {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
                 SubmitTaskResult submitTask = broker.getClient().submitTask(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(),null,null));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(), null, null));
                 SubmitTaskResponse resp = new SubmitTaskResponse();
                 resp.setTaskId(submitTask.getTaskId() + "");
                 if (submitTask.getOutcome() != null) {
@@ -199,7 +206,7 @@ public class EmbeddedClient implements AutoCloseable {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
                 requests.add(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(),null,null));
+                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(), null, null));
             }
             try {
                 List<SubmitTaskResult> submitTasks = broker.getClient().submitTasks(requests);
@@ -217,6 +224,46 @@ public class EmbeddedClient implements AutoCloseable {
                 return results;
             } catch (Exception err) {
                 throw new ClientException(err);
+            }
+        }
+
+        @Override
+        public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws ClientException {
+            try {
+                majordodo.clientfacade.CreateCodePoolResult res = broker.getClient().createCodePool(new majordodo.clientfacade.CreateCodePoolRequest(request.getCodePoolID(), System.currentTimeMillis(), request.getTtl(), request.getCodePoolData().getBytes(StandardCharsets.UTF_8)));
+                CreateCodePoolResult cr = new CreateCodePoolResult();
+                if (!res.ok) {
+                    throw new Exception("createCodePool failed " + res.outcome);
+                }
+                cr.setOk(true);
+                return cr;
+            } catch (Exception err) {
+                throw new ClientException(err);
+            }
+        }
+
+        @Override
+        public void deleteCodePool(String codePoolId) throws ClientException {
+            try {
+                broker.getClient().deleteCodePool(codePoolId);
+            } catch (Exception err) {
+                throw new ClientException(err);
+            }
+        }
+
+        @Override
+        public CodePoolStatus getCodePoolStatus(String codePoolId) throws ClientException {
+            try {
+                CodePoolView codePool = broker.getClient().getCodePool(codePoolId);
+                if (codePool == null) {
+                    return null;
+                }
+                CodePoolStatus s = new CodePoolStatus();
+                s.setCreationTimestamp(codePool.getCreationTimestamp());
+                s.setId(codePool.getCodePoolId());
+                return s;
+            } catch (Exception ex) {
+                throw new ClientException(ex);
             }
         }
 

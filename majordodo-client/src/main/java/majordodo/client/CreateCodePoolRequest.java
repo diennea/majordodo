@@ -17,33 +17,29 @@
  under the License.
 
  */
-package majordodo.clientfacade;
+package majordodo.client;
 
 /**
- * View of a codepool from the client
+ * Request to create a new CodePool. Each CodePool has an unique ID. A CodePool
+ * is immutable, you cannot update a CodePool once created
  *
  * @author enrico.olivelli
  */
-public class CodePoolView {
+public class CreateCodePoolRequest {
 
-    private String codePoolId;
-    private long creationTimestamp;
+    private String codePoolID;
     private long ttl;
+    private String codePoolData;
 
-    public String getCodePoolId() {
-        return codePoolId;
+    public CreateCodePoolRequest() {
     }
 
-    public void setCodePoolId(String codePoolId) {
-        this.codePoolId = codePoolId;
+    public String getCodePoolID() {
+        return codePoolID;
     }
 
-    public long getCreationTimestamp() {
-        return creationTimestamp;
-    }
-
-    public void setCreationTimestamp(long creationTimestamp) {
-        this.creationTimestamp = creationTimestamp;
+    public void setCodePoolID(String codePoolID) {
+        this.codePoolID = codePoolID;
     }
 
     public long getTtl() {
@@ -54,9 +50,12 @@ public class CodePoolView {
         this.ttl = ttl;
     }
 
-    @Override
-    public String toString() {
-        return "CodePoolView{" + "codePoolId=" + codePoolId + ", creationTimestamp=" + creationTimestamp + ", ttl=" + ttl + '}';
+    public String getCodePoolData() {
+        return codePoolData;
+    }
+
+    public void setCodePoolData(String codePoolData) {
+        this.codePoolData = codePoolData;
     }
 
 }

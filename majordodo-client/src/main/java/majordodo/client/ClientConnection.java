@@ -29,18 +29,54 @@ import java.util.List;
  */
 public interface ClientConnection extends AutoCloseable {
 
+    @Override
     void close() throws ClientException;
 
+    /**
+     * Commits the current transaction
+     *
+     * @throws ClientException
+     */
     void commit() throws ClientException;
 
+    /**
+     * Gets actual broker status
+     *
+     * @return
+     * @throws ClientException
+     */
     BrokerStatus getBrokerStatus() throws ClientException;
 
+    /**
+     * Gets the status of a task
+     *
+     * @param id
+     * @return
+     * @throws ClientException
+     */
     TaskStatus getTaskStatus(String id) throws ClientException;
 
+    /**
+     * Tells whether this connection is transacted, that it that it creates
+     * transaction
+     *
+     * @return
+     */
     boolean isTransacted();
 
+    /**
+     * Rollbacks current uncommitted work
+     *
+     * @throws ClientException
+     */
     void rollback() throws ClientException;
 
+    /**
+     * Changes transaction mode. Transaction mode cannot be changed if a
+     * transaction is active
+     *
+     * @param transacted
+     */
     void setTransacted(boolean transacted);
 
     /**
@@ -65,5 +101,30 @@ public interface ClientConnection extends AutoCloseable {
      * @throws IOException
      */
     List<SubmitTaskResponse> submitTasks(List<SubmitTaskRequest> requests) throws ClientException;
+
+    /**
+     * Creates a new CodePool
+     *
+     * @param request
+     * @return
+     * @throws ClientException
+     */
+    CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws ClientException;
+
+    /**
+     * Deletes a CodePool if exists
+     *
+     * @param codePoolId
+     * @throws ClientException
+     */
+    void deleteCodePool(String codePoolId) throws ClientException;
+    
+    /**
+     * Get Info about a CodePool. Returns null if the CodePool does not exist
+     * @param codePoolId
+     * @return
+     * @throws ClientException 
+     */
+    CodePoolStatus getCodePoolStatus(String codePoolId) throws ClientException;
 
 }

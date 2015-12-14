@@ -51,7 +51,13 @@
             <artifactId>zookeeper</artifactId>
             <version>3.4.6</version>
             <optional>true</optional>
-        </dependency>        
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>majordodo-test-clients</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

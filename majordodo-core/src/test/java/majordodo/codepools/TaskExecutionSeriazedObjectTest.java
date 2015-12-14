@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
+import majordodo.client.CodePoolUtils;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.worker.TaskModeAwareExecutorFactory;
 import org.junit.After;
@@ -154,9 +155,7 @@ public class TaskExecutionSeriazedObjectTest {
         long taskId;
         String workerId = "abc";
         MyExecutorClass executorToBeSerialized = new MyExecutorClass();
-        String taskParams = TaskModeAwareExecutorFactory.serializeExecutor(executorToBeSerialized);
-
-        byte[] mockCodePoolData = "test".getBytes();
+        String taskParams = CodePoolUtils.serializeExecutor(executorToBeSerialized);
 
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {

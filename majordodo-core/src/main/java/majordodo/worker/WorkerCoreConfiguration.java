@@ -42,7 +42,8 @@ public class WorkerCoreConfiguration {
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
     private Set<Integer> excludedGroups;
-    private String workingDirectory;
+    private String codePoolsDirectory;
+    private boolean enableCodePools;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
@@ -72,18 +73,30 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * Working directory, default to user.dir if not set
-     * @return 
+     * Directory for temporary directories for CodePools
+     *
+     * @return
      */
-    public String getWorkingDirectory() {
-        return workingDirectory;
+    public String getCodePoolsDirectory() {
+        return codePoolsDirectory;
     }
 
-    public void setWorkingDirectory(String workingDirectory) {
-        this.workingDirectory = workingDirectory;
+    public void setCodePoolsDirectory(String codePoolsDirectory) {
+        this.codePoolsDirectory = codePoolsDirectory;
     }
-    
-    
+
+    /**
+     * Enable CodePools
+     *
+     * @return
+     */
+    public boolean isEnableCodePools() {
+        return enableCodePools;
+    }
+
+    public void setEnableCodePools(boolean enableCodePools) {
+        this.enableCodePools = enableCodePools;
+    }
 
     /**
      * Worker id (not the processId!)
@@ -193,10 +206,10 @@ public class WorkerCoreConfiguration {
     public void setMaxWaitPendingFinishedTaskNotifications(long maxWaitPendingFinishedTaskNotifications) {
         this.maxWaitPendingFinishedTaskNotifications = maxWaitPendingFinishedTaskNotifications;
     }
-    
-    
+
     /**
-     * Maximum time to wait before issuing a ping (anche configuration change) to the broker
+     * Maximum time to wait before issuing a ping (anche configuration change)
+     * to the broker
      */
     private long maxKeepAliveTime = 10000;
 
@@ -207,7 +220,6 @@ public class WorkerCoreConfiguration {
     public void setMaxKeepAliveTime(long maxKeepAliveTime) {
         this.maxKeepAliveTime = maxKeepAliveTime;
     }
-    
 
     /**
      * Shared secret among all the brokers and workers. Provides minimum

@@ -33,6 +33,38 @@ public class SubmitTaskRequest {
     private int attempt;
     private String slot;
     private long timeToLive;
+    private String codePoolId;
+    private String mode;
+
+    /**
+     * Task will be executed using a TaskExecutorFactory which will use the "data" as a value with arbitrary meaning
+     */
+    public static final String MODE_FACTORY = "factory";
+    /**
+     * Task will be executed using a TaskExecutor which is obtained deserializing the "data" field, which is to be serialized using the provided methods
+     */
+    public static final String MODE_OBJECT = "object";
+
+    public String getCodePoolId() {
+        return codePoolId;
+    }
+
+    public void setCodePoolId(String codePoolId) {
+        this.codePoolId = codePoolId;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    /**
+     * @see #MODE_FACTORY
+     * @see #MODE_OBJECT
+     * @param mode
+     */
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
     public int getAttempt() {
         return attempt;
@@ -89,5 +121,5 @@ public class SubmitTaskRequest {
     public void setTimeToLive(long timeToLive) {
         this.timeToLive = timeToLive;
     }
-        
+
 }
