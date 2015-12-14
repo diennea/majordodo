@@ -42,6 +42,7 @@ import majordodo.client.CreateCodePoolResult;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
+import majordodo.client.TaskSubmitter;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -72,6 +73,7 @@ public class HTTPClientConnection implements ClientConnection {
     private static final boolean debug = Boolean.getBoolean("majordodo.client.debug");
     private BrokerAddress _broker;
     private final BrokerDiscoveryService discoveryService;
+    private TaskSubmitter submitter;
 
     public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerDiscoveryService discoveryService) {
         this.httpclient = client;
@@ -527,6 +529,14 @@ public class HTTPClientConnection implements ClientConnection {
     @Override
     public void deleteCodePool(String codePoolId) throws ClientException {
         request("POST", map("action", "deleteCodePool", "id", codePoolId));
+    }
+
+    @Override
+    public TaskSubmitter submitter() {
+        if (submitter == null) {
+            submitter = new TaskSubmitter(this);
+        }
+        return submitter;
     }
 
 }

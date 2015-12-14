@@ -118,13 +118,21 @@ public interface ClientConnection extends AutoCloseable {
      * @throws ClientException
      */
     void deleteCodePool(String codePoolId) throws ClientException;
-    
+
     /**
      * Get Info about a CodePool. Returns null if the CodePool does not exist
+     *
      * @param codePoolId
      * @return
-     * @throws ClientException 
+     * @throws ClientException
      */
     CodePoolStatus getCodePoolStatus(String codePoolId) throws ClientException;
+
+    /**
+     * Utility for tasks submission
+     *
+     * @return
+     */
+    TaskSubmitter submitter();
 
 }

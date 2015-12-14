@@ -37,6 +37,7 @@ import majordodo.client.ClientException;
 import majordodo.client.CodePoolStatus;
 import majordodo.client.CreateCodePoolRequest;
 import majordodo.client.CreateCodePoolResult;
+import majordodo.client.TaskSubmitter;
 import majordodo.clientfacade.CodePoolView;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
@@ -61,6 +62,15 @@ public class EmbeddedClient implements AutoCloseable {
         Broker broker;
         long transactionId;
         boolean transacted;
+        TaskSubmitter submitter;
+
+        @Override
+        public TaskSubmitter submitter() {
+            if (submitter == null) {
+                submitter = new TaskSubmitter(this);
+            }
+            return submitter;
+        }
 
         public EmbeddedBrokerConnection(Broker broker) {
             this.broker = broker;

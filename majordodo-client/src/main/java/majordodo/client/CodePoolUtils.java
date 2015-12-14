@@ -28,6 +28,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
@@ -72,11 +73,16 @@ public class CodePoolUtils {
      * @throws Exception
      */
     public static String serializeExecutor(Object executor) throws Exception {
-        ByteArrayOutputStream oo = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(oo);
-        os.writeUnshared(executor);
-        os.close();
-        return "base64:" + Base64.getEncoder().encodeToString(oo.toByteArray());
+        if (executor instanceof Class) {
+            Class c = (Class) executor;
+            return "newinstance:" + c.getName();
+        } else {
+            ByteArrayOutputStream oo = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(oo);
+            os.writeUnshared(executor);
+            os.close();
+            return "base64:" + Base64.getEncoder().encodeToString(oo.toByteArray());
+        }
     }
 
     public static byte[] createZipWithOneEntry(String entryfilename, byte[] filedata) throws IOException {
@@ -120,23 +126,28 @@ public class CodePoolUtils {
             }
             zoo.closeEntry();
         } else if (slocation.startsWith("file:/")) {
-            String before = slocation.substring(0, slocation.length() - res.length());
+//            String before = slocation.substring(0, slocation.length() - res.length());
 //            System.out.println("before:       " + before);
             // package all the classes in the directory
-            URL locationbase = klass.getResource("");
-            String slocationbase = locationbase.toString();
+            URL locationbase = klass.getResource("/");
+            String slocationbase = locationbase.toString();            
             Path directory = Paths.get(slocationbase.substring("file:".length()));
-//            System.out.println("slocationbase:" + slocationbase);
-//            System.out.println("directory    :" + directory);
-            int skip = before.length();
+            System.out.println("slocationbase:" + slocationbase);
+            System.out.println("directory    :" + directory);
+            int skip = slocationbase.length()-6;
             addFileToZip(skip, directory.toFile(), zoo);
         }
-        return oo.toByteArray();
+        zoo.close();
+        byte[] resb = oo.toByteArray();
+//        Files.write(Paths.get("debug.jar"), resb);
+        return resb;
     }
 
     private static void addFileToZip(int skipprefix, File file, ZipOutputStream zipper) throws IOException {
         String raw = file.getAbsolutePath().replace("\\", "/");
-        //System.out.println("addFileToZipRaw " + raw);
+        System.out.println("addFileToZipRaw " + raw);
+        System.out.println("skipprefix " + skipprefix);
+        System.out.println("raw.length " + raw.length());
         if (raw.length() == skipprefix) {
             if (file.isDirectory()) {
                 for (File child : file.listFiles()) {
@@ -145,7 +156,7 @@ public class CodePoolUtils {
             }
         } else {
             String path = raw.substring(skipprefix + 1);
-            //System.out.println("addFileToZip " + path);
+            System.out.println("addFileToZip " + path);
             if (file.isDirectory()) {
                 ZipEntry entry = new ZipEntry(path);
                 zipper.putNextEntry(entry);
