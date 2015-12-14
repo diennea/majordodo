@@ -100,7 +100,7 @@ public class CodePoolUtils {
     /**
      * Packs bytecode in a CodePool
      *
-     * @param claxx
+     * @param klass
      * @return
      * @throws IOException
      */
