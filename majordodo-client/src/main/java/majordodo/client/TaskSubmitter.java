@@ -126,7 +126,6 @@ public class TaskSubmitter {
         } else {
             CreateCodePoolRequest createCodePoolRequest = new CreateCodePoolRequest();
             createCodePoolRequest.setCodePoolData(CodePoolUtils.encodeCodePoolData(new ByteArrayInputStream(codePoolData)));
-            System.out.println("pooldata:"+createCodePoolRequest.getCodePoolData());
             createCodePoolRequest.setTtl(codePoolTimeToLive);
             createCodePoolRequest.setCodePoolID(id);
             connection.createCodePool(createCodePoolRequest);
