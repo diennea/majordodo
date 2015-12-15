@@ -46,6 +46,11 @@ public class TaskSubmitter {
         this.connection = connection;
     }
 
+    public TaskSubmitter codePoolTimeToLive(long codePoolTimeToLive) {
+        this.codePoolTimeToLive = codePoolTimeToLive;
+        return this;
+    }
+
     public TaskSubmitter timeToLive(int timeToLive) {
         this.timeToLive = timeToLive;
         return this;
