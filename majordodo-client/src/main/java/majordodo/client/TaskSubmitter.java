@@ -96,11 +96,7 @@ public class TaskSubmitter {
         request.setUserid(userId);
         request.setCodePoolId(codePoolId);
         try {
-            if (classMode) {
-                request.setData(CodePoolUtils.serializeExecutor(executor));
-            } else {
-                request.setData(CodePoolUtils.serializeExecutor(executor));
-            }
+            request.setData(CodePoolUtils.serializeExecutor(executor));
         } catch (Exception err) {
             throw new ClientException(err);
         }

@@ -87,7 +87,7 @@ public class CodePoolUtilsTest {
         // invoking the test from Maven in single project mode the class is loaded from the local repository
         boolean ok1 = entries.stream().filter(s -> s.startsWith("majordodo-test-clients-") && s.endsWith(".jar")).findFirst().isPresent();
         // invoking the test from Maven Reactor puts into the classpath the "target/classes" directory of majordodo-test-clients
-        boolean ok2 = entries.stream().filter(s -> s.startsWith("generated-") && s.endsWith(".jar")).findFirst().isPresent();
+        boolean ok2 = entries.stream().filter(s -> s.startsWith("generated_") && s.endsWith(".jar")).findFirst().isPresent();
         assertTrue(ok1 || ok2);
     }
 }
