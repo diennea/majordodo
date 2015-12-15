@@ -35,7 +35,7 @@
         <dependency>
             <groupId>org.apache.bookkeeper</groupId>
             <artifactId>bookkeeper-server</artifactId>
-            <version>4.3.1</version>
+            <version>4.3.2</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -90,6 +90,10 @@
             <version>3.4.6</version>
             <scope>compile</scope>
             <exclusions>
+                <exclusion>
+                    <groupId>jline</groupId>
+                    <artifactId>jline</artifactId>                    
+                </exclusion>
                 <exclusion>
                     <groupId>javax.jms</groupId>
                     <artifactId>jms</artifactId>

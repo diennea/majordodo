@@ -80,8 +80,8 @@ public class TaskModeAwareExecutorFactory implements TaskExecutorFactory {
                 TaskExecutor res = (TaskExecutor) is.readUnshared();
                 return res;
             } else if (parameter.startsWith("newinstance:")) {
-                parameter = parameter.substring("newinstance:".length());                
-                URLClassLoader cc = (URLClassLoader) tccl;                
+                parameter = parameter.substring("newinstance:".length());
+                URLClassLoader cc = (URLClassLoader) tccl;
                 Class clazz = Class.forName(parameter, true, tccl);
                 TaskExecutor res = (TaskExecutor) clazz.newInstance();
                 return res;
@@ -99,7 +99,5 @@ public class TaskModeAwareExecutorFactory implements TaskExecutorFactory {
         }
 
     }
-
-    
 
 }

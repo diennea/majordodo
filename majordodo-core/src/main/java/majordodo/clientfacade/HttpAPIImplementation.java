@@ -22,6 +22,7 @@ package majordodo.clientfacade;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -623,7 +624,7 @@ public class HttpAPIImplementation {
 
                     CreateCodePoolResult result;
                     try {
-                        result = broker.getClient().createCodePool(new CreateCodePoolRequest(id, System.currentTimeMillis(), ttl, codepooldata.getBytes(StandardCharsets.UTF_8)));
+                        result = broker.getClient().createCodePool(new CreateCodePoolRequest(id, System.currentTimeMillis(), ttl, Base64.getDecoder().decode(codepooldata)));
                         resultMap.put("ok", result.ok);
                         resultMap.put("result", result.outcome);
                     } catch (Exception err) {

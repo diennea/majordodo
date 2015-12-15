@@ -45,24 +45,27 @@ public class CodePoolUtilsTest {
 
     @Test
     public void packMeTest() throws Exception {
-        byte[] zip = CodePoolUtils.createCodePoolDataFromClass(CodePoolUtilsTest.class);
+        byte[] zip = CodePoolUtils.createCodePoolDataFromClass(CodePoolUtilsTest.class);        
         Set<String> entries = new HashSet<>();
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip));) {
             ZipEntry nextEntry;
             while ((nextEntry = in.getNextEntry()) != null) {
                 if (nextEntry.isDirectory()) {
-//                    System.out.println("dir  " + nextEntry.getName());
+                    System.out.println("dir  " + nextEntry.getName());
                 } else {
-//                    System.out.println("file  " + nextEntry.getName());
+                    System.out.println("file  " + nextEntry.getName());
                     entries.add(nextEntry.getName());
                 }
             }
         }
-        assertTrue(entries.contains("majordodo/client/CodePoolUtilsTest.class"));
+        String entry = entries.stream().filter(s -> s.startsWith("generated_") && s.endsWith(".jar")).findFirst().orElse(null);
+        assertTrue(entry != null);
+        
+//        assertTrue(entries.contains("majordodo/client/CodePoolUtilsTest.class"));
 
         Path directory = folder.newFolder().toPath();
         CodePoolUtils.unzipCodePoolData(directory, zip);
-        assertTrue(Files.isRegularFile(directory.resolve("majordodo/client/CodePoolUtilsTest.class")));
+        assertTrue(Files.isRegularFile(directory.resolve(entry)));
     }
 
     @Test
@@ -73,9 +76,9 @@ public class CodePoolUtilsTest {
             ZipEntry nextEntry;
             while ((nextEntry = in.getNextEntry()) != null) {
                 if (nextEntry.isDirectory()) {
-//                    System.out.println("dir  " + nextEntry.getName());
+                    System.out.println("dir  " + nextEntry.getName());
                 } else {
-//                    System.out.println("file  " + nextEntry.getName());
+                    System.out.println("file  " + nextEntry.getName());
                     entries.add(nextEntry.getName());
                 }
             }
@@ -84,7 +87,7 @@ public class CodePoolUtilsTest {
         // invoking the test from Maven in single project mode the class is loaded from the local repository
         boolean ok1 = entries.stream().filter(s -> s.startsWith("majordodo-test-clients-") && s.endsWith(".jar")).findFirst().isPresent();
         // invoking the test from Maven Reactor puts into the classpath the "target/classes" directory of majordodo-test-clients
-        boolean ok2 = entries.contains("majordodo/client/CodePoolUtilsTest.class");
+        boolean ok2 = entries.stream().filter(s -> s.startsWith("generated-") && s.endsWith(".jar")).findFirst().isPresent();
         assertTrue(ok1 || ok2);
     }
 }

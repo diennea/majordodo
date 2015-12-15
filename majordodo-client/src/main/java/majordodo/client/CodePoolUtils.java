@@ -36,6 +36,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.jar.JarEntry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -46,6 +48,8 @@ import java.util.zip.ZipOutputStream;
  * @author enrico.olivelli
  */
 public class CodePoolUtils {
+
+    private static final Logger LOGGER = Logger.getLogger(CodePoolUtils.class.getName());
 
     /**
      * Encodes to base64 the given CodePool Data
@@ -118,8 +122,8 @@ public class CodePoolUtils {
 
         String res = '/' + klass.getName().replace('.', '/') + ".class";
         URL location = klass.getResource(res);
-        System.out.println("createCodePoolDataFromClass "+klass+" -> "+location);
-        String slocation = location.toString();        
+        System.out.println("createCodePoolDataFromClass " + klass + " -> " + location);
+        String slocation = location.toString();
         ByteArrayOutputStream oo = new ByteArrayOutputStream();
         try (ZipOutputStream zoo = new ZipOutputStream(oo)) {
             if (slocation.startsWith("jar:file:")) {
@@ -137,9 +141,14 @@ public class CodePoolUtils {
                 URL locationbase = klass.getResource("/");
                 // package all the classes in the directory  
                 String slocationbase = locationbase.toString();
-                Path directory = Paths.get(slocationbase.substring("file:".length()));                
+                Path directory = Paths.get(slocationbase.substring("file:".length()));
                 int skip = slocationbase.length() - 6;
-                addFileToZip(skip, directory.toFile(), zoo);
+                ZipEntry dummy_entry = new ZipEntry("generated_" + System.currentTimeMillis() + ".jar");
+                zoo.putNextEntry(dummy_entry);
+                ZipOutputStream dummy_jar = new ZipOutputStream(zoo);
+                addFileToZip(skip, directory.toFile(), dummy_jar);
+                dummy_jar.finish();
+                zoo.closeEntry();
             }
         }
         byte[] resb = oo.toByteArray();
@@ -161,7 +170,7 @@ public class CodePoolUtils {
                 for (File child : file.listFiles()) {
                     addFileToZip(skipprefix, child, zipper);
                 }
-            } else {                
+            } else {
                 ZipEntry entry = new ZipEntry(path);
                 zipper.putNextEntry(entry);
                 try (FileInputStream in = new FileInputStream(file)) {
@@ -185,13 +194,18 @@ public class CodePoolUtils {
     }
 
     public static List<URL> unzipCodePoolData(Path directory, byte[] data) throws IOException {
+        LOGGER.log(Level.SEVERE, "unzipCodePoolData to " + directory);
+        Files.createDirectories(directory);
+        Path source = directory.resolve("source.zip");
+        Files.write(source, data);
         List<URL> urls = new ArrayList<>();
         ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));
         ZipEntry nextEntry = zip.getNextEntry();
         while (nextEntry != null) {
             if (!nextEntry.isDirectory()) {
-                String filename = nextEntry.getName();                
-                Path file = directory.resolve(filename);                
+                String filename = nextEntry.getName();
+                Path file = directory.resolve(filename);
+                LOGGER.log(Level.SEVERE, "unzipCodePoolData inflating " + filename + " to " + file);
                 Files.createDirectories(file.getParent());
 
                 try (OutputStream out = Files.newOutputStream(file)) {

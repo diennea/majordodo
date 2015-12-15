@@ -18,8 +18,7 @@
         <module>./majordodo-test-clients</module>
         <module>./majordodo-client</module>
         <module>./majordodo-net</module>
-        <module>./majordodo-core</module>
-        <module>./majordodo-demo-worker</module>
+        <module>./majordodo-core</module>        
         <module>./majordodo-services</module>                        
         <module>./majordodo-embedded</module>        
     </modules>

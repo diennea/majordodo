@@ -119,13 +119,14 @@ public class TaskSubmitter {
         byte[] codePoolData = CodePoolUtils.createCodePoolDataFromClass(aClass);
         MessageDigest digest = MessageDigest.getInstance("MD5");
         byte[] digested = digest.digest(codePoolData);
-        id = Base64.getEncoder().encodeToString(digested).replace("=", "");
+        id = Base64.getEncoder().encodeToString(digested).replace("=", "").replace("/", "");
         if (connection.getCodePoolStatus(id) != null) {
             codePoolIdByClass.put(aClass.getName(), id);
             codePoolId = id;
         } else {
             CreateCodePoolRequest createCodePoolRequest = new CreateCodePoolRequest();
             createCodePoolRequest.setCodePoolData(CodePoolUtils.encodeCodePoolData(new ByteArrayInputStream(codePoolData)));
+            System.out.println("pooldata:"+createCodePoolRequest.getCodePoolData());
             createCodePoolRequest.setTtl(codePoolTimeToLive);
             createCodePoolRequest.setCodePoolID(id);
             connection.createCodePool(createCodePoolRequest);
