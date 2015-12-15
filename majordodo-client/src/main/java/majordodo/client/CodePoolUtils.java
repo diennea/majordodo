@@ -19,6 +19,7 @@
  */
 package majordodo.client;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,9 +32,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -111,33 +115,33 @@ public class CodePoolUtils {
      * @throws IOException
      */
     public static byte[] createCodePoolDataFromClass(Class klass) throws IOException {
+
         String res = '/' + klass.getName().replace('.', '/') + ".class";
         URL location = klass.getResource(res);
-        String slocation = location.toString();
-//        System.out.println("slocation:    " + slocation);
-//        System.out.println("res:          " + res);
+        System.out.println("createCodePoolDataFromClass "+klass+" -> "+location);
+        String slocation = location.toString();        
         ByteArrayOutputStream oo = new ByteArrayOutputStream();
-        ZipOutputStream zoo = new ZipOutputStream(oo);
-        if (slocation.endsWith(".jar")) {
-            ZipEntry entry = new JarEntry("mainjar.jar");
-            zoo.putNextEntry(entry);
-            try (InputStream in = location.openStream()) {
-                copyStream(in, zoo);
+        try (ZipOutputStream zoo = new ZipOutputStream(oo)) {
+            if (slocation.startsWith("jar:file:")) {
+                URL locationbase = klass.getResource("/");
+                int end = slocation.lastIndexOf('!');
+                int start = slocation.lastIndexOf("/", end);
+                String jarName = slocation.substring(start + 1, end);
+                ZipEntry entry = new JarEntry(jarName);
+                zoo.putNextEntry(entry);
+                try (InputStream in = locationbase.openStream()) {
+                    copyStream(in, zoo);
+                }
+                zoo.closeEntry();
+            } else if (slocation.startsWith("file:/")) {
+                URL locationbase = klass.getResource("/");
+                // package all the classes in the directory  
+                String slocationbase = locationbase.toString();
+                Path directory = Paths.get(slocationbase.substring("file:".length()));                
+                int skip = slocationbase.length() - 6;
+                addFileToZip(skip, directory.toFile(), zoo);
             }
-            zoo.closeEntry();
-        } else if (slocation.startsWith("file:/")) {
-//            String before = slocation.substring(0, slocation.length() - res.length());
-//            System.out.println("before:       " + before);
-            // package all the classes in the directory
-            URL locationbase = klass.getResource("/");
-            String slocationbase = locationbase.toString();            
-            Path directory = Paths.get(slocationbase.substring("file:".length()));
-            System.out.println("slocationbase:" + slocationbase);
-            System.out.println("directory    :" + directory);
-            int skip = slocationbase.length()-6;
-            addFileToZip(skip, directory.toFile(), zoo);
         }
-        zoo.close();
         byte[] resb = oo.toByteArray();
 //        Files.write(Paths.get("debug.jar"), resb);
         return resb;
@@ -145,9 +149,6 @@ public class CodePoolUtils {
 
     private static void addFileToZip(int skipprefix, File file, ZipOutputStream zipper) throws IOException {
         String raw = file.getAbsolutePath().replace("\\", "/");
-        System.out.println("addFileToZipRaw " + raw);
-        System.out.println("skipprefix " + skipprefix);
-        System.out.println("raw.length " + raw.length());
         if (raw.length() == skipprefix) {
             if (file.isDirectory()) {
                 for (File child : file.listFiles()) {
@@ -156,16 +157,11 @@ public class CodePoolUtils {
             }
         } else {
             String path = raw.substring(skipprefix + 1);
-            System.out.println("addFileToZip " + path);
             if (file.isDirectory()) {
-                ZipEntry entry = new ZipEntry(path);
-                zipper.putNextEntry(entry);
-                zipper.closeEntry();
                 for (File child : file.listFiles()) {
                     addFileToZip(skipprefix, child, zipper);
                 }
-            } else {
-                //System.out.println("add:" + file.getAbsolutePath()+" path:"+path);
+            } else {                
                 ZipEntry entry = new ZipEntry(path);
                 zipper.putNextEntry(entry);
                 try (FileInputStream in = new FileInputStream(file)) {
@@ -175,6 +171,37 @@ public class CodePoolUtils {
             }
         }
 
+    }
+
+    private static long copyStreams(InputStream input, OutputStream output) throws IOException {
+        long count = 0;
+        int n = 0;
+        byte[] buffer = new byte[60 * 1024];
+        while (-1 != (n = input.read(buffer))) {
+            output.write(buffer, 0, n);
+            count += n;
+        }
+        return count;
+    }
+
+    public static List<URL> unzipCodePoolData(Path directory, byte[] data) throws IOException {
+        List<URL> urls = new ArrayList<>();
+        ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));
+        ZipEntry nextEntry = zip.getNextEntry();
+        while (nextEntry != null) {
+            if (!nextEntry.isDirectory()) {
+                String filename = nextEntry.getName();                
+                Path file = directory.resolve(filename);                
+                Files.createDirectories(file.getParent());
+
+                try (OutputStream out = Files.newOutputStream(file)) {
+                    copyStreams(zip, out);
+                }
+                urls.add(file.toUri().toURL());
+            }
+            nextEntry = zip.getNextEntry();
+        }
+        return urls;
     }
 
 }

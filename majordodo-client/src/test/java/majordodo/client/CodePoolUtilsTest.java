@@ -19,8 +19,19 @@
  */
 package majordodo.client;
 
+import java.io.ByteArrayInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import majordodo.testclients.SimpleExecutor;
+import static org.junit.Assert.assertTrue;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Tests for CodePoolUtils
@@ -29,13 +40,51 @@ import org.junit.Test;
  */
 public class CodePoolUtilsTest {
 
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
     @Test
     public void packMeTest() throws Exception {
-        CodePoolUtils.createCodePoolDataFromClass(CodePoolUtilsTest.class);
+        byte[] zip = CodePoolUtils.createCodePoolDataFromClass(CodePoolUtilsTest.class);
+        Set<String> entries = new HashSet<>();
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip));) {
+            ZipEntry nextEntry;
+            while ((nextEntry = in.getNextEntry()) != null) {
+                if (nextEntry.isDirectory()) {
+//                    System.out.println("dir  " + nextEntry.getName());
+                } else {
+//                    System.out.println("file  " + nextEntry.getName());
+                    entries.add(nextEntry.getName());
+                }
+            }
+        }
+        assertTrue(entries.contains("majordodo/client/CodePoolUtilsTest.class"));
+
+        Path directory = folder.newFolder().toPath();
+        CodePoolUtils.unzipCodePoolData(directory, zip);
+        assertTrue(Files.isRegularFile(directory.resolve("majordodo/client/CodePoolUtilsTest.class")));
     }
 
     @Test
     public void packFromJarTest() throws Exception {
-        CodePoolUtils.createCodePoolDataFromClass(SimpleExecutor.class);
+        byte[] zip = CodePoolUtils.createCodePoolDataFromClass(SimpleExecutor.class);
+        Set<String> entries = new HashSet<>();
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip));) {
+            ZipEntry nextEntry;
+            while ((nextEntry = in.getNextEntry()) != null) {
+                if (nextEntry.isDirectory()) {
+//                    System.out.println("dir  " + nextEntry.getName());
+                } else {
+//                    System.out.println("file  " + nextEntry.getName());
+                    entries.add(nextEntry.getName());
+                }
+            }
+        }
+        
+        // invoking the test from Maven in single project mode the class is loaded from the local repository
+        boolean ok1 = entries.stream().filter(s -> s.startsWith("majordodo-test-clients-") && s.endsWith(".jar")).findFirst().isPresent();
+        // invoking the test from Maven Reactor puts into the classpath the "target/classes" directory of majordodo-test-clients
+        boolean ok2 = entries.contains("majordodo/client/CodePoolUtilsTest.class");
+        assertTrue(ok1 || ok2);
     }
 }

@@ -31,8 +31,13 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import majordodo.client.CodePoolUtils;
 
 /**
  * Classloader with loads classes from a given CodePool
@@ -41,46 +46,27 @@ import java.util.zip.ZipInputStream;
  */
 public final class CodePoolClassloader extends URLClassLoader {
 
+    private static final Logger LOGGER = Logger.getLogger(CodePoolClassloader.class.getName());
     private final Path directory;
 
     public CodePoolClassloader(ClassLoader parent, String codePoolId, byte[] data, Path tmpDirectory) throws IOException {
         super(new URL[0], parent);
         directory = tmpDirectory.resolve(codePoolId);
+        deleteDirectory(directory);
         buildCodePoolTmpDirectory(codePoolId, data);
     }
 
     private void buildCodePoolTmpDirectory(String codePoolId, byte[] data) throws IOException {
-        ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));
-        ZipEntry nextEntry = zip.getNextEntry();
-        while (nextEntry != null) {
-            if (!nextEntry.isDirectory()) {
-                String filename = nextEntry.getName();
-                
-                Path file = directory.resolve(filename);                
-                Files.createDirectories(file.getParent());
-                try (OutputStream out = Files.newOutputStream(file)) {                    
-                    copyStreams(zip, out);                    
-                }
-                addURL(file.toUri().toURL());
-            }
-            nextEntry = zip.getNextEntry();
-        }
+        LOGGER.log(Level.SEVERE, "Unzipping codepool data for pool " + codePoolId + " to " + directory.toAbsolutePath());
+        List<URL> unzipCodePoolData = CodePoolUtils.unzipCodePoolData(directory, data);
+        unzipCodePoolData.forEach(this::addURL);
+        LOGGER.log(Level.SEVERE, "Classpath for " + codePoolId + ": " + Arrays.toString(this.getURLs()));
+
     }
 
     @Override
     public void close() throws IOException {
         deleteDirectory(directory);
-    }
-
-    private static long copyStreams(InputStream input, OutputStream output) throws IOException {
-        long count = 0;
-        int n = 0;
-        byte[] buffer = new byte[60 * 1024];
-        while (-1 != (n = input.read(buffer))) {
-            output.write(buffer, 0, n);
-            count += n;
-        }
-        return count;
     }
 
     private static class FileDeleter extends SimpleFileVisitor<Path> {

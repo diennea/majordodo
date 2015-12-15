@@ -55,8 +55,7 @@ public class CodePoolClassloadersManager {
                 return cl;
             }
             byte[] data = parent.downloadCodePool(codePoolId);
-            cl = new CodePoolClassloader(Thread.currentThread().getContextClassLoader(), codePoolId, data, codeTemporaryDirectory);
-            System.out.println("Classpath: "+Arrays.toString(cl.getURLs()));
+            cl = new CodePoolClassloader(Thread.currentThread().getContextClassLoader(), codePoolId, data, codeTemporaryDirectory);            
             classloaders.put(codePoolId, cl);
             return cl;
         } finally {
