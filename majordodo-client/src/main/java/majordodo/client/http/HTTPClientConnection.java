@@ -89,6 +89,7 @@ public class HTTPClientConnection implements ClientConnection {
     private void brokerFailed() {
         if (_broker != null) {
             discoveryService.brokerFailed(_broker);
+            _broker = null;
         }
         context = null;
     }
