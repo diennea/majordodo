@@ -98,7 +98,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.1.22b";
+        return "0.1.22c";
     }
 
     private final Workers workers;
@@ -346,10 +346,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerStatus.checkpoint(purgeTransactions ? configuration.getTransactionsTtl() : 0);
     }
 
-    void purgeTasks() {
-        if (!started) {
-            return;
-        }
+    void purgeTasks() {        
         Set<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
         if (expired.isEmpty()) {
             return;
