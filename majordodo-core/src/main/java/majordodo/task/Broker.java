@@ -98,7 +98,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.1.22";
+        return "0.1.22b";
     }
 
     private final Workers workers;
@@ -193,8 +193,8 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             try {
                 brokerStatusMonitor.start();
                 LOGGER.log(Level.SEVERE, "Waiting to become leader...");
-                brokerStatus.followTheLeader();
                 finishedTaskCollectorScheduler.start();
+                brokerStatus.followTheLeader();                
                 if (stopped || failed) {
                     return;
                 }
