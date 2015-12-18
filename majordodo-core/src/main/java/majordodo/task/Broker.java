@@ -197,6 +197,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 brokerStatusMonitor.start();
                 LOGGER.log(Level.SEVERE, "Waiting to become leader...");
                 brokerStatus.followTheLeader();
+                finishedTaskCollectorScheduler.start();
                 if (stopped || failed) {
                     return;
                 }
@@ -243,8 +244,7 @@ public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerF
                 }
                 if (PERFORM_CHECKPOINT_AT_LEADERSHIP) {
                     checkpoint();
-                }
-                finishedTaskCollectorScheduler.start();
+                }                
                 try {
                     while (!stopped && !failed) {
                         noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
