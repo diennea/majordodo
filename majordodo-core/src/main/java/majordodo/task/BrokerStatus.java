@@ -251,6 +251,8 @@ public class BrokerStatus {
         Set<Long> expired = new HashSet<>();
         int expiredcount = 0;
         this.lock.writeLock().lock();
+        // when running in FOLLOWER MODE we cannot expire tasks, but we need to remove them from memory, see MAJ-58
+        boolean allowExpire = this.log.isLeader() && this.log.isWritable();
         try {
             // tasks are only purged from memry, not from logs
             // in case of broker restart it may re-appear
@@ -259,7 +261,7 @@ public class BrokerStatus {
                 Task t = taskEntry.getValue();
                 switch (t.getStatus()) {
                     case Task.STATUS_WAITING:
-                        if (expiredcount < maxExpiredPerCycle) {
+                        if (expiredcount < maxExpiredPerCycle && allowExpire) {
                             long taskdeadline = t.getExecutionDeadline();
                             if (taskdeadline > 0 && taskdeadline < now) {
                                 expired.add(t.getTaskId());
