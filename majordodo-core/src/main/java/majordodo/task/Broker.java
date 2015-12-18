@@ -52,7 +52,7 @@ import majordodo.clientfacade.TransactionStatus;
  *
  * @author enrico.olivelli
  */
-public class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerFailureListener {
+public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerFailureListener {
 
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
