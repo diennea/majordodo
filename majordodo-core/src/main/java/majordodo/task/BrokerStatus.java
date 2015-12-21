@@ -569,8 +569,7 @@ public class BrokerStatus {
                     transactions.remove(edit.transactionId);
                     return new ModificationResult(num, null, null);
                 }
-                case StatusEdit.TYPE_ADD_TASK: {
-                    System.out.println("TYPE_ADD_TASK: maxTaskId:"+this.maxTaskId);
+                case StatusEdit.TYPE_ADD_TASK: {                    
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
                     if (maxTaskId < edit.taskId) {
