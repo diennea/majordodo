@@ -1,3 +1,4 @@
+
 /*
  Licensed to Diennea S.r.l. under one
  or more contributor license agreements. See the NOTICE file
@@ -349,7 +350,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerStatus.checkpoint(purgeTransactions ? configuration.getTransactionsTtl() : 0);
     }
 
-    void purgeTasks() {    
+    void purgeTasks() {        
         Set<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
         if (expired.isEmpty()) {
             return;

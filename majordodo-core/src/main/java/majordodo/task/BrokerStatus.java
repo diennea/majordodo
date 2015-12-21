@@ -390,7 +390,9 @@ public class BrokerStatus {
                             throw new RuntimeException("broker failed");
                         }
                     }, false);
-            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode");
+            newTaskId.set(maxTaskId+1);
+            newTransactionId.set(maxTransactionId+1);
+            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode. newTaskId="+newTaskId+" newTransactionId="+newTransactionId);
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
         } finally {
@@ -665,7 +667,7 @@ public class BrokerStatus {
                     transactions.remove(edit.transactionId);
                     return new ModificationResult(num, null, null);
                 }
-                case StatusEdit.TYPE_ADD_TASK: {
+                case StatusEdit.TYPE_ADD_TASK: {                    
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
                     if (maxTaskId < edit.taskId) {
@@ -805,13 +807,17 @@ public class BrokerStatus {
             this.lastLogSequenceNumber = snapshot.getActualLogSequenceNumber();
             Map<String, Long> busySlots = new HashMap<>();
             for (Task task : snapshot.getTasks()) {
-                this.tasks.put(task.getTaskId(), task);
+                long taskId = task.getTaskId();
+                this.tasks.put(taskId, task);
+                if (maxTaskId < taskId) {
+                    maxTaskId = taskId;
+                }
                 stats.taskStatusChange(-1, task.getStatus());
                 switch (task.getStatus()) {
                     case Task.STATUS_RUNNING:
                     case Task.STATUS_WAITING: {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                            busySlots.put(task.getSlot(), task.getTaskId());
+                            busySlots.put(task.getSlot(), taskId);
                         }
                     }
                 }
@@ -821,7 +827,11 @@ public class BrokerStatus {
                 this.workers.put(worker.getWorkerId(), worker);
             }
             for (Transaction tx : snapshot.getTransactions()) {
-                this.transactions.put(tx.getTransactionId(), tx);
+                long transactionId = tx.getTransactionId();
+                if (maxTransactionId < transactionId) {
+                    maxTransactionId = transactionId;
+                }
+                this.transactions.put(transactionId, tx);
             }
             for (CodePool codePool : snapshot.getCodePools()) {
                 this.codePools.put(codePool.getId(), codePool);
