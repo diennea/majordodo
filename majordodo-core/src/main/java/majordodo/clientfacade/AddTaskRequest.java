@@ -34,8 +34,10 @@ public class AddTaskRequest {
     public final int attempt;
     public final long deadline;
     public final String slot;
+    public final String codepool;
+    public final String mode;
 
-    public AddTaskRequest(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot, int attempts) {
+    public AddTaskRequest(long transaction, String taskType, String userId, String parameter, int maxattemps, long deadline, String slot, int attempts,String codepool,String mode) {
         this.transaction = transaction;
         this.attempt = attempts;
         this.taskType = taskType;
@@ -44,6 +46,8 @@ public class AddTaskRequest {
         this.maxattempts = maxattemps;
         this.deadline = deadline;
         this.slot = slot;
+        this.codepool=codepool;
+        this.mode=mode;
     }
 
 }

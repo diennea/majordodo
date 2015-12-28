@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
+import majordodo.codepools.CodePool;
 
 /**
  * Connection to a node from the broker side
@@ -258,6 +259,21 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
+            case Message.TYPE_DOWNLOAD_CODEPOOL:
+                String codePoolId = (String) message.parameters.get("codePoolId");
+                LOGGER.log(Level.SEVERE, "serving codepool " + codePoolId);
+                try {
+                    CodePool codePool = broker.getBrokerStatus().getCodePool(codePoolId);
+                    if (codePool == null) {
+                        throw new Exception("codepool " + codePoolId + " does not exist");
+                    } else {
+                        channel.sendReplyMessage(message, Message.DOWNLOAD_CODEPOOL_RESPONSE(codePool.getCodePoolData()));
+                    }
+                } catch (Exception error) {
+                    LOGGER.log(Level.SEVERE, "Error", error);
+                    channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
+                }
+                break;
 
             default:
                 LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent unknown message " + message);
@@ -308,6 +324,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         params.put("parameter", task.getParameter());
         params.put("attempt", task.getAttempts());
         params.put("userid", task.getUserId());
+        if (task.getMode() != null) {
+            params.put("mode", task.getMode());
+        }
+        if (task.getCodepool() != null) {
+            params.put("codepool", task.getCodepool());
+        }
         channel.sendOneWayMessage(Message.TYPE_TASK_ASSIGNED(workerProcessId, params), new SendResultCallback() {
 
             @Override

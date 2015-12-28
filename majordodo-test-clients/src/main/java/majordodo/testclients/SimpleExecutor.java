@@ -17,36 +17,21 @@
  under the License.
 
  */
-package majordodo.shell;
+package majordodo.testclients;
 
-import java.util.List;
-import static org.codehaus.groovy.runtime.DefaultGroovyMethods.println;
-import org.codehaus.groovy.tools.shell.CommandSupport;
-import org.codehaus.groovy.tools.shell.Groovysh;
+import java.util.Map;
+import majordodo.executors.TaskExecutor;
 
 /**
- * Main shell
+ * Simple executor for tests
  *
  * @author enrico.olivelli
  */
-public class Shell {
+public class SimpleExecutor extends TaskExecutor {
 
-    public static class BarCommand extends CommandSupport {
-
-        protected BarCommand(Groovysh shell) {
-            super(shell, ":bar", ":b");
-        }
-
-        @Override
-        public Object execute(List<String> args) {
-            println("running bar command");
-            return "test";
-        }
+    @Override
+    public String executeTask(Map<String, Object> parameters) throws Exception {
+        return "SimpleExecutor run!";
     }
 
-    public static void main(String... args) {
-        Groovysh groovysh = new Groovysh();
-        groovysh.register(new BarCommand(groovysh));
-        groovysh.run((String) null);
-    }
 }

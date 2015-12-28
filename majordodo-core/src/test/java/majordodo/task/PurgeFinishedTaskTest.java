@@ -191,7 +191,7 @@ public class PurgeFinishedTaskTest {
                                 }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
                         TaskStatusView task = broker.getClient().getTask(taskId);
                         assertEquals(Task.STATUS_WAITING, task.getStatus());
                         core.start();

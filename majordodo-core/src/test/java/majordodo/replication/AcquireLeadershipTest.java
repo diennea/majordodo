@@ -132,7 +132,7 @@ public class AcquireLeadershipTest {
                         try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
                             server2.start();
 
-                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0)).getTaskId();
+                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
 
                             // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                             broker1.noop();

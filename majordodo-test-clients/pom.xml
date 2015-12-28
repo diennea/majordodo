@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">   
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
-    <name>Majordodo Demo Worker</name>
-    <version>0.1.22e</version>
+    <name>Majordodo Test Clients</name>
+    <version>0.2.0</version>
     <groupId>majordodo</groupId>
-    <artifactId>majordodo-demo-worker</artifactId>
+    <artifactId>majordodo-test-clients</artifactId>
     <build>
         <plugins>
             <plugin>
@@ -33,12 +33,7 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-worker</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy-all</artifactId>
-            <version>2.4.4</version>            
-        </dependency>
+        </dependency>        
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

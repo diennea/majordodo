@@ -154,7 +154,7 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
 
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
@@ -169,17 +169,17 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
 //                                        System.out.println("executeTask: " + parameters);
-                                        throw new Exception("failing at " + parameters.get("attempt") + " attempt");
+                                throw new Exception("failing at " + parameters.get("attempt") + " attempt");
 
-                                    }
+                            }
 
-                                }
+                        }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 5, 0, null, 0)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 5, 0, null, 0, null, null)).getTaskId();
 
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {

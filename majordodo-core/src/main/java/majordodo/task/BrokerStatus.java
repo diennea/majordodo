@@ -36,9 +36,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import majordodo.clientfacade.CodePoolView;
 import majordodo.clientfacade.TransactionStatus;
-import majordodo.clientfacade.TransactionsStatusView;
-import majordodo.clientfacade.TransactionStatus;
+import majordodo.codepools.CodePool;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a
@@ -55,6 +55,7 @@ public class BrokerStatus {
     private final Map<Long, Transaction> transactions = new HashMap<>();
 
     private final Map<String, WorkerStatus> workers = new HashMap<>();
+    private final Map<String, CodePool> codePools = new HashMap<>();
     private final AtomicLong newTaskId = new AtomicLong();
     private final AtomicLong newTransactionId = new AtomicLong();
     private long maxTaskId = -1;
@@ -134,6 +135,12 @@ public class BrokerStatus {
         s.setMaxattempts(task.getMaxattempts());
         s.setSlot(task.getSlot());
         s.setExecutionDeadline(task.getExecutionDeadline());
+        if (task.getMode() != null && !Task.MODE_EXECUTE_FACTORY.equals(task.getMode())) {
+            s.setMode(task.getMode());
+        }
+        if (task.getCodepool() != null) {
+            s.setCodePoolId(task.getCodepool());
+        }
         return s;
     }
 
@@ -185,6 +192,46 @@ public class BrokerStatus {
         return checkpointsCount.get();
     }
 
+    private void purgeAbandonedCodePools() throws LogNotAvailableException {
+        List<String> toPurge = new ArrayList<>();
+        lock.readLock().lock();
+        try {
+            for (CodePool codePool : codePools.values()) {
+                if (codePool.getTtl() > 0) {
+                    long delta = System.currentTimeMillis() - codePool.getCreationTimestamp();
+                    if (delta > codePool.getTtl()) {
+                        String codePoolId = codePool.getId();
+                        boolean hasTasks = false;
+                        for (Task t : tasks.values()) {
+                            if (codePoolId.equals(t.getCodepool())) {
+                                switch (t.getStatus()) {
+                                    case Task.STATUS_RUNNING:
+                                    case Task.STATUS_WAITING:
+                                        hasTasks = true;                                        
+                                        break;
+                                }
+                                if (hasTasks) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (!hasTasks) {
+                            toPurge.add(codePoolId);
+                        }
+                    }
+                    
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        for (String codePoolId : toPurge) {
+            StatusEdit rollback = StatusEdit.DELETE_CODEPOOL(codePoolId);
+            LOGGER.log(Level.SEVERE, "Detected abandoned codepool {0}, dropping", new Object[]{codePoolId});
+            applyModification(rollback);
+        }
+    }
+
     private void purgeAbandonedTransactions(long ttl) throws LogNotAvailableException {
         List<Long> staleTransactions = new ArrayList<>();
         lock.readLock().lock();
@@ -210,6 +257,7 @@ public class BrokerStatus {
         if (transactionsTtl > 0) {
             purgeAbandonedTransactions(transactionsTtl);
         }
+        purgeAbandonedCodePools();
 
         BrokerStatusSnapshot snapshot = createSnapshot();
 
@@ -397,6 +445,37 @@ public class BrokerStatus {
         }
     }
 
+    CodePoolView getCodePoolView(String codePoolId) {
+        lock.readLock().lock();
+        try {
+            CodePool codePool = codePools.get(codePoolId);
+            if (codePool == null) {
+                return null;
+            }
+            return createCodePoolView(codePool);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private CodePoolView createCodePoolView(CodePool codePool) {
+        CodePoolView v = new CodePoolView();
+        v.setCodePoolId(codePool.getId());
+        v.setCreationTimestamp(codePool.getCreationTimestamp());
+        v.setTtl(codePool.getTtl());
+        return v;
+    }
+
+    CodePool getCodePool(String codePoolId) {
+        lock.readLock().lock();
+        try {
+            // codepools are immutable, no copy is needed
+            return codePools.get(codePoolId);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
@@ -445,8 +524,20 @@ public class BrokerStatus {
             if (skip.contains(i)) {
                 results.add(new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned"));
             } else {
-                LogSequenceNumber n = num.get(numberSequence++);
-                results.add(applyEdit(n, edit));
+                boolean ok = true;
+                if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
+                    if (edit.codepool == null || edit.codepool.isEmpty()) {
+                        results.add(new ModificationResult(null, edit.codepool, "codepoolid must not be empty"));
+                        ok = false;
+                    } else if (codePools.containsKey(edit.codepool)) {
+                        results.add(new ModificationResult(null, edit.codepool, "codepool " + edit.codepool + " already exists"));
+                        ok = false;
+                    }
+                }
+                if (ok) {
+                    LogSequenceNumber n = num.get(numberSequence++);
+                    results.add(applyEdit(n, edit));
+                }
             }
         }
         return results;
@@ -473,6 +564,13 @@ public class BrokerStatus {
                 return new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned");
             }
         } else {
+            if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
+                if (edit.codepool == null || edit.codepool.isEmpty()) {
+                    return new ModificationResult(null, edit.codepool, "codepoolid must not be empty");
+                } else if (codePools.containsKey(edit.codepool)) {
+                    return new ModificationResult(null, edit.codepool, "codepool " + edit.codepool + " already exists");
+                }
+            }
             LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
             return applyEdit(num, edit);
         }
@@ -579,6 +677,12 @@ public class BrokerStatus {
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType.intern());
                     task.setUserId(edit.userid.intern());
+                    if (edit.codepool != null) {
+                        task.setCodepool(edit.codepool.intern());
+                    }
+                    if (edit.mode != null) {
+                        task.setMode(edit.mode.intern());
+                    }
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
@@ -608,6 +712,12 @@ public class BrokerStatus {
                     task.setParameter(edit.parameter);
                     task.setType(edit.taskType.intern());
                     task.setUserId(edit.userid.intern());
+                    if (edit.codepool != null) {
+                        task.setCodepool(edit.codepool.intern());
+                    }
+                    if (edit.mode != null) {
+                        task.setMode(edit.mode.intern());
+                    }
                     task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
@@ -657,6 +767,18 @@ public class BrokerStatus {
                     return new ModificationResult(num, null, null);
                 }
                 case StatusEdit.TYPE_NOOP: {
+                    return new ModificationResult(num, null, null);
+                }
+                case StatusEdit.TYPE_DELETECODEPOOL: {
+                    codePools.remove(edit.codepool);
+                    return new ModificationResult(num, null, null);
+                }
+                case StatusEdit.TYPE_CREATECODEPOOL: {
+                    if (codePools.containsKey(edit.codepool)) {
+                        throw new IllegalArgumentException("codepool " + edit.codepool + " already exists");
+                    }
+                    CodePool codePool = new CodePool(edit.codepool, edit.timestamp, edit.payload, edit.executionDeadline);
+                    codePools.put(edit.codepool, codePool);
                     return new ModificationResult(num, null, null);
                 }
                 default:
@@ -710,6 +832,9 @@ public class BrokerStatus {
                     maxTransactionId = transactionId;
                 }
                 this.transactions.put(transactionId, tx);
+            }
+            for (CodePool codePool : snapshot.getCodePools()) {
+                this.codePools.put(codePool.getId(), codePool);
             }
             this.slotsManager.loadBusySlots(busySlots);
             log.recovery(snapshot.getActualLogSequenceNumber(),

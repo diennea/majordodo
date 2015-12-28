@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.1.22e</version>
+    <version>0.2.0</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
     <licenses>
@@ -15,10 +15,10 @@
     </licenses>
     <modules>
         <module>./majordodo-worker</module>
+        <module>./majordodo-test-clients</module>
         <module>./majordodo-client</module>
         <module>./majordodo-net</module>
-        <module>./majordodo-core</module>
-        <module>./majordodo-demo-worker</module>
+        <module>./majordodo-core</module>        
         <module>./majordodo-services</module>                        
         <module>./majordodo-embedded</module>        
     </modules>

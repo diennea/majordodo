@@ -17,29 +17,32 @@
  under the License.
 
  */
-package majordodo.worker.demo;
-
-import java.util.Map;
-import majordodo.executors.TaskExecutor;
-import majordodo.executors.TaskExecutorFactory;
-import majordodo.executors.TaskExecutorFactoryImplementation;
+package majordodo.client;
 
 /**
- * Factory for tasktype = groovy
+ * Status of a CodePool
  *
  * @author enrico.olivelli
  */
-@TaskExecutorFactoryImplementation
-public class GroovyScriptTaskExecutorFactory implements TaskExecutorFactory {
+public class CodePoolStatus {
 
-    private static final String taskType = "groovy";
+    private String id;
+    private long creationTimestamp;
 
-    @Override
-    public TaskExecutor createTaskExecutor(String taskType, Map<String, Object> parameters) {
-        if (taskType.equals("taskType")) {
-            return new GroovyScriptTaskExecutor(parameters);
-        }
-        return null;
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public long getCreationTimestamp() {
+        return creationTimestamp;
+    }
+
+    public void setCreationTimestamp(long creationTimestamp) {
+        this.creationTimestamp = creationTimestamp;
     }
 
 }

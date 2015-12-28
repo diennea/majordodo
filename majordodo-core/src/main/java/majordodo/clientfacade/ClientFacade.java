@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import majordodo.task.AddTaskResult;
 import majordodo.task.Broker;
 import java.util.List;
-import majordodo.clientfacade.TransactionStatus;
 
 /**
  * Client API
@@ -32,7 +31,7 @@ import majordodo.clientfacade.TransactionStatus;
  */
 public class ClientFacade {
 
-    private Broker broker;
+    private final Broker broker;
 
     public ClientFacade(Broker broker) {
         this.broker = broker;
@@ -54,7 +53,19 @@ public class ClientFacade {
     public TransactionStatus getTransaction(long transactionId) throws Exception {
         return broker.getTransactionStatus(transactionId);
     }
-    
+
+    public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws Exception {
+        return broker.createCodePool(request);
+    }
+
+    public void deleteCodePool(String codePoolId) throws Exception {
+        broker.deleteCodePool(codePoolId);
+    }
+
+    public CodePoolView getCodePool(String codePoolId) throws Exception {
+        return broker.getCodePool(codePoolId);
+    }
+
     public List<SubmitTaskResult> submitTasks(List<AddTaskRequest> tasks) throws Exception {
         List<AddTaskResult> addressult = broker.addTasks(tasks);
         List<SubmitTaskResult> res = new ArrayList<>(tasks.size());

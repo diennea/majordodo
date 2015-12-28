@@ -33,6 +33,18 @@ import java.util.Set;
  */
 public final class Message {
 
+    public static Message DOWNLOAD_CODEPOOL(String workerProcessId, String codePoolId) {
+        HashMap<String, Object> parameters = new HashMap<>();
+        parameters.put("codePoolId", codePoolId);
+        return new Message(workerProcessId, TYPE_DOWNLOAD_CODEPOOL, parameters);
+    }
+
+    public static Message DOWNLOAD_CODEPOOL_RESPONSE(byte[] data) {
+        HashMap<String, Object> parameters = new HashMap<>();
+        parameters.put("data", data);
+        return new Message(null, TYPE_DOWNLOAD_CODEPOOL_RESPONSE, parameters);
+    }
+
     public static Message WORKER_SHUTDOWN(String workerProcessId) {
         return new Message(workerProcessId, TYPE_WORKER_SHUTDOWN, null);
     }
@@ -122,6 +134,8 @@ public final class Message {
     public static final int TYPE_WORKER_PING = 8;
     public static final int TYPE_SNAPSHOT_DOWNLOAD_REQUEST = 9;
     public static final int TYPE_SNAPSHOT_DOWNLOAD_RESPONSE = 10;
+    public static final int TYPE_DOWNLOAD_CODEPOOL = 11;
+    public static final int TYPE_DOWNLOAD_CODEPOOL_RESPONSE = 12;
 
     public static String typeToString(int type) {
         switch (type) {
@@ -145,6 +159,10 @@ public final class Message {
                 return "TYPE_TASK_ASSIGNED";
             case TYPE_WORKER_PING:
                 return "TYPE_WORKER_PING";
+            case TYPE_DOWNLOAD_CODEPOOL:
+                return "TYPE_DOWNLOAD_CODEPOOL";
+            case TYPE_DOWNLOAD_CODEPOOL_RESPONSE:
+                return "TYPE_DOWNLOAD_CODEPOOL_RESPONSE";
             default:
                 return "?" + type;
         }

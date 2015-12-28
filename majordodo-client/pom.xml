@@ -5,7 +5,7 @@
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Client</name>
-    <version>0.1.22e</version>
+    <version>0.2.0</version>
     <groupId>majordodo</groupId>
     <artifactId>majordodo-client</artifactId>
     <build>
@@ -43,15 +43,20 @@
         <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>
-            <version>1.9.13</version>     
-            <optional>true</optional>       
+            <version>1.9.13</version>            
         </dependency>
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
             <version>3.4.6</version>
             <optional>true</optional>
-        </dependency>        
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>majordodo-test-clients</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

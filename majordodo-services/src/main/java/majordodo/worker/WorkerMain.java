@@ -109,14 +109,14 @@ public class WorkerMain implements AutoCloseable {
                 int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
                 boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
-                ((NettyBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
+                ((NettyBrokerLocator) brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             case "clustered":
                 String zkAddress = configuration.getProperty("zk.address", "localhost:1281");
                 int zkSessionTimeout = Integer.parseInt(configuration.getProperty("zk.sessiontimeout", "40000"));
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 brokerLocator = new ZKBrokerLocator(zkAddress, zkSessionTimeout, zkPath);
-                ((ZKBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
+                ((ZKBrokerLocator) brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             default:
                 throw new RuntimeException("invalid clustering.mode=" + mode);
@@ -128,6 +128,7 @@ public class WorkerMain implements AutoCloseable {
         if (workerid.isEmpty()) {
             workerid = hostname;
         }
+        boolean codepoolsenabled = Boolean.parseBoolean(configuration.getProperty("codepools.enabled", "false"));
         String groups = configuration.getProperty("worker.groups", Task.GROUP_ANY + "");
         String executorFactory = configuration.getProperty("worker.executorfactory", "majordodo.worker.DefaultExecutorFactory");
         String processid = ManagementFactory.getRuntimeMXBean().getName();
@@ -164,6 +165,11 @@ public class WorkerMain implements AutoCloseable {
         WorkerCoreConfiguration config = new WorkerCoreConfiguration();
         config.setSharedSecret(sharedsecret);
         config.setMaxThreads(maxthreads);
+        config.setEnableCodePools(codepoolsenabled);
+        if (codepoolsenabled) {
+            String codePoolsDirectory = configuration.getProperty("codepools.temp.directory", "extra.codepools");
+            config.setCodePoolsDirectory(codePoolsDirectory);
+        }
         config.setWorkerId(workerid);
         config.setMaxThreadsByTaskType(maximumThreadPerTaskType);
         config.setGroups(groupsList);
@@ -173,7 +179,13 @@ public class WorkerMain implements AutoCloseable {
         config.read(props);
 
         workerCore = new WorkerCore(config, processid, brokerLocator, listener);
-        workerCore.setExecutorFactory((TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance());
+
+        TaskExecutorFactory factory = (TaskExecutorFactory) Class.forName(executorFactory, true, Thread.currentThread().getContextClassLoader()).newInstance();
+        if (config.isEnableCodePools()) {
+            workerCore.setExecutorFactory(new CodePoolAwareExecutorFactory(new TaskModeAwareExecutorFactory(factory), workerCore.getClassloadersManager()));
+        } else {
+            workerCore.setExecutorFactory(new TaskModeAwareExecutorFactory(factory));
+        }
         workerCore.setExternalProcessChecker(() -> {
             pidFileLocker.check();
             return null;

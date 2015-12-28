@@ -5,7 +5,7 @@
     <parent>
         <artifactId>majordodo-parent</artifactId>
         <groupId>majordodo</groupId>
-        <version>0.1.22e</version>
+        <version>0.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -90,27 +90,11 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.4</version>            
-        </dependency>                
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy-all</artifactId>
-            <version>2.4.4</version>            
-        </dependency>
+        </dependency>                        
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-client</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.fusesource.jansi</groupId>
-            <artifactId>jansi</artifactId>
-            <version>1.11</version>
-        </dependency>
-        <dependency>
-            <groupId>jline</groupId>
-            <artifactId>jline</artifactId>
-            <version>2.12.1</version>
+            <version>${project.version}</version>            
         </dependency>
         <dependency>
             <groupId>org.apache.curator</groupId>
@@ -122,12 +106,7 @@
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>0.9.10</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>majordodo-demo-worker</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+        </dependency>        
     </dependencies>
 
 </project>

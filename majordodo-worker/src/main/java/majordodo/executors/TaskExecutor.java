@@ -28,6 +28,27 @@ import java.util.Map;
  */
 public class TaskExecutor {
 
+    public static final String PARAMETER_CODEPOOL = "codepool";
+    public static final String PARAMETER_MODE = "mode";
+    public static final String PARAMETER_TASKTYPE = "tasktype";
+    public static final String PARAMETER_USERID = "userid";
+    public static final String PARAMETER_ATTEMPT = "attempt";
+    public static final String PARAMETER_DATA = "parameter";
+    public static final String PARAMETER_TASKID = "taskid";
+    
+    /**
+     * Implement the task. Any Exception thrown but this method will be treated as "errors" and Task will be re-submitted for recovery
+     * @param parameters
+     * @return
+     * @throws Exception 
+     * @see #PARAMETER_ATTEMPT
+     * @see #PARAMETER_CODEPOOL
+     * @see #PARAMETER_DATA
+     * @see #PARAMETER_MODE
+     * @see #PARAMETER_TASKID
+     * @see #PARAMETER_TASKTYPE
+     * @see #PARAMETER_USERID
+     */
     public String executeTask(Map<String, Object> parameters) throws Exception {
         throw new UnsupportedOperationException("task execution not implemented for this tasktype, parameters:" + parameters);
     }

@@ -36,9 +36,13 @@ import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
 import majordodo.client.BrokerStatus;
 import majordodo.client.ClientException;
+import majordodo.client.CodePoolStatus;
+import majordodo.client.CreateCodePoolRequest;
+import majordodo.client.CreateCodePoolResult;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
+import majordodo.client.TaskSubmitter;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -69,6 +73,7 @@ public class HTTPClientConnection implements ClientConnection {
     private static final boolean debug = Boolean.getBoolean("majordodo.client.debug");
     private BrokerAddress _broker;
     private final BrokerDiscoveryService discoveryService;
+    private TaskSubmitter submitter;
 
     public HTTPClientConnection(CloseableHttpClient client, ClientConfiguration configuration, BrokerDiscoveryService discoveryService) {
         this.httpclient = client;
@@ -89,7 +94,7 @@ public class HTTPClientConnection implements ClientConnection {
     private void brokerFailed() {
         if (_broker != null) {
             discoveryService.brokerFailed(_broker);
-            _broker = null;
+            _broker=null;
         }
         context = null;
     }
@@ -248,6 +253,12 @@ public class HTTPClientConnection implements ClientConnection {
         reqdata.put("userid", request.getUserid());
         reqdata.put("tasktype", request.getTasktype());
         reqdata.put("data", request.getData());
+        if (request.getMode() != null && !SubmitTaskRequest.MODE_FACTORY.equals(request.getMode())) {
+            reqdata.put("mode", request.getMode());
+        }
+        if (request.getCodePoolId() != null) {
+            reqdata.put("codePoolId", request.getCodePoolId());
+        }
         reqdata.put("maxattempts", request.getMaxattempts() + "");
         if (request.getAttempt() > 0) {
             reqdata.put("attempt", request.getAttempt() + "");
@@ -302,7 +313,12 @@ public class HTTPClientConnection implements ClientConnection {
             if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
                 throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
             }
-
+            if (request.getMode() != null && !SubmitTaskRequest.MODE_FACTORY.equals(request.getMode())) {
+                reqdata.put("mode", request.getMode());
+            }
+            if (request.getCodePoolId() != null) {
+                reqdata.put("codePoolId", request.getCodePoolId());
+            }
             reqdata.put("userid", request.getUserid());
             reqdata.put("tasktype", request.getTasktype());
             reqdata.put("data", request.getData());
@@ -351,6 +367,13 @@ public class HTTPClientConnection implements ClientConnection {
         Map<String, Object> data = request("GET", map("view", "task", "taskId", id));
         Map<String, Object> task = (Map<String, Object>) data.get("task");
         return deserializeTaskStatus(task);
+    }
+
+    @Override
+    public CodePoolStatus getCodePoolStatus(String codePoolId) throws ClientException {
+        Map<String, Object> data = request("GET", map("view", "codePool", "codePoolId", codePoolId));
+        Map<String, Object> codePool = (Map<String, Object>) data.get("codePool");
+        return deserializeCodePoolStatus(codePool);
     }
 
     @Override
@@ -454,6 +477,17 @@ public class HTTPClientConnection implements ClientConnection {
         }
     }
 
+    private CodePoolStatus deserializeCodePoolStatus(Map<String, Object> data) {
+        if (data == null || !data.containsKey("codePoolId")) {
+            return null;
+        }
+        CodePoolStatus res = new CodePoolStatus();
+        res.setId((String) data.get("codePoolId"));
+        res.setCreationTimestamp(Long.parseLong(data.get("creationTimestamp") + ""));
+        return res;
+
+    }
+
     private TaskStatus deserializeTaskStatus(Map<String, Object> task) {
 
         if (task.get("taskId") == null) {
@@ -468,6 +502,12 @@ public class HTTPClientConnection implements ClientConnection {
         t.setResult(task.get("result") + "");
         t.setSlot(task.get("slot") + "");
         t.setStatus(task.get("status") + "");
+        String mode = (String) task.get("mode");
+        if (mode == null) {
+            mode = SubmitTaskRequest.MODE_FACTORY;
+        }
+        t.setMode(mode);
+        t.setCodePoolId((String) task.get("codePoolId"));
         t.setTaskId(task.get("taskId") + "");
         t.setTasktype(task.get("tasktype") + "");
         t.setUserId(task.get("userId") + "");
@@ -475,6 +515,29 @@ public class HTTPClientConnection implements ClientConnection {
             t.setWorkerId(task.get("workerId") + "");
         }
         return t;
+    }
+
+    @Override
+    public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws ClientException {
+        Map<String, Object> res = request("POST", map("action", "createCodePool", "id", request.getCodePoolID(), "ttl", request.getTtl() + "",
+                "data", request.getCodePoolData()));
+        CreateCodePoolResult result = new CreateCodePoolResult();
+        result.setOk(true);
+        return result;
+
+    }
+
+    @Override
+    public void deleteCodePool(String codePoolId) throws ClientException {
+        request("POST", map("action", "deleteCodePool", "id", codePoolId));
+    }
+
+    @Override
+    public TaskSubmitter submitter() {
+        if (submitter == null) {
+            submitter = new TaskSubmitter(this);
+        }
+        return submitter;
     }
 
 }

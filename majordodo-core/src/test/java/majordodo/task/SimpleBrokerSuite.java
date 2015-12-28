@@ -94,7 +94,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
 
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
@@ -109,7 +109,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -172,7 +172,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -237,7 +237,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         List<AddTaskRequest> requests = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            requests.add(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0));
+            requests.add(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null));
         }
         List<SubmitTaskResult> results = getClient().submitTasks(requests);
         for (SubmitTaskResult result : results) {
@@ -309,7 +309,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         long transaction = getClient().beginTransaction();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            requests.add(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0));
+            requests.add(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null));
         }
         List<SubmitTaskResult> results = getClient().submitTasks(requests);
         for (SubmitTaskResult result : results) {
@@ -375,7 +375,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -433,7 +433,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 20; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             todo.add(taskId);
         }
 
@@ -504,7 +504,7 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
         long transaction = getClient().beginTransaction();
         for (int i = 0; i < 10; i++) {
             String taskParams = "p1=value1,p2=value2";
-            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null,0)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             todo.add(taskId);
         }
         getClient().commitTransaction(transaction);
