@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>majordodo</groupId>
+    <groupId>org.majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
+     <url>http://majordodo.org</url>
+    <description>A Distributed Resource Manager</description>
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -13,6 +15,39 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+    <scm>
+        <url>https://github.com/majordodo/Majordodo.git</url>        
+    </scm>
+    <developers>
+        <developer>
+            <id>eolivelli</id>
+            <name>Enrico Olivelli</name>
+            <organization>Diennea</organization>
+        </developer>
+        <developer>
+            <id>alessandro.luccaroni</id>
+            <name>Alessandro Luccaroni</name>
+            <organization>Diennea</organization>
+        </developer>
+        <developer>
+            <id>diana.clementi</id>
+            <name>Diana clementi</name>
+            <organization>Diennea</organization>
+        </developer>
+        <developer>
+            <id>diego.salvi</id>
+            <name>Diego Salvi</name>
+            <organization>Diennea</organization>
+        </developer>
+        <developer>
+            <id>matteo.casadei</id>
+            <name>Matteo Casadei</name>
+            <organization>Diennea</organization>
+        </developer>
+    </developers>
+    <issueManagement>
+        <url>https://dev.majordodo.org/jira</url>		
+    </issueManagement>
     <modules>
         <module>./majordodo-worker</module>
         <module>./majordodo-test-clients</module>
