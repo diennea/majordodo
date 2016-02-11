@@ -5,8 +5,8 @@
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Client</name>
-    <version>0.2.0</version>
-    <groupId>majordodo</groupId>
+    <version>0.3.0</version>
+    <groupId>org.majordodo</groupId>
     <artifactId>majordodo-client</artifactId>
     <build>
         <plugins>

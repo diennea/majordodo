@@ -102,7 +102,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.2.0";
+        return "0.3.0";
     }
 
     private final Workers workers;
