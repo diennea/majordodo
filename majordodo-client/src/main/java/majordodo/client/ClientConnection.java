@@ -85,20 +85,17 @@ public interface ClientConnection extends AutoCloseable {
      * @param request
      * @return the result of the submission. If using slots maybe the taskId
      * would be null or empty, and outcome will describe the reason
-     * @throws majordodo.client.ClientException
-     * @throws IOException
+     * @throws majordodo.client.ClientException     
      */
     SubmitTaskResponse submitTask(SubmitTaskRequest request) throws ClientException;
 
     /**
      * Submit multiple task
      *
-     * @param requests
-     * @param request
+     * @param requests     
      * @return the result of the submission. If using slots maybe the taskId
      * would be null or empty, and outcome will describe the reason
      * @throws majordodo.client.ClientException
-     * @throws IOException
      */
     List<SubmitTaskResponse> submitTasks(List<SubmitTaskRequest> requests) throws ClientException;
 

@@ -73,8 +73,7 @@ public class CodePoolUtils {
     }
 
     /**
-     * Serializes an Executor for execution with
-     * {@link  TaskModeAwareExecutorFactory}
+     * Serializes an Executor for execution with TaskModeAwareExecutorFactory     
      *
      * @param executor
      * @return
