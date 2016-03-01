@@ -310,7 +310,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata) throws Exception {
         if (localhostdata == null) {
             localhostdata = new byte[0];
-        }        
+        }
         ClientConfiguration config = new ClientConfiguration();
         try {
             this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata);
@@ -459,6 +459,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         } finally {
             writeLock.unlock();
         }
+    }
+
+    public ZKClusterManager getClusterManager() {
+        return zKClusterManager;
     }
 
     @Override
