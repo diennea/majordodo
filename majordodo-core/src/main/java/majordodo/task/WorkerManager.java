@@ -99,7 +99,7 @@ public class WorkerManager {
             long _stop = System.currentTimeMillis();
 
             if (!taskIds.isEmpty()) {
-                LOGGER.log(Level.SEVERE, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, taskIds.size(), _stop - _start});
+                LOGGER.log(Level.INFO, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, taskIds.size(), _stop - _start});
             }
         } catch (Exception error) {
             LOGGER.log(Level.SEVERE, "error assigning tasks", error);
