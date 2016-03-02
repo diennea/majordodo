@@ -21,8 +21,13 @@ package majordodo.tools;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 import majordodo.network.BrokerHostData;
@@ -44,20 +49,30 @@ public class Tools {
     public static void main(String... args) {
         try {
             Properties configuration = new Properties();
+            if (args.length < 2) {
+                System.out.println("Usage: tools.sh dumplogs|clear [LEDGERID] [OUTPUTFILE]");
+                return;
+            }
             File configFile = new File(args[0]);
             try (FileReader reader = new FileReader(configFile)) {
                 configuration.load(reader);
             }
-            String action = args[1];
-            long ledgerId = 0;
-            switch (action) {
+            String command = args[1];
+            long ledgerId = -1;
+            String outputfilename = "";
+            switch (command) {
                 case "dumplogs":
-                    ledgerId = Long.parseLong(args[2]);
+                    if (args.length > 2) {
+                        ledgerId = Long.parseLong(args[2]);
+                        if (args.length > 3) {
+                            outputfilename = args[3];
+                        }
+                    }
                     break;
                 case "clear":
                     break;
                 default:
-                    throw new RuntimeException("bad action " + action + ", only dumplogs|clear");
+                    throw new RuntimeException("bad command " + command + ", only dumplogs|clear");
             }
 
             String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
@@ -80,8 +95,11 @@ public class Tools {
                     String zkPath = configuration.getProperty("zk.path", "/majordodo");
                     String snapdir = configuration.getProperty("data.dir", "data");
 
+                    Map<String, String> additional = new HashMap<>();
+                    additional.put("tools-jvmid", ManagementFactory.getRuntimeMXBean().getName());
+                    additional.put("tools-command", command);
                     ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
-                            BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, new HashMap<String, String>()))
+                            BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additional))
                     );
                     log = _log;
                     int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));
@@ -99,21 +117,29 @@ public class Tools {
                     throw new RuntimeException("bad value for clustering.mode property, only valid values are singleserver|clustered");
             }
             try {
-                if (action.equals("dumplogs")) {
+                if (command.equals("dumplogs")) {
                     if (log instanceof ReplicatedCommitLog) {
                         ReplicatedCommitLog _log = (ReplicatedCommitLog) log;
                         LedgersInfo actualLedgersList = _log.getClusterManager().getActualLedgersList();
                         System.out.println("Actual ledgers list:" + actualLedgersList.getActiveLedgers());
                     }
                     if (ledgerId >= 0) {
-                        log.recovery(new LogSequenceNumber(ledgerId, 0), new BiConsumer<LogSequenceNumber, StatusEdit>() {
-                            @Override
-                            public void accept(LogSequenceNumber t, StatusEdit u) {
-                                System.out.println(t.ledgerId + "," + t.sequenceNumber + '\t' + u);
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS");
+                        if (!outputfilename.isEmpty()) {
+                            System.out.println("Dumping contents of ledger " + ledgerId + " to file " + outputfilename);
+                            try (PrintWriter writer = new PrintWriter(new File(outputfilename))) {
+                                log.recovery(new LogSequenceNumber(ledgerId, 0), (LogSequenceNumber t, StatusEdit u) -> {
+                                    writer.println(t.ledgerId + "," + t.sequenceNumber + ',' + u.toFormattedString(formatter));
+                                }, false);
                             }
-                        }, false);
+                        } else {
+                            System.out.println("Dumping contents of ledger " + ledgerId + " to stdout");
+                            log.recovery(new LogSequenceNumber(ledgerId, 0), (LogSequenceNumber t, StatusEdit u) -> {
+                                System.out.println(t.ledgerId + "," + t.sequenceNumber + ',' + u.toFormattedString(formatter));
+                            }, false);
+                        }
                     }
-                } else if (action.equals("clear")) {
+                } else if (command.equals("clear")) {
                     log.clear();
                 }
             } finally {

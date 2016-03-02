@@ -25,6 +25,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -108,6 +109,59 @@ public final class StatusEdit {
     @Override
     public String toString() {
         return "StatusEdit{" + "editType=" + editType + " " + typeToString(editType) + ", taskType=" + taskType + ", taskId=" + taskId + ", taskStatus=" + taskStatus + ", attempt=" + attempt + ", maxattempts=" + maxattempts + ", timestamp=" + timestamp + ", transactionId=" + transactionId + ", executionDeadline=" + executionDeadline + ", parameter=" + parameter + ", userid=" + userid + ", workerId=" + workerId + ", workerLocation=" + workerLocation + ", workerProcessId=" + workerProcessId + ", result=" + result + ", slot=" + slot + ", actualRunningTasks=" + actualRunningTasks + '}';
+    }
+
+    private static void append(StringBuilder v, String key, Object value) {
+        if (value != null && !value.toString().isEmpty()) {
+            v.append("," + key + "=" + value);
+        }
+    }
+
+    public String toFormattedString(SimpleDateFormat tsFormatter) {
+        StringBuilder res = new StringBuilder(typeToString(editType));
+        append(res, "timestamp", tsFormatter.format(new java.util.Date(timestamp)));
+        append(res, "taskId", taskId);
+        if (transactionId > 0) {
+            append(res, "tx", transactionId);
+        }
+        if (userid != null && !userid.isEmpty()) {
+            append(res, "userid", userid);
+        }
+        if (taskId > 0) {
+            append(res, "taskType", taskType);
+            append(res, "taskStatus", Task.statusToString(taskStatus));
+        }
+        if (slot != null && !slot.isEmpty()) {
+            append(res, "slot", slot);
+        }
+        if (workerId != null && !workerId.isEmpty()) {
+            append(res, "workerId", workerId);
+        }
+        if (attempt > 0) {
+            append(res, "attempt", attempt);
+        }
+        if (maxattempts > 0) {
+            append(res, "maxattempts", maxattempts);
+        }
+        if (executionDeadline > 0) {
+            append(res, "executionDeadline", tsFormatter.format(new java.util.Date(executionDeadline)));
+        }
+        if (workerLocation != null && !workerLocation.isEmpty()) {
+            append(res, "workerLocation", workerLocation);
+        }
+        if (workerProcessId != null && !workerProcessId.isEmpty()) {
+            append(res, "workerProcessId", workerProcessId);
+        }
+        if (actualRunningTasks != null && !actualRunningTasks.isEmpty()) {
+            append(res, "actualRunningTasks", actualRunningTasks);
+        }
+        if (parameter != null && !parameter.isEmpty()) {
+            append(res, "data", parameter);
+        }
+        if (result != null && !result.isEmpty()) {
+            append(res, "result", result);
+        }
+        return res.toString();
     }
 
     public static final StatusEdit NOOP() {
