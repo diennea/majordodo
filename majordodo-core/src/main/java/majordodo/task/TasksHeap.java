@@ -111,8 +111,6 @@ public class TasksHeap {
                     entry.tasktype = 0;
                     entry.userid = null;
                     entry.groupid = 0;
-                    // task can be listed only once
-                    break;
                 }
             }
         } finally {
