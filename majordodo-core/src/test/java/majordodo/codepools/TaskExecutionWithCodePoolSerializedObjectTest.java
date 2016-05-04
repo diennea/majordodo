@@ -49,6 +49,7 @@ import majordodo.clientfacade.CreateCodePoolResult;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -146,7 +147,22 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
         String workerId = "abc";
         String taskParams = "newinstance:majordodo.testclients.SimpleExecutor";
         final String CODEPOOL = "codepool";
-        Path expectedJar = mavenTargetDir.getParent().getParent().resolve("majordodo-test-clients").resolve("target").resolve("majordodo-test-clients-" + Broker.VERSION() + ".jar");
+        Path expectedJar = mavenTargetDir
+                .getParent()
+                .getParent()
+                .resolve("majordodo-test-clients")
+                .resolve("target")
+                .resolve("majordodo-test-clients-" + Broker.VERSION() + ".jar");
+        if (!Files.isRegularFile(expectedJar)) {
+            expectedJar = mavenTargetDir
+                .getParent()                
+                .resolve("majordodo-test-clients")
+                .resolve("target")
+                .resolve("majordodo-test-clients-" + Broker.VERSION() + ".jar");
+        }
+        if (!Files.isRegularFile(expectedJar)) {
+            fail("cannot find majordodo-test-clients-" + Broker.VERSION() + ".jar artifact");
+        }
         byte[] mockCodePoolData = CodePoolUtils.createZipWithOneEntry("codepooltest.jar", Files.readAllBytes(expectedJar));
 
         // startAsWritable a broker and request a task, with slot
