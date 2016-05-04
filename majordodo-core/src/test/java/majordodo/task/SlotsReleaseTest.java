@@ -1,3 +1,4 @@
+
 /*
  Licensed to Diennea S.r.l. under one
  or more contributor license agreements. See the NOTICE file
@@ -334,6 +335,7 @@ public class SlotsReleaseTest {
             assertTrue(res.getOutcome() == null);
             // slot is busy
             assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
+            Thread.sleep(1000);
             broker.purgeTasks();
             // slot is free
             long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
