@@ -34,10 +34,10 @@
             <useStrictFiltering>true</useStrictFiltering>
             <unpack>false</unpack>           
             <includes>
-                <include>*:jar</include>                
-            </includes>            
+                <include>*:jar</include>                                
+            </includes>                        
             <outputDirectory>lib</outputDirectory>
-        </dependencySet>         
+        </dependencySet>       
     </dependencySets>
 
 </assembly>
