@@ -310,7 +310,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 tasksData.add(params);
             });
             Message msg = Message.TASK_FINISHED(processId, tasksData);
-            _channel.sendMessageWithAsyncReply(msg, new ReplyCallback() {
+            _channel.sendMessageWithAsyncReply(msg, config.getNetworkTimeout(), new ReplyCallback() {
 
                 @Override
                 public void replyReceived(Message originalMessage, Message msg, Throwable error) {
@@ -370,44 +370,47 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         public void run() {
             while (!stopped) {
                 try {
-                    if (channel == null) {
-                        connect();
+                    try {
+                        if (channel == null) {
+                            connect();
+                        }
+                    } catch (InterruptedException exit) {
+                        LOGGER.log(Level.SEVERE, "exit loop " + exit);
+                        break;
+                    } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
+                        LOGGER.log(Level.SEVERE, "no broker available:" + retry);
                     }
 
-                } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
-                    break;
-                } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
-                    LOGGER.log(Level.SEVERE, "no broker available:" + retry);
-                }
+                    if (channel == null) {
+                        try {
+                            LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
+                            Thread.sleep(5000);
+                        } catch (InterruptedException exit) {
+                            LOGGER.log(Level.SEVERE, "exit loop " + exit);
+                            break;
+                        }
+                        continue;
+                    }
 
-                if (channel == null) {
                     try {
-                        LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
-                        Thread.sleep(5000);
+                        sendPendingNotifications(false);
                     } catch (InterruptedException exit) {
                         LOGGER.log(Level.SEVERE, "exit loop " + exit);
                         break;
                     }
-                    continue;
-                }
 
-                try {
-                    sendPendingNotifications(false);
-                } catch (InterruptedException exit) {
-                    LOGGER.log(Level.SEVERE, "exit loop " + exit);
-                    break;
-                }
+                    ping();
 
-                ping();
-
-                if (externalProcessChecker != null) {
-                    try {
-                        externalProcessChecker.call();
-                    } catch (Exception err) {
-                        err.printStackTrace();
-                        killWorkerHandler.killWorker(WorkerCore.this);
+                    if (externalProcessChecker != null) {
+                        try {
+                            externalProcessChecker.call();
+                        } catch (Exception err) {
+                            err.printStackTrace();
+                            killWorkerHandler.killWorker(WorkerCore.this);
+                        }
                     }
+                } catch (Throwable error) {
+                    LOGGER.log(Level.SEVERE, "error on main WorkerCore loop:" + error, error);
                 }
             }
             LOGGER.log(Level.SEVERE, "shutting down " + processId);
@@ -427,6 +430,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 });
                 disconnect();
             }
+
         }
 
         private void sendPendingNotifications(boolean force) throws InterruptedException {

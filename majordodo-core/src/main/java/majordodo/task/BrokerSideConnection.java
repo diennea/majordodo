@@ -55,7 +55,6 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     private Channel channel;
     private Broker broker;
     private long lastReceivedMessageTs;
-
     private static final AtomicLong sessionId = new AtomicLong();
 
     public BrokerSideConnection() {
@@ -137,7 +136,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 if (workerProcessId != null && !message.workerProcessId.equals(workerProcessId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
-                    channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
+                    channel.sendMessageWithAsyncReply(killWorkerMessage, broker.getConfiguration().getNetworkTimeout(), (Message originalMessage, Message message1, Throwable error) -> {
                         // any way we are closing the channel
                         channel.close();
                     });
@@ -180,6 +179,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     answerConnectionNotAcceptedAndClose(message, error);
                     return;
                 }
+                channel.setName(workerId);
                 broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
                 manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups);
@@ -225,7 +225,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 if (workerProcessId != null && !message.workerProcessId.equals(processId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
-                    channel.sendMessageWithAsyncReply(killWorkerMessage, (Message originalMessage, Message message1, Throwable error) -> {
+                    channel.sendMessageWithAsyncReply(killWorkerMessage, broker.getConfiguration().getNetworkTimeout(), (Message originalMessage, Message message1, Throwable error) -> {
                         // any way we are closing the channel
                         channel.close();
                     });

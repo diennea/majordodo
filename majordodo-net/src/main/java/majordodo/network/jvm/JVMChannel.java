@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import majordodo.network.netty.DodoMessageUtils;
 
 /**
@@ -41,6 +43,7 @@ import majordodo.network.netty.DodoMessageUtils;
  */
 public class JVMChannel extends Channel {
 
+     private static final Logger LOGGER = Logger.getLogger(JVMChannel.class.getName());
     private volatile boolean active = false;
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
@@ -64,16 +67,18 @@ public class JVMChannel extends Channel {
     }
 
     private void receiveMessageFromPeer(Message message) {
-        message = cloneMessage(message);
-        if (message.getReplyMessageId() != null) {
-            handleReply(message);
+        final Message _message = cloneMessage(message);
+        if (_message.getReplyMessageId() != null) {
+            handleReply(_message);
         } else {
-            try {
-                messagesReceiver.messageReceived(message);
-            } catch (Throwable t) {
-                t.printStackTrace();
-                close();
-            }
+            submitCallback(() -> {
+                try {
+                    messagesReceiver.messageReceived(_message);
+                } catch (Throwable t) {
+                    LOGGER.log(Level.SEVERE, this + ": error " + t, t);
+                    close();
+                }
+            });
         }
     }
 
@@ -92,7 +97,7 @@ public class JVMChannel extends Channel {
         }
         executionserializer.submit(() -> {
             otherSide.receiveMessageFromPeer(_message);
-            sumitCallback(() -> {
+            submitCallback(() -> {
                 callback.messageSent(_message, null);
             });
         });
@@ -107,7 +112,7 @@ public class JVMChannel extends Channel {
             pendingReplyMessages.remove(anwermessage.getReplyMessageId());
             Message original = pendingReplyMessagesSource.remove(anwermessage.getReplyMessageId());
             if (original != null) {
-                sumitCallback(() -> {
+                submitCallback(() -> {
                     callback.replyReceived(original, anwermessage, null);
                 });
             }
@@ -119,21 +124,21 @@ public class JVMChannel extends Channel {
         message.setMessageId(UUID.randomUUID().toString());
         Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
-            System.out.println("[JVM] channel shutdown, discarding reply message " + _message);
+            LOGGER.log(Level.SEVERE,"channel shutdown, discarding reply message " + _message);
             return;
         }
         executionserializer.submit(() -> {
 //        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
             if (!active) {
-                System.out.println("[JVM] channel not active, discarding reply message " + _message);
+                LOGGER.log(Level.SEVERE,"channel not active, discarding reply message " + _message);
                 return;
-            }            
+            }
             _message.setReplyMessageId(inAnswerTo.messageId);
             otherSide.receiveMessageFromPeer(_message);
         });
     }
 
-    private void sumitCallback(Runnable r) {
+    private void submitCallback(Runnable r) {
         try {
             callbackexecutor.submit(r);
         } catch (RejectedExecutionException discard) {
@@ -141,11 +146,11 @@ public class JVMChannel extends Channel {
     }
 
     @Override
-    public void sendMessageWithAsyncReply(Message message, ReplyCallback callback) {
+    public void sendMessageWithAsyncReply(Message message, long timeout, ReplyCallback callback) {
         message.setMessageId(UUID.randomUUID().toString());
         Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
-            System.out.println("[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
+            LOGGER.log(Level.SEVERE,"[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
             return;
         }
         executionserializer.submit(() -> {
@@ -166,12 +171,18 @@ public class JVMChannel extends Channel {
     public boolean isValid() {
         return active;
     }
+    private volatile boolean closed = false;
 
     @Override
     public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        LOGGER.log(Level.SEVERE, this + ": closing");
         active = false;
         pendingReplyMessages.forEach((key, callback) -> {
-            sumitCallback(() -> {
+            submitCallback(() -> {
                 Message original = pendingReplyMessagesSource.remove(key);
                 if (original != null) {
                     callback.replyReceived(original, null, new Exception("comunication channel closed"));
@@ -186,6 +197,10 @@ public class JVMChannel extends Channel {
         executionserializer.shutdown();
         callbackexecutor.shutdown();
         messagesReceiver.channelClosed();
+    }
+
+    @Override
+    public void channelIdle() {
     }
 
 }

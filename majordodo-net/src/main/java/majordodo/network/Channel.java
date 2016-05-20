@@ -33,6 +33,7 @@ import java.util.concurrent.TimeoutException;
 public abstract class Channel implements AutoCloseable {
 
     protected ChannelEventListener messagesReceiver;
+    protected String name = "unnamed";
 
     public Channel() {
     }
@@ -49,14 +50,16 @@ public abstract class Channel implements AutoCloseable {
 
     public abstract void sendReplyMessage(Message inAnswerTo, Message message);
 
-    public abstract void sendMessageWithAsyncReply(Message message, ReplyCallback callback);
+    public abstract void sendMessageWithAsyncReply(Message message, long timeout, ReplyCallback callback);
+
+    public abstract void channelIdle();
 
     @Override
     public abstract void close();
 
     public Message sendMessageWithReply(Message message, long timeout) throws InterruptedException, TimeoutException {
         CompletableFuture<Message> resp = new CompletableFuture<>();
-        sendMessageWithAsyncReply(message, (Message originalMessage, Message message1, Throwable error) -> {
+        sendMessageWithAsyncReply(message, timeout, (Message originalMessage, Message message1, Throwable error) -> {
             if (error != null) {
                 resp.completeExceptionally(error);
             } else {
@@ -76,5 +79,13 @@ public abstract class Channel implements AutoCloseable {
     }
     
     public abstract boolean isValid();
+
+    public String getName() {
+        return name;
+}
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
 }
