@@ -36,6 +36,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,16 +62,15 @@ import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
 import majordodo.network.netty.NettyChannel;
 import majordodo.network.netty.NettyConnector;
-import majordodo.task.Broker;
 import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BKException.BKBookieHandleNotAvailableException;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Commit log replicated on Apache Bookkeeper
@@ -831,62 +831,69 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public void followTheLeader(LogSequenceNumber skipPast, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
 
-        List<Long> actualList = zKClusterManager.getActualLedgersList().getActiveLedgers();
+        List<Long> actualList;
+        try {
+            actualList = zKClusterManager.getActualLedgersList().getActiveLedgers();
+        } catch (LogNotAvailableException temporaryError) {
+            LOGGER.log(Level.SEVERE, "temporary error " + temporaryError, temporaryError);
+            return;
+        }
 
         List<Long> toRead = actualList;
         if (skipPast.ledgerId != -1) {
             toRead = toRead.stream().filter(l -> l >= skipPast.ledgerId).collect(Collectors.toList());
         }
+
         try {
             long nextEntry = skipPast.sequenceNumber + 1;
             LOGGER.log(Level.SEVERE, "followTheLeader skipPast:{0} toRead: {1} actualList:{2}, nextEntry:{3}", new Object[]{skipPast, toRead, actualList, nextEntry});
             for (Long previous : toRead) {
                 //LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
-                LedgerHandle lh;
-                try {
-                    lh = bookKeeper.openLedgerNoRecovery(previous,
-                            BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
-                } catch (BKException.BKLedgerRecoveryException e) {
-                    LOGGER.log(Level.SEVERE, "error", e);
-                    return;
-                }
-                try {
+
+                List<Map.Entry<Long, StatusEdit>> buffer = new ArrayList<>();
+
+                // first of all we read data from the leader
+                try (LedgerHandle lh = bookKeeper.openLedgerNoRecovery(previous,
+                        BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));) {
                     long lastAddConfirmed = lh.getLastAddConfirmed();
                     LOGGER.log(Level.FINE, "followTheLeader openLedger {0} -> lastAddConfirmed:{1}, nextEntry:{2}", new Object[]{previous, lastAddConfirmed, nextEntry});
                     if (nextEntry > lastAddConfirmed) {
                         nextEntry = 0;
                         continue;
                     }
-                    Enumeration<LedgerEntry> entries
-                            = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
-
+                    Enumeration<LedgerEntry> entries = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
                     while (entries.hasMoreElements()) {
                         LedgerEntry e = entries.nextElement();
                         long entryId = e.getEntryId();
-
                         byte[] entryData = e.getEntry();
                         StatusEdit statusEdit = StatusEdit.read(entryData);
-                        LOGGER.log(Level.FINEST, "entry {0},{1} -> {2}", new Object[]{previous, entryId, statusEdit});
-                        LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
-                        consumer.accept(number, statusEdit);
-                        lastSequenceNumber = number.sequenceNumber;
-                        currentLedgerId = number.ledgerId;
+                        buffer.add(new AbstractMap.SimpleImmutableEntry<>(entryId, statusEdit));
                     }
-                } finally {
-                    try {
-                        lh.close();
-                    } catch (BKException err) {
-                        LOGGER.log(Level.SEVERE, "error while closing ledger", err);
-                    } catch (InterruptedException err) {
-                        LOGGER.log(Level.SEVERE, "error while closing ledger", err);
-                        Thread.currentThread().interrupt();
-                    }
+                } catch (BKException.BKLedgerRecoveryException | BKBookieHandleNotAvailableException temporaryError) {
+                    LOGGER.log(Level.SEVERE, "temporary error " + temporaryError, temporaryError);
+                    return;
+                } catch (InterruptedException err) {
+                    LOGGER.log(Level.SEVERE, "error while reading ledger " + err, err);
+                    Thread.currentThread().interrupt();
+                    throw err;
+                }
+
+                // use the entry
+                for (Map.Entry<Long, StatusEdit> entry : buffer) {
+                    long entryId = entry.getKey();
+                    StatusEdit statusEdit = entry.getValue();
+                    LOGGER.log(Level.FINEST, "entry {0},{1} -> {2}", new Object[]{previous, entryId, statusEdit});
+                    LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
+                    consumer.accept(number, statusEdit);
+                    lastSequenceNumber = number.sequenceNumber;
+                    currentLedgerId = number.ledgerId;
                 }
             }
         } catch (InterruptedException | IOException | BKException err) {
             err.printStackTrace();
             throw new LogNotAvailableException(err);
         }
+
     }
 
     @Override
