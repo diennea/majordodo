@@ -159,7 +159,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
                 LOGGER.log(Level.SEVERE, "start SSL with certificate " + sslCertFile.getAbsolutePath() + " chain file " + sslCertChainFile.getAbsolutePath());
                 if (sslCiphers != null) {
                     LOGGER.log(Level.SEVERE, "required sslCiphers " + sslCiphers);
-            }
+                }
                 sslCtx = SslContextBuilder.forServer(sslCertChainFile, sslCertFile, sslCertPassword).ciphers(sslCiphers).build();
             }
 
@@ -172,9 +172,9 @@ public class NettyChannelAcceptor implements AutoCloseable {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        NettyChannel session = new NettyChannel(ch, callbackExecutor);
+                        NettyChannel session = new NettyChannel("client", ch, callbackExecutor, null);
                         if (acceptor != null) {
-                        acceptor.createConnection(session);
+                            acceptor.createConnection(session);
                         }
 
 //                        ch.pipeline().addLast(new LoggingHandler());

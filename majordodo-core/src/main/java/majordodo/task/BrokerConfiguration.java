@@ -164,7 +164,7 @@ public class BrokerConfiguration {
     public void setTasksHeapSize(int tasksHeapSize) {
         this.tasksHeapSize = tasksHeapSize;
     }
-    
+
     /**
      * Parallelism of worker assigment operations
      */
@@ -177,7 +177,6 @@ public class BrokerConfiguration {
     public void setWorkersThreadpoolSize(int workersThreadpoolSize) {
         this.workersThreadpoolSize = workersThreadpoolSize;
     }
-
 
     public void read(Map<String, Object> properties) {
         ReflectionUtils.apply(properties, this);
@@ -211,6 +210,21 @@ public class BrokerConfiguration {
 
     public void setSharedSecret(String sharedSecret) {
         this.sharedSecret = sharedSecret;
+    }
+
+    private int networkTimeout = 1000 * 60 * 10;
+
+    /**
+     * General network timeout for worker comunication
+     *
+     * @return
+     */
+    public int getNetworkTimeout() {
+        return networkTimeout;
+    }
+
+    public void setNetworkTimeout(int networkTimeout) {
+        this.networkTimeout = networkTimeout;
     }
 
 }

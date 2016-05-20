@@ -140,7 +140,7 @@ public class NettyChannelSslTest {
                 connector.setSsl(true);
                 NettyChannel channel = connector.connect();
                 Message message = Message.KILL_WORKER("testrequest");
-                channel.sendMessageWithAsyncReply(message, new ReplyCallback() {
+                channel.sendMessageWithAsyncReply(message, 10000, new ReplyCallback() {
 
                     @Override
                     public void replyReceived(Message originalMessage, Message message, Throwable error) {

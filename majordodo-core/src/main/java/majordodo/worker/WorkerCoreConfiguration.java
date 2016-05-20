@@ -44,6 +44,7 @@ public class WorkerCoreConfiguration {
     private Set<Integer> excludedGroups;
     private String codePoolsDirectory;
     private boolean enableCodePools;
+    private int networkTimeout = 1000*60*10;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
@@ -234,5 +235,14 @@ public class WorkerCoreConfiguration {
     public void setSharedSecret(String sharedSecret) {
         this.sharedSecret = sharedSecret;
     }
+
+    public int getNetworkTimeout() {
+        return networkTimeout;
+    }
+
+    public void setNetworkTimeout(int networkTimeout) {
+        this.networkTimeout = networkTimeout;
+    }
+    
 
 }
