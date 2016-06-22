@@ -207,7 +207,7 @@ public class BrokerStatus {
                                 switch (t.getStatus()) {
                                     case Task.STATUS_RUNNING:
                                     case Task.STATUS_WAITING:
-                                        hasTasks = true;                                        
+                                        hasTasks = true;
                                         break;
                                 }
                                 if (hasTasks) {
@@ -219,7 +219,7 @@ public class BrokerStatus {
                             toPurge.add(codePoolId);
                         }
                     }
-                    
+
                 }
             }
         } finally {
@@ -377,7 +377,6 @@ public class BrokerStatus {
     }
 
     void recoverForLeadership() {
-        lock.writeLock().lock();
         try {
             // we have to be sure that we are in sych we the global status                        
             LOGGER.severe("recoverForLeadership, from " + this.lastLogSequenceNumber);
@@ -390,13 +389,11 @@ public class BrokerStatus {
                             throw new RuntimeException("broker failed");
                         }
                     }, false);
-            newTaskId.set(maxTaskId+1);
-            newTransactionId.set(maxTransactionId+1);
-            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode. newTaskId="+newTaskId+" newTransactionId="+newTransactionId);
+            newTaskId.set(maxTaskId + 1);
+            newTransactionId.set(maxTransactionId + 1);
+            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode. newTaskId=" + newTaskId + " newTransactionId=" + newTransactionId);
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
-        } finally {
-            lock.writeLock().unlock();
         }
 
         LOGGER.log(Level.SEVERE, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
@@ -667,7 +664,7 @@ public class BrokerStatus {
                     transactions.remove(edit.transactionId);
                     return new ModificationResult(num, null, null);
                 }
-                case StatusEdit.TYPE_ADD_TASK: {                    
+                case StatusEdit.TYPE_ADD_TASK: {
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
                     if (maxTaskId < edit.taskId) {
@@ -797,7 +794,6 @@ public class BrokerStatus {
 
     public void recover() {
 
-        lock.writeLock().lock();
         try {
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             this.maxTaskId = snapshot.getMaxTaskId();
@@ -849,8 +845,6 @@ public class BrokerStatus {
         } catch (LogNotAvailableException err) {
             LOGGER.log(Level.SEVERE, "error during recovery", err);
             throw new RuntimeException(err);
-        } finally {
-            lock.writeLock().unlock();
         }
 
         LOGGER.log(Level.SEVERE, "After recovery maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);

@@ -45,6 +45,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -313,10 +314,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             localhostdata = new byte[0];
         }
         ClientConfiguration config = new ClientConfiguration();
+        config.setThrottleValue(0);
         try {
             this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata);
             this.zKClusterManager.waitForConnection();
-            this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());
+            this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());            
             this.snapshotsDirectory = snapshotsDirectory;
             this.zKClusterManager.start();
         } catch (Exception t) {
@@ -512,18 +514,35 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             b = end + 1;
                             double percent = ((start - first) * 100.0 / (lastAddConfirmed + 1));
                             LOGGER.log(Level.SEVERE, "From entry {0}, to entry {1} ({2} %)", new Object[]{start, end, percent});
-                            Enumeration<LedgerEntry> seq = handle.readEntries(start, end);
-                            while (seq.hasMoreElements()) {
-                                LedgerEntry entry = seq.nextElement();
-                                LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
-                                StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
-                                if (number.after(snapshotSequenceNumber)) {
-                                    LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
-                                    consumer.accept(number, statusEdit);
-                                } else {
-                                    LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
+                            Holder<Throwable> error = new Holder<>();
+                            CountDownLatch count = new CountDownLatch(1);
+                            handle.asyncReadEntries(start, end, new AsyncCallback.ReadCallback() {
+                                @Override
+                                public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> seq, Object o) {
+                                    if (rc != BKException.Code.OK) {
+                                        error.value = BKException.create(rc).fillInStackTrace();
+                                        count.countDown();
+                                        return;
+                                    }
+                                    try {
+                                        while (seq.hasMoreElements()) {
+                                            LedgerEntry entry = seq.nextElement();
+                                            LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
+                                            StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
+                                            if (number.after(snapshotSequenceNumber)) {
+                                                LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                                consumer.accept(number, statusEdit);
+                                            } else {
+                                                LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
+                                            }
+                                        }
+                                    } catch (Throwable errorOccurred) {
+                                        error.value = errorOccurred;
+                                    }
+                                    count.countDown();
                                 }
-                            }
+                            }, null);                                                        
+                            count.await();                            
                         }
                     }
                 } finally {
@@ -792,7 +811,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         try {
             if (closed) {
                 return;
-            }
+            }            
             closeCurrentWriter();
             if (zKClusterManager != null) {
                 try {
