@@ -66,6 +66,7 @@ import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.BKBookieHandleNotAvailableException;
+import org.apache.bookkeeper.client.BKException.BKNoSuchLedgerExistsException;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
@@ -654,7 +655,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 try {
                     LOGGER.log(Level.SEVERE, "dropping ledger {0}", ledgerId);
                     actualLedgersList.removeLedger(ledgerId);
-                    bookKeeper.deleteLedger(ledgerId);
+                    try {
+                        bookKeeper.deleteLedger(ledgerId);
+                    } catch (BKNoSuchLedgerExistsException error) {
+                        LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                    }
                     zKClusterManager.saveActualLedgersList(actualLedgersList);
                     LOGGER.log(Level.SEVERE, "dropping ledger {0}, finished", ledgerId);
                 } catch (BKException | InterruptedException error) {
