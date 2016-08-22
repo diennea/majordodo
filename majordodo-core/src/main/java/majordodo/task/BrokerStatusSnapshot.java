@@ -382,7 +382,7 @@ public class BrokerStatusSnapshot {
                     break;
                 case "resources":
                     nextToken(jParser);
-                    task.setResources(readValue(jParser));
+                    task.setResources(readValue(jParser).intern());
                     break;
                 case "parameter":
                     nextToken(jParser);

@@ -397,6 +397,9 @@ public class HttpAPIImplementation {
         if (t.getCodePoolId() != null) {
             map.put("codePoolId", t.getCodePoolId());
         }
+        if (t.getResources() != null) {
+            map.put("resources", t.getResources());
+        }
         int taskStatus = t.getStatus();
         String status = TaskStatusView.convertTaskStatusForClient(taskStatus);
         map.put("status", status);
