@@ -236,6 +236,7 @@ public class Task {
         copy.maxattempts = this.maxattempts;
         copy.executionDeadline = this.executionDeadline;
         copy.slot = this.slot;
+        copy.resources = this.resources;
         return copy;
     }
 

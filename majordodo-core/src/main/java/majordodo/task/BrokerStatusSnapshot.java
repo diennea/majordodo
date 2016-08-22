@@ -39,12 +39,12 @@ import org.codehaus.jackson.JsonToken;
  * @author enrico.olivelli
  */
 public class BrokerStatusSnapshot {
-    
+
     private static void serializeTransaction(Transaction transaction, JsonGenerator g) throws IOException {
         g.writeStartObject();
         writeSimpleProperty(g, "id", transaction.getTransactionId());
         writeSimpleProperty(g, "creationTimestamp", transaction.getCreationTimestamp());
-        
+
         if (transaction.getPreparedTasks() != null && !transaction.getPreparedTasks().isEmpty()) {
             g.writeFieldName("preparedTasks");
             g.writeStartArray();
@@ -55,7 +55,7 @@ public class BrokerStatusSnapshot {
         }
         g.writeEndObject();
     }
-    
+
     private static void serializeCodePool(CodePool transaction, JsonGenerator g) throws IOException {
         g.writeStartObject();
         writeSimpleProperty(g, "id", transaction.getId());
@@ -64,7 +64,7 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "data", Base64.getEncoder().encodeToString(transaction.getCodePoolData()));
         g.writeEndObject();
     }
-    
+
     List<Task> tasks = new ArrayList<>();
     List<WorkerStatus> workers = new ArrayList<>();
     List<Transaction> transactions = new ArrayList<>();
@@ -72,85 +72,85 @@ public class BrokerStatusSnapshot {
     long maxTaskId;
     long maxTransactionId;
     LogSequenceNumber actualLogSequenceNumber;
-    
+
     public BrokerStatusSnapshot(long maxTaskId, long maxTransactionId, LogSequenceNumber actualLogSequenceNumber) {
         this.maxTaskId = maxTaskId;
         this.maxTransactionId = maxTransactionId;
         this.actualLogSequenceNumber = actualLogSequenceNumber;
     }
-    
+
     public long getMaxTransactionId() {
         return maxTransactionId;
     }
-    
+
     public void setMaxTransactionId(long maxTransactionId) {
         this.maxTransactionId = maxTransactionId;
     }
-    
+
     public LogSequenceNumber getActualLogSequenceNumber() {
         return actualLogSequenceNumber;
     }
-    
+
     public void setActualLogSequenceNumber(LogSequenceNumber actualLogSequenceNumber) {
         this.actualLogSequenceNumber = actualLogSequenceNumber;
     }
-    
+
     public List<Task> getTasks() {
         return tasks;
     }
-    
+
     public void setTasks(List<Task> tasks) {
         this.tasks = tasks;
     }
-    
+
     public List<Transaction> getTransactions() {
         return transactions;
     }
-    
+
     public void setTransactions(List<Transaction> transactions) {
         this.transactions = transactions;
     }
-    
+
     public List<CodePool> getCodePools() {
         return codePools;
     }
-    
+
     public void setCodePools(List<CodePool> codePools) {
         this.codePools = codePools;
     }
-    
+
     public List<WorkerStatus> getWorkers() {
         return workers;
     }
-    
+
     public void setWorkers(List<WorkerStatus> workers) {
         this.workers = workers;
     }
-    
+
     public long getMaxTaskId() {
         return maxTaskId;
     }
-    
+
     public void setMaxTaskId(long maxTaskId) {
         this.maxTaskId = maxTaskId;
     }
-    
+
     private static JsonToken nextToken(JsonParser jParser) throws IOException {
         jParser.nextToken();
         JsonToken currentToken = jParser.getCurrentToken();
         return currentToken;
     }
-    
+
     private static String readValue(JsonParser jParser) throws IOException {
         String result = jParser.getText();
-        
+
         return result;
     }
-    
+
     public static BrokerStatusSnapshot deserializeSnapshot(InputStream in) throws IOException {
         JsonFactory jfactory = new JsonFactory();
         JsonParser jParser = jfactory.createJsonParser(in);
-        
+
         long ledgerId = 0;
         long sequenceNumber = 0;
         long maxTaskId = 0;
@@ -161,7 +161,7 @@ public class BrokerStatusSnapshot {
         List<WorkerStatus> workers = new ArrayList<>();
         Map<String, Long> busySlots = new HashMap<>();
         nextToken(jParser);
-        
+
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
             switch (jParser.getCurrentName() + "") {
                 case "ledgerid": {
@@ -224,7 +224,7 @@ public class BrokerStatusSnapshot {
                     }
                     break;
                 }
-                
+
                 default:
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
             }
@@ -236,10 +236,10 @@ public class BrokerStatusSnapshot {
         res.setCodePools(codePools);
         return res;
     }
-    
+
     private static WorkerStatus readWorkerStatus(JsonParser jParser) throws IOException {
         WorkerStatus res = new WorkerStatus();
-        
+
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
             switch (jParser.getCurrentName() + "") {
                 case "workerId":
@@ -266,13 +266,13 @@ public class BrokerStatusSnapshot {
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
             }
         }
-        
+
         return res;
     }
-    
+
     private static SlotStatus readSlotStatus(JsonParser jParser) throws IOException {
         SlotStatus res = new SlotStatus();
-        
+
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
             switch (jParser.getCurrentName() + "") {
                 case "slotId":
@@ -283,16 +283,16 @@ public class BrokerStatusSnapshot {
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
             }
         }
-        
+
         return res;
     }
-    
+
     private static Transaction readTransaction(JsonParser jParser) throws IOException {
         long creationTimestamp = 0;
         long id = 0;
         List<Task> preparedTasks = new ArrayList<>();
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
-            
+
             switch (jParser.getCurrentName() + "") {
                 case "creationTimestamp":
                     nextToken(jParser);
@@ -318,17 +318,17 @@ public class BrokerStatusSnapshot {
             res.getPreparedTasks().addAll(preparedTasks);
         }
         return res;
-        
+
     }
-    
+
     private static CodePool readCodePool(JsonParser jParser) throws IOException {
         long creationTimestamp = 0;
         String id = "";
         long ttl = 0;
         byte[] payload = null;
-        
+
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
-            
+
             switch (jParser.getCurrentName() + "") {
                 case "creationTimestamp":
                     nextToken(jParser);
@@ -347,15 +347,15 @@ public class BrokerStatusSnapshot {
                     String base64data = readValue(jParser);
                     payload = Base64.getDecoder().decode(base64data);
                     break;
-                
+
                 default:
                     throw new IOException("Unexpected field " + jParser.getCurrentName());
             }
-        }        
+        }
         return new CodePool(id, creationTimestamp, payload, ttl);
-        
+
     }
-    
+
     private static Task readTask(JsonParser jParser) throws NumberFormatException, IOException {
         Task task = new Task();
         while (jParser.nextToken() != JsonToken.END_OBJECT) {
@@ -379,6 +379,10 @@ public class BrokerStatusSnapshot {
                 case "slot":
                     nextToken(jParser);
                     task.setSlot(readValue(jParser));
+                    break;
+                case "resources":
+                    nextToken(jParser);
+                    task.setResources(readValue(jParser));
                     break;
                 case "parameter":
                     nextToken(jParser);
@@ -422,26 +426,26 @@ public class BrokerStatusSnapshot {
         }
         return task;
     }
-    
+
     private static void writeSimpleProperty(JsonGenerator g, String name, String value) throws IOException {
         if (value != null) {
             g.writeFieldName(name);
             g.writeString(value);
         }
     }
-    
+
     private static void writeSimpleProperty(JsonGenerator g, String name, long value) throws IOException {
-        
+
         g.writeFieldName(name);
         g.writeNumber(value);
     }
-    
+
     public static void serializeSnapshot(BrokerStatusSnapshot snapshotData, OutputStream out) throws IOException {
         JsonFactory f = new JsonFactory();
         JsonGenerator g = f.createJsonGenerator(out);
         g.writeStartObject();
         LogSequenceNumber actualLogSequenceNumber = snapshotData.getActualLogSequenceNumber();
-        
+
         writeSimpleProperty(g, "ledgerid", actualLogSequenceNumber.ledgerId);
         writeSimpleProperty(g, "sequenceNumber", actualLogSequenceNumber.sequenceNumber);
         writeSimpleProperty(g, "maxTaskId", snapshotData.maxTaskId);
@@ -454,7 +458,7 @@ public class BrokerStatusSnapshot {
             }
             g.writeEndArray();
         }
-        
+
         if (!snapshotData.getWorkers().isEmpty()) {
             g.writeFieldName("workers");
             g.writeStartArray();
@@ -479,14 +483,14 @@ public class BrokerStatusSnapshot {
             }
             g.writeEndArray();
         }
-        
+
         g.writeEndObject();
         g.flush();
     }
-    
+
     private static void serializeTask(Task task, JsonGenerator g) throws IOException {
         g.writeStartObject();
-        
+
         writeSimpleProperty(g, "id", task.getTaskId());
         writeSimpleProperty(g, "status", task.getStatus());
         writeSimpleProperty(g, "maxattempts", task.getMaxattempts());
@@ -496,6 +500,9 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "parameter", task.getParameter());
         writeSimpleProperty(g, "result", task.getResult());
         writeSimpleProperty(g, "userId", task.getUserId());
+        if (task.getResources() != null) {
+            writeSimpleProperty(g, "resources", task.getResources());
+        }
         if (task.getCodepool() != null) {
             writeSimpleProperty(g, "codepool", task.getCodepool());
         }
@@ -507,7 +514,7 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "workerId", task.getWorkerId());
         g.writeEndObject();
     }
-    
+
     private static void serializeWorker(WorkerStatus worker, JsonGenerator g) throws IOException {
         g.writeStartObject();
         writeSimpleProperty(g, "workerId", worker.getWorkerId());
@@ -517,5 +524,5 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "status", worker.getStatus());
         g.writeEndObject();
     }
-    
+
 }
