@@ -340,19 +340,19 @@ public class TasksHeap {
 
         // takeTasks for a single worker is guaranteed to be executed not concurrenly, we can run this code out of the lock
         workerResourceUsageCounters.updateResourceCounters();
+        if (workerResourceLimits != null && !workerResourceLimits.isEmpty()) {
+            computeAvailableResources(workerResourceLimits, availableResourcesCounters, workerResourceUsageCounters);
+        }
 
         lock.writeLock().lock();
         try {
 
             // global counters but be modified only inside the "global" lock
             globalResourceUsageCounters.updateResourceCounters();
-            if (workerResourceLimits != null && !workerResourceLimits.isEmpty()) {
-                computeAvailableResources(workerResourceLimits, availableResourcesCounters, workerResourceUsageCounters);
-            }
             if (globalResourceLimits != null && !globalResourceLimits.isEmpty()) {
                 computeAvailableResources(globalResourceLimits, availableResourcesCounters, globalResourceUsageCounters);
             }
-            
+
             for (Map.Entry<String, Integer> entry : availableSpace.entrySet()) {
                 Integer typeId = taskTypesIds.get(entry.getKey());
                 if (typeId != null) {
