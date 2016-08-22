@@ -346,10 +346,10 @@ public class TasksHeap {
 
             // global counters but be modified only inside the "global" lock
             globalResourceUsageCounters.updateResourceCounters();
-            if (workerResourceLimits != null) {
+            if (workerResourceLimits != null && !workerResourceLimits.isEmpty()) {
                 computeAvailableResources(workerResourceLimits, availableResourcesCounters, workerResourceUsageCounters);
             }
-            if (globalResourceLimits != null) {
+            if (globalResourceLimits != null && !globalResourceLimits.isEmpty()) {
                 computeAvailableResources(globalResourceLimits, availableResourcesCounters, globalResourceUsageCounters);
             }
             
