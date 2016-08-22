@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.clientfacade.AuthenticationManager;
 import majordodo.network.BrokerHostData;
+import majordodo.task.GlobalResourceLimitsConfiguration;
+import majordodo.task.NoLimitsGlobalResourceLimitsConfiguration;
 
 /**
  * Utility to embed a Majordodo Broker
@@ -62,6 +64,15 @@ public class EmbeddedBroker implements AutoCloseable {
     private final EmbeddedBrokerConfiguration configuration;
     private Runnable brokerDiedCallback;
     private AuthenticationManager authenticationManager;
+    private GlobalResourceLimitsConfiguration globalResourceLimitsConfiguration = new NoLimitsGlobalResourceLimitsConfiguration();
+
+    public GlobalResourceLimitsConfiguration getGlobalResourceLimitsConfiguration() {
+        return globalResourceLimitsConfiguration;
+    }
+
+    public void setGlobalResourceLimitsConfiguration(GlobalResourceLimitsConfiguration globalResourceLimitsConfiguration) {
+        this.globalResourceLimitsConfiguration = globalResourceLimitsConfiguration;
+    }
 
     public AuthenticationManager getAuthenticationManager() {
         return authenticationManager;
@@ -183,6 +194,7 @@ public class EmbeddedBroker implements AutoCloseable {
         brokerConfiguration.read(configuration.getProperties());
         broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), taskPropertiesMapperFunction));
         broker.setAuthenticationManager(authenticationManager);
+        broker.setGlobalResourceLimitsConfiguration(globalResourceLimitsConfiguration);
         broker.setBrokerId(id);
         switch (mode) {
             case EmbeddedBrokerConfiguration.MODE_JVMONLY:
