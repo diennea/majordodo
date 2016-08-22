@@ -46,7 +46,6 @@ import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.client.CodePoolUtils;
 import majordodo.clientfacade.AddTaskRequest;
-import majordodo.worker.TaskModeAwareExecutorFactory;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -114,14 +113,10 @@ public class TaskExecutionSeriazedObjectTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -158,7 +153,7 @@ public class TaskExecutionSeriazedObjectTest {
         String taskParams = CodePoolUtils.serializeExecutor(executorToBeSerialized);
 
         // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
 
             SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, Task.MODE_EXECUTE_OBJECT));

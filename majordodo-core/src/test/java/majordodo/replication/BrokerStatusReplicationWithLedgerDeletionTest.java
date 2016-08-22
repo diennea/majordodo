@@ -20,7 +20,6 @@
 package majordodo.replication;
 
 import majordodo.clientfacade.TaskStatusView;
-import majordodo.task.GroupMapperFunction;
 import majordodo.task.TasksHeap;
 import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
@@ -32,6 +31,8 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -68,14 +69,10 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -114,12 +111,12 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
             brokerConfig.setMaxWorkerIdleTime(5000);
 
             try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)));
-                    Broker broker1 = new Broker(brokerConfig, log1, new TasksHeap(1000, createGroupMapperFunction()));) {
+                    Broker broker1 = new Broker(brokerConfig, log1, new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.start();
 
-                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
+                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
 
                     log1.setLedgersRetentionPeriod(1);
                     log1.setMaxLogicalLogFileSize(10);
@@ -145,7 +142,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                     assertFalse(log1.getActualLedgersList().getActiveLedgers().contains(log1.getActualLedgersList().getFirstLedger()));
 
                     try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)));
-                            Broker broker2 = new Broker(brokerConfig, log2, new TasksHeap(1000, createGroupMapperFunction()));) {
+                            Broker broker2 = new Broker(brokerConfig, log2, new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                         broker2.start();
 
                         // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry

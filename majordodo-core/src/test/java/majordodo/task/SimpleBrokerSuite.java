@@ -36,20 +36,23 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.SubmitTaskResult;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
-    private static final String TASKTYPE_MYTYPE = "mytype";
-    private static final String userId = "queue1";
-    private static final int group = 12345;
+    protected static final String TASKTYPE_MYTYPE = "mytype";
+    protected static final String RESOURCE1 = "db1";
+    protected static final String userId = "queue1";
+    protected static final String userIdWithResources = "user2";
+    protected static final int group = 12345;
 
     @Before
     public void before() throws Exception {
-        groupsMap.clear();
-        groupsMap.put(userId, group);
+        declareGroupForUser(userId, group);
+        declareGroupForUser(userIdWithResources, group);
+        declareResourcesForUser(userIdWithResources, new String[]{RESOURCE1});
     }
 
     @Test
@@ -554,4 +557,126 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
         assertTrue(todo.isEmpty());
     }
+
+    @Test
+    public void useResourceConstaintsOnWorkerConfiguration() throws Exception {
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userIdWithResources, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+            todo.add(taskId);
+        }
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.getResourcesLimits().put(RESOURCE1, 2);
+        config.setMaxPendingFinishedTaskNotifications(1);
+        config.setWorkerId("workerid");
+        config.setMaxThreadsByTaskType(tags);
+        config.setGroups(Arrays.asList(group));
+        try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                    return "";
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+            assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+
+        }
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
+
+    @Test
+    public void useResourceConstaintsOnGlobalConfiguration() throws Exception {
+
+        Map<String, Integer> globalResourceConfiguration = new HashMap<>();
+        globalResourceConfiguration.put(RESOURCE1, 3);
+        broker.setGlobalResourceLimitsConfiguration(new MapGlobalResourceLimitsConfiguration(globalResourceConfiguration));
+
+        // submit 10 tasks
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userIdWithResources, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+            todo.add(taskId);
+        }
+
+        CountDownLatch connectedLatch = new CountDownLatch(1);
+        CountDownLatch disconnectedLatch = new CountDownLatch(1);
+        CountDownLatch allTaskExecuted = new CountDownLatch(10);
+        WorkerStatusListener listener = new WorkerStatusListener() {
+
+            @Override
+            public void connectionEvent(String event, WorkerCore core) {
+                if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                    connectedLatch.countDown();
+                }
+                if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                    disconnectedLatch.countDown();
+                }
+            }
+
+        };
+        Map<String, Integer> tags = new HashMap<>();
+        tags.put(TASKTYPE_MYTYPE, 1);
+        WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+        config.setMaxPendingFinishedTaskNotifications(1);
+        config.setWorkerId("workerid");
+        config.setMaxThreadsByTaskType(tags);
+        config.setGroups(Arrays.asList(group));
+        try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
+
+            core.setExecutorFactory((String typeType, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                @Override
+                public String executeTask(Map<String, Object> parameters) throws Exception {
+
+                    allTaskExecuted.countDown();
+                    long taskid = (Long) parameters.get("taskid");
+                    todo.remove(taskid);
+                    return "";
+                }
+
+            });
+            core.start();
+            assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+            assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+
+        }
+        assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+
+        assertTrue(todo.isEmpty());
+    }
+   
 }

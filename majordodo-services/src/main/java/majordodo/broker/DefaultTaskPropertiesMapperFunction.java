@@ -19,26 +19,26 @@
  */
 package majordodo.broker;
 
-import majordodo.task.GroupMapperFunction;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TaskProperties;
 
 /**
  * Default group mapper function
  *
  * @author enrico.olivelli
  */
-public class DefaultGroupMapperFunction implements GroupMapperFunction {
+public class DefaultTaskPropertiesMapperFunction implements TaskPropertiesMapperFunction {
 
     @Override
-    public int getGroup(long taskid, String taskType, String assignerData) {
-        if (assignerData == null || assignerData.isEmpty()) {
-            return 1;
-        } else {
+    public TaskProperties getTaskProperties(long taskid, String taskType, String userid) {
+        int groupId = 1;
+        if (userid != null && !userid.isEmpty()) {
             try {
-                return Integer.parseInt(assignerData);
+                groupId = Integer.parseInt(userid);
             } catch (NumberFormatException err) {
-                return 1;
             }
         }
+        return new TaskProperties(groupId, null);
     }
 
 }

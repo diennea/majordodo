@@ -107,14 +107,10 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -143,9 +139,9 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
         // startAsWritable a broker and do some work
         BrokerConfiguration brokerConfig = new BrokerConfiguration();
         brokerConfig.setMaxWorkerIdleTime(5000);
-        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
+            taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -166,19 +162,19 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                         core.start();
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        taskStartedLatch.countDown();
-                                        System.out.println("executeTask: " + parameters);
-                                        Integer attempt = (Integer) parameters.get("attempt");
-                                        if (attempt == null || attempt == 1) {
-                                            core.die();
-                                            return null;
-                                        }
-                                        return "theresult";
-                                    }
-
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
+                                taskStartedLatch.countDown();
+                                System.out.println("executeTask: " + parameters);
+                                Integer attempt = (Integer) parameters.get("attempt");
+                                if (attempt == null || attempt == 1) {
+                                    core.die();
+                                    return null;
                                 }
+                                return "theresult";
+                            }
+
+                        }
                         );
 
                         assertTrue(taskStartedLatch.await(30, TimeUnit.SECONDS));
@@ -212,18 +208,18 @@ public class TaskExecutionRecoveryOnWorkerRestartTest {
                         core.start();
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
-                                        taskStartedLatch.countDown();
-                                        System.out.println("executeTask2: " + parameters + " ,taskStartedLatch:" + taskStartedLatch.getCount());
-                                        Integer attempt = (Integer) parameters.get("attempt");
-                                        if (attempt == null || attempt == 1) {
-                                            throw new RuntimeException("impossible!");
-                                        }
-                                        return "theresult";
-                                    }
-
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
+                                taskStartedLatch.countDown();
+                                System.out.println("executeTask2: " + parameters + " ,taskStartedLatch:" + taskStartedLatch.getCount());
+                                Integer attempt = (Integer) parameters.get("attempt");
+                                if (attempt == null || attempt == 1) {
+                                    throw new RuntimeException("impossible!");
                                 }
+                                return "theresult";
+                            }
+
+                        }
                         );
                         assertTrue(taskStartedLatch.await(10, TimeUnit.SECONDS));
                         ok = false;

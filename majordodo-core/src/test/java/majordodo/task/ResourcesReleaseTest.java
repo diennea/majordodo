@@ -1,3 +1,4 @@
+
 /*
  Licensed to Diennea S.r.l. under one
  or more contributor license agreements. See the NOTICE file
@@ -45,6 +46,8 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,7 +57,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class SlotsRecoveryTest {
+public class ResourcesReleaseTest {
 
     protected Path workDir;
 
@@ -113,13 +116,14 @@ public class SlotsRecoveryTest {
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
-            return new TaskProperties(group1, null);
+            return new TaskProperties(group1, new String[]{RESOURCE});
         };
     }
 
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
     private static final String TASKTYPE_MYTYPE = "mytype";
+    private static final String RESOURCE = "db1";
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -130,7 +134,7 @@ public class SlotsRecoveryTest {
     }
 
     @Test
-    public void slotRecoveryTest() throws Exception {
+    public void resourceReleaseOnErrorTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -138,27 +142,15 @@ public class SlotsRecoveryTest {
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
-        final String SLOTID = "myslot";
 
         // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
-        }
 
-        // restart a broker and request a task, with slot, slot is already busy
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
-            broker.startAsWritable();
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
-        }
-
-        // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
-            broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
@@ -195,8 +187,9 @@ public class SlotsRecoveryTest {
 
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
+                                System.out.println("executeTask: " + parameters);
                                 allTaskExecuted.countDown();
-                                return "theresult";
+                                throw new Exception("error !");
                             }
 
                         }
@@ -207,32 +200,113 @@ public class SlotsRecoveryTest {
                         boolean okFinishedForBroker = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker.getClient().getTask(taskId);
-                            if (task.getStatus() == Task.STATUS_FINISHED) {
+                            if (task.getStatus() == Task.STATUS_ERROR) {
+                                assertEquals(RESOURCE, task.getResources());
                                 okFinishedForBroker = true;
                                 break;
                             }
+
                             Thread.sleep(1000);
                         }
                         assertTrue(okFinishedForBroker);
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
-                    // now the slot is free
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
-                    assertTrue(taskId > 0);
+                    // a little dirty, this function should be called inside TasksHeap writeLock
+                    broker.getGlobalResourceUsageCounters().updateResourceCounters();
+                    assertEquals(0, broker.getGlobalResourceUsageCounters().getCountersView().get(RESOURCE).intValue());
+
                 }
-                // transactions
-                long transaction_1 = broker.getClient().beginTransaction();
-                String SLOTTRANSACTION_1 = "sltr1";
-                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertTrue(slotTransactionTaskId > 0);
-                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertEquals(0, slotTransactionTaskId2);
-                broker.getClient().rollbackTransaction(transaction_1);
-                long transaction_2 = broker.getClient().beginTransaction();
-                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertTrue(slotTransactionTaskId3 > 0);
-                broker.getClient().commitTransaction(transaction_2);
+
+            }
+        }
+
+    }
+
+    @Test
+    public void slotReleaseOnWorkerDeathTest() throws Exception {
+
+        Path mavenTargetDir = Paths.get("target").toAbsolutePath();
+        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
+        System.out.println("SETUPWORKDIR:" + workDir);
+        long taskId;
+        String workerId = "abc";
+        String taskParams = "param";
+
+        // startAsWritable a broker and request a task, with slot
+        BrokerConfiguration bc = new BrokerConfiguration();
+        bc.setMaxWorkerIdleTime(1000);
+        try (Broker broker = new Broker(bc, new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+            broker.startAsWritable();
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null));
+            taskId = res.getTaskId();
+            assertTrue(taskId > 0);
+            assertTrue(res.getOutcome() == null);
+
+            try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
+                server.start();
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
+
+                    CountDownLatch connectedLatch = new CountDownLatch(1);
+                    CountDownLatch disconnectedLatch = new CountDownLatch(1);
+                    CountDownLatch allTaskExecuted = new CountDownLatch(1);
+                    WorkerStatusListener listener = new WorkerStatusListener() {
+
+                        @Override
+                        public void connectionEvent(String event, WorkerCore core) {
+                            if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
+                                connectedLatch.countDown();
+                            }
+                            if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
+                                disconnectedLatch.countDown();
+                            }
+                        }
+
+                    };
+                    Map<String, Integer> tags = new HashMap<>();
+                    tags.put(TASKTYPE_MYTYPE, 1);
+
+                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
+                    config.setWorkerId(workerId);
+                    config.setMaxThreadsByTaskType(tags);
+                    config.setGroups(Arrays.asList(group));
+                    try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
+                        core.start();
+                        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
+                        core.setExecutorFactory(
+                                (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
+                                System.out.println("executeTask: " + parameters);
+                                allTaskExecuted.countDown();
+                                core.die();
+                                throw new Exception("error");
+                            }
+                        }
+                        );
+                        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+                    }
+                    assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
+                }
+                boolean okFinishedForBroker = false;
+                for (int i = 0; i < 100; i++) {
+                    TaskStatusView task = broker.getClient().getTask(taskId);
+                    if (task.getStatus() == Task.STATUS_ERROR) {
+                        assertEquals(RESOURCE, task.getResources());
+                        System.out.println("result: " + task.getResult());
+                        okFinishedForBroker = true;
+                        assertEquals("worker abc died", task.getResult());
+                        break;
+                    }
+                    Thread.sleep(1000);
+                }
+                assertTrue(okFinishedForBroker);
+
+                // a little dirty, this function should be called inside TasksHeap writeLock
+                broker.getGlobalResourceUsageCounters().updateResourceCounters();
+                assertEquals(0, broker.getGlobalResourceUsageCounters().getCountersView().get(RESOURCE).intValue());
 
             }
         }

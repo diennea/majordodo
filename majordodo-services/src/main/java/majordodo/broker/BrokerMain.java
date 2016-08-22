@@ -20,7 +20,7 @@
 package majordodo.broker;
 
 import majordodo.task.FileCommitLog;
-import majordodo.task.GroupMapperFunction;
+import majordodo.task.TaskPropertiesMapperFunction;
 import majordodo.task.StatusChangesLog;
 import majordodo.task.TasksHeap;
 import majordodo.network.netty.NettyChannelAcceptor;
@@ -172,7 +172,7 @@ public class BrokerMain implements AutoCloseable {
         String httphost = configuration.getProperty("broker.http.host", "0.0.0.0");
         int httpport = Integer.parseInt(configuration.getProperty("broker.http.port", "7364"));
         int taskheapsize = Integer.parseInt(configuration.getProperty("broker.tasksheap.size", "1000000"));
-        String assigner = configuration.getProperty("tasks.groupmapper", "");
+        String assigner = configuration.getProperty("tasks.taskpropertiesmapperfunction", "");
         String sharedsecret = configuration.getProperty("sharedsecret", "dodo");
         String clusteringmode = configuration.getProperty("clustering.mode", "singleserver");
         int workerthreads = Integer.parseInt(configuration.getProperty("io.worker.threads", "16"));
@@ -181,12 +181,12 @@ public class BrokerMain implements AutoCloseable {
         String adminpassword = configuration.getProperty("admin.password", "password");
 
         System.out.println("Starting MajorDodo Broker " + Broker.VERSION());
-        GroupMapperFunction mapper;
+        TaskPropertiesMapperFunction mapper;
         if (assigner.isEmpty()) {
-            mapper = new DefaultGroupMapperFunction();
+            mapper = new DefaultTaskPropertiesMapperFunction();
         } else {
-            mapper = (GroupMapperFunction) Class.forName(assigner).newInstance();
-            System.out.println("GroupMapperFunction Mapper:" + mapper);
+            mapper = (TaskPropertiesMapperFunction) Class.forName(assigner).newInstance();
+            System.out.println("TaskPropertiesMapperFunction Mapper:" + mapper);
         }
         String httppath = "/majordodo";
         Map<String, String> additionalInfo = new HashMap<>();

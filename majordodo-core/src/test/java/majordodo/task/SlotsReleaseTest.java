@@ -113,14 +113,10 @@ public class SlotsReleaseTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -148,7 +144,7 @@ public class SlotsReleaseTest {
         final String SLOTID = "myslot";
 
         // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
             taskId = res.getTaskId();
@@ -239,7 +235,7 @@ public class SlotsReleaseTest {
         // startAsWritable a broker and request a task, with slot
         BrokerConfiguration bc = new BrokerConfiguration();
         bc.setMaxWorkerIdleTime(1000);
-        try (Broker broker = new Broker(bc, new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(bc, new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
             taskId = res.getTaskId();
@@ -327,7 +323,7 @@ public class SlotsReleaseTest {
         final String SLOTID = "myslot";
 
         // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis(), SLOTID, 0, null, null));
             taskId = res.getTaskId();
@@ -358,7 +354,7 @@ public class SlotsReleaseTest {
         // startAsWritable a broker and request a task, with slot
         BrokerConfiguration brokerConfiguration = new BrokerConfiguration();
         brokerConfiguration.setTransactionsTtl(1000);
-        try (Broker broker = new Broker(brokerConfiguration, new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(brokerConfiguration, new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             long tx = broker.getClient().beginTransaction();
             assertNotNull(broker.getClient().getTransaction(tx));

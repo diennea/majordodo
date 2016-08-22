@@ -43,7 +43,7 @@ public class HeapStatusView {
 
         private long taskId;
         private String taskType;
-        private int group;
+        private int group;        
 
         @Override
         public String toString() {

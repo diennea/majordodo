@@ -45,11 +45,13 @@ public class WorkerManager {
     private final Broker broker;
     private BrokerSideConnection connection;
     private final int maxWorkerIdleTime;
+    private final ResourceUsageCounters resourceUsageCounters = new ResourceUsageCounters();
 
     private int maxThreads = 0;
     private Map<String, Integer> maxThreadsByTaskType = Collections.emptyMap();
     private List<Integer> groups = Collections.emptyList();
     private Set<Integer> excludedGroups = Collections.emptySet();
+    private Map<String, Integer> resourceLimis = Collections.emptyMap();
 
     private long lastActivity = System.currentTimeMillis();
 
@@ -65,7 +67,8 @@ public class WorkerManager {
     public void applyConfiguration(int maxThreads,
             Map<String, Integer> maxThreadsByTaskType,
             List<Integer> groups,
-            Set<Integer> excludedGroups) {
+            Set<Integer> excludedGroups,
+            Map<String, Integer> resourceLimis) {
         LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
@@ -78,6 +81,7 @@ public class WorkerManager {
         this.maxThreadsByTaskType = maxThreadsByTaskTypeNoZero;
         this.groups = groups;
         this.excludedGroups = excludedGroups;
+        this.resourceLimis = resourceLimis;
     }
 
     private void requestNewTasks() {
@@ -89,17 +93,17 @@ public class WorkerManager {
             LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1} maxThreadsByTaskType {6} ",
                     new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
             max = max - actuallyRunning;
-            List<Long> taskIds;
+            List<AssignedTask> tasks;
             if (max > 0 && !availableSpace.isEmpty()) {
-                taskIds = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId);
-                taskIds.forEach(this::taskAssigned);
+                tasks = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId, resourceLimis, resourceUsageCounters);
+                tasks.forEach(this::taskAssigned);
             } else {
-                taskIds = Collections.emptyList();
+                tasks = Collections.emptyList();
             }
             long _stop = System.currentTimeMillis();
 
-            if (!taskIds.isEmpty()) {
-                LOGGER.log(Level.INFO, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, taskIds.size(), _stop - _start});
+            if (!tasks.isEmpty()) {
+                LOGGER.log(Level.INFO, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, tasks.size(), _stop - _start});
             }
         } catch (Exception error) {
             LOGGER.log(Level.SEVERE, "error assigning tasks", error);
@@ -171,6 +175,7 @@ public class WorkerManager {
                             LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
                             broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker, workerId);
                             tasksRunningOnRemoteWorker.clear();
+                            resourceUsageCounters.clear();
                         }
                     }
                 } catch (LogNotAvailableException err) {
@@ -185,15 +190,16 @@ public class WorkerManager {
                     requestNewTasks();
                     int max = 100;
                     while (max-- > 0) {
-                        Long taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
+                        AssignedTask taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
                         if (taskToBeSubmitted != null) {
-                            LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskToBeSubmitted});
-                            Task task = broker.getBrokerStatus().getTask(taskToBeSubmitted);
+                            long taskId = taskToBeSubmitted.taskid;
+                            LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskId});
+                            Task task = broker.getBrokerStatus().getTask(taskId);
                             if (task == null) {
                                 // task disappeared ?
                                 LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
                             } else {
-                                if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted)) {
+                                if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted.taskid)) {
                                     LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} is already running on worker", new Object[]{workerId, taskToBeSubmitted, task});
                                     return;
                                 }
@@ -204,7 +210,7 @@ public class WorkerManager {
                                             LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure, rescheduling for retry:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
                                             taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
                                         } else {
-                                            tasksRunningOnRemoteWorker.add(taskToBeSubmitted);
+                                            tasksRunningOnRemoteWorker.add(taskToBeSubmitted.taskid);
                                         }
                                     });
                                 } else {
@@ -223,7 +229,7 @@ public class WorkerManager {
     }
 
     private final Set<Long> tasksRunningOnRemoteWorker = new ConcurrentSkipListSet<>();
-    private final BlockingQueue<Long> taskToBeSubmittedToRemoteWorker = new LinkedBlockingDeque<>();
+    private final BlockingQueue<AssignedTask> taskToBeSubmittedToRemoteWorker = new LinkedBlockingDeque<>();
 
     public void activateConnection(BrokerSideConnection connection) {
         LOGGER.log(Level.INFO, "activateConnection {0}", connection);
@@ -236,20 +242,24 @@ public class WorkerManager {
         }
     }
 
-    public void taskShouldBeRunning(long taskId) {
-        LOGGER.severe(workerId + " taskShouldBeRunning " + taskId);
+    void taskRunningDuringBrokerBoot(AssignedTask takenTask) {
+        long taskId = takenTask.taskid;
+        LOGGER.log(Level.FINE, "{0} taskShouldBeRunning {1}, resources {2}", new Object[]{workerId, taskId, takenTask.resources});
         tasksRunningOnRemoteWorker.add(taskId);
-        taskToBeSubmittedToRemoteWorker.remove(taskId);
+        resourceUsageCounters.useResources(takenTask.resourceIds);
+        taskToBeSubmittedToRemoteWorker.remove(takenTask);
     }
 
-    public void taskAssigned(long taskId) {
-        taskToBeSubmittedToRemoteWorker.add(taskId);
+    private void taskAssigned(AssignedTask takenTask) {
+        long taskId = takenTask.taskid;
+        taskToBeSubmittedToRemoteWorker.add(takenTask);
+        resourceUsageCounters.useResources(takenTask.resourceIds);
         if (tasksRunningOnRemoteWorker.contains(taskId)) {
             LOGGER.log(Level.SEVERE, "taskAssigned {0}, the task is already running on remote worker?", new Object[]{taskId});
         }
     }
 
-    private ReentrantLock connectionLock = new ReentrantLock();
+    private final ReentrantLock connectionLock = new ReentrantLock();
 
     public void deactivateConnection(BrokerSideConnection aThis) {
         connectionLock.lock();
@@ -263,8 +273,17 @@ public class WorkerManager {
         }
     }
 
-    void taskFinished(long taskId) {
+    void taskFinished(long taskId, String[] resourceIds) {
         tasksRunningOnRemoteWorker.remove(taskId);
+        resourceUsageCounters.releaseResources(resourceIds);
+    }
+
+    public ResourceUsageCounters getResourceUsageCounters() {
+        return resourceUsageCounters;
+    }
+
+    public Map<String, Integer> getResourceLimis() {
+        return resourceLimis;
     }
 
 }

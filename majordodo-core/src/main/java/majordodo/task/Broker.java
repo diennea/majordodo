@@ -42,6 +42,7 @@ import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.CodePoolView;
 import majordodo.clientfacade.CreateCodePoolRequest;
 import majordodo.clientfacade.CreateCodePoolResult;
+import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
@@ -60,6 +61,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
     private Runnable brokerDiedCallback;
     private AuthenticationManager authenticationManager;
+    private GlobalResourceLimitsConfiguration globalResourceLimitsConfiguration = new NoLimitsGlobalResourceLimitsConfiguration();
 
     public AuthenticationManager getAuthenticationManager() {
         return authenticationManager;
@@ -67,6 +69,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     public void setAuthenticationManager(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
+    }
+
+    public GlobalResourceLimitsConfiguration getGlobalResourceLimitsConfiguration() {
+        return globalResourceLimitsConfiguration;
+    }
+
+    public void setGlobalResourceLimitsConfiguration(GlobalResourceLimitsConfiguration globalResourceLimitsConfiguration) {
+        this.globalResourceLimitsConfiguration = globalResourceLimitsConfiguration;
     }
 
     public Callable<Void> getExternalProcessChecker() {
@@ -102,13 +112,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.5.0";
+        return "0.6.0-ALPHA1";
     }
 
     private final Workers workers;
     public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
     private final StatusChangesLog log;
+    private final ResourceUsageCounters globalResourceUsageCounters = new ResourceUsageCounters();
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
@@ -117,10 +128,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     private final BrokerConfiguration configuration;
     private final CheckpointScheduler checkpointScheduler;
-    private final GroupMapperScheduler groupMapperScheduler;
+    private final ResourcesScheduler groupMapperScheduler;
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
     private final BrokerStatusMonitor brokerStatusMonitor;
     private final Thread brokerLifeThread;
+
+    public ResourceUsageCounters getGlobalResourceUsageCounters() {
+        return globalResourceUsageCounters;
+    }
 
     public BrokerConfiguration getConfiguration() {
         return configuration;
@@ -149,7 +164,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.log = log;
         this.log.setFailureListener(this);
         this.checkpointScheduler = new CheckpointScheduler(configuration, this);
-        this.groupMapperScheduler = new GroupMapperScheduler(configuration, this);
+        this.groupMapperScheduler = new ResourcesScheduler(configuration, this);
         this.finishedTaskCollectorScheduler = new FinishedTaskCollectorScheduler(configuration, this);
         this.brokerStatusMonitor = new BrokerStatusMonitor(configuration, this);
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
@@ -198,7 +213,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 brokerStatusMonitor.start();
                 LOGGER.log(Level.SEVERE, "Waiting to become leader...");
                 finishedTaskCollectorScheduler.start();
-                brokerStatus.followTheLeader();                
+                brokerStatus.followTheLeader();
                 if (stopped || failed) {
                     return;
                 }
@@ -238,14 +253,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 brokerStatus.startWriting();
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
-                workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot);
+                workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot, globalResourceUsageCounters);
                 started = true;
                 for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
                 }
                 if (PERFORM_CHECKPOINT_AT_LEADERSHIP) {
                     checkpoint();
-                }                
+                }
                 try {
                     while (!stopped && !failed) {
                         noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
@@ -320,20 +335,25 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         return log.isWritable();
     }
 
-    public List<Long> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId) throws LogNotAvailableException {
+    public List<AssignedTask> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId, Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters) throws LogNotAvailableException {
         if (!started) {
             return Collections.emptyList();
         }
+        Map<String, Integer> globalResourceLimits = globalResourceLimitsConfiguration.getGlobalResourceLimits();
         long start = System.currentTimeMillis();
-        List<Long> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace);
+        List<AssignedTask> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace,
+                workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters
+        );
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();
-        for (long taskId : tasks) {
+        for (AssignedTask entry : tasks) {
+            long taskId = entry.taskid;
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
-                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1);
+                StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1, entry.resources);
                 edits.add(edit);
             }
+            globalResourceUsageCounters.useResources(entry.resourceIds);
         }
         this.brokerStatus.applyModifications(edits);
 
@@ -350,7 +370,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerStatus.checkpoint(purgeTransactions ? configuration.getTransactionsTtl() : 0);
     }
 
-    void purgeTasks() {        
+    void purgeTasks() {
         Set<Long> expired = this.brokerStatus.purgeFinishedTasksAndSignalExpiredTasks(configuration.getFinishedTasksRetention(), configuration.getMaxExpiredTasksPerCycle());
         if (expired.isEmpty()) {
             return;
@@ -485,7 +505,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         return brokerStatus.getTransaction(transactionId);
     }
 
-    public void deleteCodePool(String codePoolId) throws IllegalActionException, LogNotAvailableException {        
+    public void deleteCodePool(String codePoolId) throws IllegalActionException, LogNotAvailableException {
         StatusEdit modification = StatusEdit.DELETE_CODEPOOL(codePoolId);
         BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(modification);
         if (result.error != null) {
@@ -495,6 +515,60 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     public CodePoolView getCodePool(String codePoolId) {
         return brokerStatus.getCodePoolView(codePoolId);
+    }
+
+    public List<ResourceStatusView> getAllResources() {
+        Map<String, ResourceStatusView> res = new HashMap<>();
+        Map<String, Integer> counters = globalResourceUsageCounters.getCountersView();
+        Map<String, Integer> limits = globalResourceLimitsConfiguration.getGlobalResourceLimits();
+        for (Map.Entry<String, Integer> count : counters.entrySet()) {
+            ResourceStatusView v = res.get(count.getKey());
+            if (v == null) {
+                v = new ResourceStatusView();
+                v.setId(count.getKey());
+                res.put(count.getKey(), v);
+            }
+            v.setRunningTasks(count.getValue());
+        }
+        for (Map.Entry<String, Integer> limit : limits.entrySet()) {
+            ResourceStatusView v = res.get(limit.getKey());
+            if (v == null) {
+                v = new ResourceStatusView();
+                v.setId(limit.getKey());
+                res.put(limit.getKey(), v);
+            }
+            v.setActualLimit(limit.getValue());
+        }
+
+        return new ArrayList<>(res.values());
+    }
+
+    public List<ResourceStatusView> getAllResourcesForWorker(String workerId) {
+        Map<String, ResourceStatusView> res = new HashMap<>();
+        WorkerManager manager = workers.getWorkerManagerNoCreate(workerId);
+        if (manager != null) {
+            Map<String, Integer> counters = manager.getResourceUsageCounters().getCountersView();
+            Map<String, Integer> limits = manager.getResourceLimis();
+            for (Map.Entry<String, Integer> count : counters.entrySet()) {
+                ResourceStatusView v = res.get(count.getKey());
+                if (v == null) {
+                    v = new ResourceStatusView();
+                    v.setId(count.getKey());
+                    res.put(count.getKey(), v);
+                }
+                v.setRunningTasks(count.getValue());
+            }
+            for (Map.Entry<String, Integer> limit : limits.entrySet()) {
+                ResourceStatusView v = res.get(limit.getKey());
+                if (v == null) {
+                    v = new ResourceStatusView();
+                    v.setId(limit.getKey());
+                    res.put(limit.getKey(), v);
+                }
+                v.setActualLimit(limit.getValue());
+            }
+        }
+        return new ArrayList<>(res.values());
     }
 
     public static interface ActionCallback {
@@ -586,7 +660,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
                 continue;
             }
-            workers.getWorkerManager(workerId).taskFinished(taskId);
+            String resources = task.getResources();
+            String[] resourceIds = null;
+            if (resources != null) {
+                resourceIds = resources.split(",");
+            }
+            workers.getWorkerManager(workerId).taskFinished(taskId, resourceIds);
+            globalResourceUsageCounters.releaseResources(resourceIds);
+
             if (task.getStatus() != Task.STATUS_RUNNING) {
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
                 continue;

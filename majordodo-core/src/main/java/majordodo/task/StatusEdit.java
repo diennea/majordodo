@@ -97,6 +97,7 @@ public final class StatusEdit {
     public String parameter;
     public String userid;
     public String workerId;
+    public String resources;
     public String workerLocation;
     public String workerProcessId;
     public String result;
@@ -136,6 +137,9 @@ public final class StatusEdit {
         }
         if (workerId != null && !workerId.isEmpty()) {
             append(res, "workerId", workerId);
+        }
+        if (resources != null && !resources.isEmpty()) {
+            append(res, "resources", resources);
         }
         if (attempt > 0) {
             append(res, "attempt", attempt);
@@ -209,12 +213,13 @@ public final class StatusEdit {
         return action;
     }
 
-    public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId, int attempt) {
+    public static final StatusEdit ASSIGN_TASK_TO_WORKER(long taskId, String nodeId, int attempt, String resources) {
         StatusEdit action = new StatusEdit();
         action.editType = TYPE_ASSIGN_TASK_TO_WORKER;
         action.workerId = nodeId;
         action.taskId = taskId;
         action.attempt = attempt;
+        action.resources = resources;
         return action;
     }
 
@@ -380,6 +385,11 @@ public final class StatusEdit {
                     doo.writeUTF(workerId);
                     doo.writeLong(taskId);
                     doo.writeInt(attempt);
+                    if (resources != null) {
+                        doo.writeUTF(resources);
+                    } else {
+                        doo.writeUTF("");
+                    }
                     break;
                 case TYPE_TASK_STATUS_CHANGE:
                     doo.writeLong(taskId);
@@ -497,6 +507,10 @@ public final class StatusEdit {
                 res.workerId = doo.readUTF();
                 res.taskId = doo.readLong();
                 res.attempt = doo.readInt();
+                try {
+                    res.resources = doo.readUTF();
+                } catch (EOFException legacy) {
+                }
                 break;
             case TYPE_TASK_STATUS_CHANGE:
                 res.taskId = doo.readLong();

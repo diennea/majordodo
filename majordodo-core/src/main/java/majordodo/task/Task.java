@@ -20,8 +20,8 @@
  */
 package majordodo.task;
 
+import java.util.List;
 import majordodo.worker.TaskExecutorStatus;
-import java.util.Map;
 
 /**
  * A task
@@ -100,6 +100,15 @@ public class Task {
     private String slot;
     private String codepool;
     private String mode;
+    private String resources;
+
+    public String getResources() {
+        return resources;
+    }
+
+    public void setResources(String resources) {
+        this.resources = resources;
+    }
 
     public String getCodepool() {
         return codepool;

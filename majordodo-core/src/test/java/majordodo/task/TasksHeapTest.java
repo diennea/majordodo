@@ -19,17 +19,12 @@
  */
 package majordodo.task;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
@@ -43,19 +38,23 @@ public class TasksHeapTest {
     private static final int GROUPID1 = 9713;
     private static final int GROUPID2 = 972;
 
-    private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
-
+    private final TaskPropertiesMapperFunction DEFAULT_FUNCTION = new TaskPropertiesMapperFunction() {
         @Override
-        public int getGroup(long taskid, String tasktype, String assignerData) {
-            switch (assignerData) {
+        public TaskProperties getTaskProperties(long taskid, String taskType, String userid) {
+            int groupId;
+            switch (userid) {
                 case USERID1:
-                    return GROUPID1;
+                    groupId = GROUPID1;
+                    break;
                 case USERID2:
-                    return GROUPID2;
+                    groupId = GROUPID2;
+                    break;
                 default:
-                    return -1;
+                    groupId = -1;
             }
+            return new TaskProperties(groupId, null);
         }
+
     };
 
     @Test
@@ -65,9 +64,9 @@ public class TasksHeapTest {
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+        assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
 
     @Test
@@ -77,9 +76,9 @@ public class TasksHeapTest {
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+        assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
 
     @Test
@@ -89,9 +88,9 @@ public class TasksHeapTest {
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+        assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
 
     @Test
@@ -101,9 +100,9 @@ public class TasksHeapTest {
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(newTaskId.get(), taskids.get(0).longValue());
+        assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
 
     @Test
@@ -119,10 +118,10 @@ public class TasksHeapTest {
         instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
 
         {
-            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace);
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
             assertEquals(2, taskids.size());
-            assertEquals(task1, taskids.get(0).longValue());
-            assertEquals(task2, taskids.get(1).longValue());
+            assertEquals(task1, taskids.get(0).taskid);
+            assertEquals(task2, taskids.get(1).taskid);
         }
 
     }
@@ -142,16 +141,16 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID1);
 
         {
-            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace);
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
             assertEquals(2, taskids.size());
-            assertEquals(task1, taskids.get(0).longValue());
-            assertEquals(task2, taskids.get(1).longValue());
+            assertEquals(task1, taskids.get(0).taskid);
+            assertEquals(task2, taskids.get(1).taskid);
         }
 
         {
-            List<Long> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace);
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
             assertEquals(1, taskids.size());
-            assertEquals(task3, taskids.get(0).longValue());
+            assertEquals(task3, taskids.get(0).taskid);
         }
 
     }
@@ -171,9 +170,9 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID2);
 
         {
-            List<Long> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace);
+            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
             assertEquals(1, taskids.size());
-            assertEquals(task3, taskids.get(0).longValue());
+            assertEquals(task3, taskids.get(0).taskid);
         }
 
     }
@@ -193,9 +192,9 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID2);
 
         {
-            List<Long> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace);
+            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
             assertEquals(1, taskids.size());
-            assertEquals(task3, taskids.get(0).longValue());
+            assertEquals(task3, taskids.get(0).taskid);
         }
 
     }

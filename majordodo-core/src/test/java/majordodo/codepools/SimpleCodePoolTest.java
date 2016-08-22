@@ -41,6 +41,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Basic tests for codepools
@@ -103,14 +105,10 @@ public class SimpleCodePoolTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -139,7 +137,7 @@ public class SimpleCodePoolTest {
         byte[] mockCodePoolData = "test".getBytes();
 
         // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             CreateCodePoolResult res1 = broker.getClient().createCodePool(new CreateCodePoolRequest(CODEPOOL, System.currentTimeMillis(), 0, mockCodePoolData));
             assertTrue(res1.ok);

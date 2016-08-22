@@ -42,15 +42,17 @@ public class WorkerCoreConfiguration {
     private List<Integer> groups;
     private int tasksRequestTimeout = 60000;
     private Set<Integer> excludedGroups;
+    private Map<String, Integer> resourcesLimits;
     private String codePoolsDirectory;
     private boolean enableCodePools;
-    private int networkTimeout = 1000*60*10;
+    private int networkTimeout = 1000 * 60 * 10;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
         maxThreadsByTaskType.put(Task.TASKTYPE_ANY, 1);
         maxThreads = 20;
         location = "unknown";
+        resourcesLimits = new HashMap<>();
         groups = new ArrayList<>();
         groups.add(0);
         excludedGroups = new HashSet<>();
@@ -167,6 +169,22 @@ public class WorkerCoreConfiguration {
     }
 
     /**
+     * Define a maximum number of tasks for resources.
+     * Each task may be 'use' a set of resources, which are idendified by strings. 
+     * Using this configuration you can limit the number of tasks which use the given resource on the worker.
+     * An example of such a resource is a datasource, which a limited number of connections, and you don't want this worker to accept tasks which would lead to waits due due lack of available connections in the pool
+     *
+     * @return
+     */
+    public Map<String, Integer> getResourcesLimits() {
+        return resourcesLimits;
+    }
+
+    public void setResourcesLimits(Map<String, Integer> resourcesLimits) {
+        this.resourcesLimits = resourcesLimits;
+    }
+
+    /**
      * Maximum timeout while waiting for new tasks from the broker
      *
      * @return
@@ -243,6 +261,5 @@ public class WorkerCoreConfiguration {
     public void setNetworkTimeout(int networkTimeout) {
         this.networkTimeout = networkTimeout;
     }
-    
 
 }

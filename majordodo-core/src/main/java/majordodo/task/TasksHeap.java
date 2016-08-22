@@ -30,6 +30,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import majordodo.utils.IntCounter;
 
 /**
  * Heap of tasks to be executed. Tasks are not arranged in a queue but in an
@@ -55,11 +58,15 @@ public class TasksHeap {
     private int maxFragmentation;
     private int minValidPosition;
     private int autoGrowPercent = 25;
-
     private int size;
     private TaskEntry[] actuallist;
-    private final GroupMapperFunction groupMapper;
+    private final TaskPropertiesMapperFunction resourceMapper;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private final Map<String, Integer> resourceMappings = new HashMap<>();
+    private final Map<Integer, String> resourceIdMappings = new HashMap<>();
+    private final Map<String, int[]> resourcesListPool = new HashMap<>();
+    private final Map<int[], String[]> resourcesIdsListPool = new HashMap<>();
+    private final Map<int[], String> resourcesStringListPool = new HashMap<>();
 
     public int getAutoGrowPercent() {
         return autoGrowPercent;
@@ -84,12 +91,12 @@ public class TasksHeap {
         return size;
     }
 
-    public TasksHeap(int size, GroupMapperFunction tenantAssigner) {
+    public TasksHeap(int size, TaskPropertiesMapperFunction tenantAssigner) {
         this.size = size;
-        this.groupMapper = tenantAssigner;
+        this.resourceMapper = tenantAssigner;
         this.actuallist = new TaskEntry[size];
         for (int i = 0; i < size; i++) {
-            this.actuallist[i] = new TaskEntry(0, 0, null, 0);
+            this.actuallist[i] = new TaskEntry(0, 0, null, 0, null);
         }
         this.maxFragmentation = size / 4;
     }
@@ -111,6 +118,7 @@ public class TasksHeap {
                     entry.tasktype = 0;
                     entry.userid = null;
                     entry.groupid = 0;
+                    entry.resources = null;
                 }
             }
         } finally {
@@ -133,16 +141,19 @@ public class TasksHeap {
         TaskEntry[] newList = new TaskEntry[newSize];
         System.arraycopy(actuallist, 0, newList, 0, actuallist.length);
         for (int i = actuallist.length; i < newList.length; i++) {
-            newList[i] = new TaskEntry(0, 0, null, 0);
+            newList[i] = new TaskEntry(0, 0, null, 0, null);
         }
         this.size = newList.length;
         this.actuallist = newList;
     }
 
     public void insertTask(long taskid, String tasktype, String userid) {
-        int groupid = groupMapper.getGroup(taskid, tasktype, userid);
+        TaskProperties taskProperties = resourceMapper.getTaskProperties(taskid, tasktype, userid);
+        int groupid = taskProperties.groupId;
+        String[] resourceIds = taskProperties.resources;
         lock.writeLock().lock();
         try {
+            int[] resources = convertResourceList(resourceIds);
             if (actualsize == size) {
                 doAutoGrow();
             }
@@ -157,6 +168,7 @@ public class TasksHeap {
             entry.tasktype = taskTypeId;
             entry.userid = userid;
             entry.groupid = groupid;
+            entry.resources = resources;
         } finally {
             lock.writeLock().unlock();
         }
@@ -166,18 +178,54 @@ public class TasksHeap {
         return taskTypes.get(tasktype);
     }
 
+    private String[] convertResourceListToIds(int[] resourceIds) {
+        return resourcesIdsListPool.get(resourceIds);
+    }
+
+    private String convertResourceListString(int[] resourceIds) {
+        return resourcesStringListPool.get(resourceIds);
+    }
+
+    private int[] convertResourceList(String[] resourceIds) {
+        // this method must be invoked inside a writeLock
+        if (resourceIds == null || resourceIds.length == 0) {
+            return null;
+        }
+        String key = Arrays.toString(resourceIds);
+        int[] pooled = resourcesListPool.get(key);
+        if (pooled != null) {
+            return pooled;
+        }
+        int[] result = new int[resourceIds.length];
+        int i = 0;
+        for (String s : resourceIds) {
+            Integer id = resolveResourceId(s);
+            result[i++] = id;
+        }
+        /* we are going to pool the array for two reasons:
+         - limit memory usage
+         - have the ability to compare arrays using reference comparisons
+         */
+        resourcesListPool.put(key, result);
+        resourcesIdsListPool.put(result, resourceIds);
+        resourcesStringListPool.put(result, Stream.of(resourceIds).collect(Collectors.joining(",")));
+        return result;
+    }
+
     public static final class TaskEntry {
 
         public long taskid;
         public int tasktype;
         public String userid;
         public int groupid;
+        public int[] resources;
 
-        TaskEntry(long taskid, int tasktype, String userid, int groupid) {
+        TaskEntry(long taskid, int tasktype, String userid, int groupid, int[] resources) {
             this.taskid = taskid;
             this.tasktype = tasktype;
             this.userid = userid;
             this.groupid = groupid;
+            this.resources = resources;
         }
 
         @Override
@@ -219,10 +267,14 @@ public class TasksHeap {
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {
-                    int newGroup = groupMapper.getGroup(entry.taskid, taskTypes.get(entry.tasktype), entry.userid);
-                    if (entry.groupid != newGroup) {
-                        // let's limit writes on memory, usually group never change
+                    TaskProperties taskProperties = resourceMapper.getTaskProperties(entry.taskid, taskTypes.get(entry.tasktype), entry.userid);
+                    int newGroup = taskProperties.groupId;
+                    int[] resources = convertResourceList(taskProperties.resources);
+                    // we can compare the "resources" array using the reference because we are pooling them
+                    if (entry.groupid != newGroup || entry.resources != resources) {
+                        // let's limit writes on memory, most often group/resources does not change
                         entry.groupid = newGroup;
+                        entry.resources = resources;
                     }
                 }
             }
@@ -255,6 +307,7 @@ public class TasksHeap {
                 actuallist[writepos].tasktype = actuallist[nextnotempty].tasktype;
                 actuallist[writepos].userid = actuallist[nextnotempty].userid;
                 actuallist[writepos].groupid = actuallist[nextnotempty].groupid;
+                actuallist[writepos].resources = actuallist[nextnotempty].resources;
                 writepos++;
             }
             for (int j = writepos; j < size; j++) {
@@ -262,6 +315,7 @@ public class TasksHeap {
                 actuallist[j].tasktype = 0;
                 actuallist[j].userid = null;
                 actuallist[j].groupid = 0;
+                actuallist[j].resources = null;
             }
 
             minValidPosition = 0;
@@ -273,21 +327,39 @@ public class TasksHeap {
         }
     }
 
-    public List<Long> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace) {
+    public List<AssignedTask> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace,
+            Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters, Map<String, Integer> globalResourceLimits, ResourceUsageCounters globalResourceUsageCounters
+    ) {
         Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
         Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
         if (forAny != null) {
             availableSpaceByTaskTaskId.put(TasksHeap.TASKTYPE_ANYTASK, forAny);
         }
+
+        Map<Integer, IntCounter> availableResourcesCounters = new HashMap<>();
+
+        // takeTasks for a single worker is guaranteed to be executed not concurrenly, we can run this code out of the lock
+        workerResourceUsageCounters.updateResourceCounters();
+
         lock.writeLock().lock();
         try {
+
+            // global counters but be modified only inside the "global" lock
+            globalResourceUsageCounters.updateResourceCounters();
+            if (workerResourceLimits != null) {
+                computeAvailableResources(workerResourceLimits, availableResourcesCounters, workerResourceUsageCounters);
+            }
+            if (globalResourceLimits != null) {
+                computeAvailableResources(globalResourceLimits, availableResourcesCounters, globalResourceUsageCounters);
+            }
+            
             for (Map.Entry<String, Integer> entry : availableSpace.entrySet()) {
                 Integer typeId = taskTypesIds.get(entry.getKey());
                 if (typeId != null) {
                     availableSpaceByTaskTaskId.put(typeId, entry.getValue());
                 }
             }
-            TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, max);
+            TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, availableResourcesCounters, max);
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {
@@ -298,7 +370,7 @@ public class TasksHeap {
             if (choosen.isEmpty()) {
                 return Collections.emptyList();
             }
-            List<Long> result = new ArrayList<>();
+            List<AssignedTask> result = new ArrayList<>();
             for (TasksChooser.Entry choosenentry : choosen) {
                 int pos = choosenentry.position;
                 TaskEntry entry = this.actuallist[pos];
@@ -307,7 +379,7 @@ public class TasksHeap {
                     entry.tasktype = 0;
                     entry.userid = null;
                     this.fragmentation++;
-                    result.add(choosenentry.taskid);
+                    result.add(new AssignedTask(choosenentry.taskid, convertResourceListToIds(entry.resources), convertResourceListString(entry.resources)));
                     if (pos == minValidPosition) {
                         minValidPosition++;
                     }
@@ -321,6 +393,48 @@ public class TasksHeap {
             lock.writeLock().unlock();
         }
 
+    }
+
+    private void computeAvailableResources(
+            Map<String, Integer> limitsConfigurations,
+            Map<Integer, IntCounter> availableResourcesCounters,
+            ResourceUsageCounters actualUsages) {
+        for (Map.Entry<String, Integer> limitFromConfiguration : limitsConfigurations.entrySet()) {
+            String resourceId = limitFromConfiguration.getKey();
+            int limitOnResource = limitFromConfiguration.getValue();
+            if (limitOnResource > 0) {
+                Integer idresource = resolveResourceId(resourceId);
+                IntCounter availableForResource = availableResourcesCounters.get(idresource);
+                IntCounter actualUsage = actualUsages.counters.get(resourceId);
+                if (availableForResource != null) {
+                    // resource already limited
+                    if (actualUsage != null) {
+                        int newLimit = limitOnResource - actualUsage.count;
+                        availableForResource.count = Math.min(availableForResource.count, newLimit);
+                    } else {
+                        availableForResource.count = Math.min(availableForResource.count, limitOnResource);
+                    }
+                } else {
+                    // new resource, limit is the configured one minus the actual usage
+                    availableForResource = new IntCounter(limitOnResource);
+                    availableResourcesCounters.put(idresource, availableForResource);
+                    if (actualUsage != null) {
+                        availableForResource.count -= actualUsage.count;
+                    }
+                }
+            }
+
+        }
+    }
+
+    private Integer resolveResourceId(String resourceId) {
+        Integer idresource = resourceMappings.get(resourceId);
+        if (idresource == null) {
+            idresource = resourceMappings.size() + 1;
+            resourceMappings.put(resourceId, idresource);
+            resourceIdMappings.put(idresource, resourceId);
+        }
+        return idresource;
     }
 
 }

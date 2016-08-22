@@ -156,6 +156,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
                 List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
+                Map<String, Integer> resourceLimits = (Map<String, Integer>) message.parameters.getOrDefault("resources", Collections.emptyMap());
 
                 LOGGER.log(Level.SEVERE, "registering connection " + connectionId + ", workerId:" + _workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_workerId);
@@ -182,7 +183,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 channel.setName(workerId);
                 broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
-                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups);
+                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
                 manager.activateConnection(this);
                 answerConnectionAccepted(message);
                 break;
@@ -221,6 +222,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
                 List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
+                Map<String, Integer> resourceLimits = (Map<String, Integer>) message.parameters.getOrDefault("resources", Collections.emptyMap());
                 LOGGER.log(Level.SEVERE, "ping connection " + connectionId + ", workerId:" + workerId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                 if (workerProcessId != null && !message.workerProcessId.equals(processId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
@@ -232,7 +234,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
-                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups);
+                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
                 LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent shutdown message");
@@ -324,6 +326,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         params.put("parameter", task.getParameter());
         params.put("attempt", task.getAttempts());
         params.put("userid", task.getUserId());
+        params.put("resources", task.getResources());
         if (task.getMode() != null) {
             params.put("mode", task.getMode());
         }

@@ -19,14 +19,11 @@
  */
 package majordodo.task;
 
-import majordodo.clientfacade.SubmitTaskResult;
-import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -39,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
@@ -54,7 +52,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class SlotsRecoveryTest {
+public class TaskExecutionRecoveryOnWorkerRestartUsingResourcesTest {
 
     protected Path workDir;
 
@@ -92,7 +90,7 @@ public class SlotsRecoveryTest {
 
     @Before
     public void setupLogger() throws Exception {
-        Level level = Level.INFO;
+        Level level = Level.SEVERE;
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
             @Override
@@ -113,7 +111,7 @@ public class SlotsRecoveryTest {
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
-            return new TaskProperties(group1, null);
+            return new TaskProperties(group1, new String[]{"resource1", "resource2"});
         };
     }
 
@@ -130,7 +128,7 @@ public class SlotsRecoveryTest {
     }
 
     @Test
-    public void slotRecoveryTest() throws Exception {
+    public void taskRecoveryTest() throws Exception {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
@@ -138,47 +136,22 @@ public class SlotsRecoveryTest {
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
-        final String SLOTID = "myslot";
-
-        // startAsWritable a broker and request a task, with slot
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
-            broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null));
-            taskId = res.getTaskId();
-            assertTrue(taskId > 0);
-            assertTrue(res.getOutcome() == null);
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
-        }
-
-        // restart a broker and request a task, with slot, slot is already busy
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
-            broker.startAsWritable();
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
-        }
+        AtomicBoolean resourcesPresentAtFirstRun = new AtomicBoolean();
+        AtomicBoolean resourcesPresentAtSecondRun = new AtomicBoolean();
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+        BrokerConfiguration brokerConfig = new BrokerConfiguration();
+        brokerConfig.setMaxWorkerIdleTime(5000);
+        try (Broker broker = new Broker(brokerConfig, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
+            taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
+
+                // startAsWritable a worker, it will die
                 try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
-
-                    CountDownLatch connectedLatch = new CountDownLatch(1);
-                    CountDownLatch disconnectedLatch = new CountDownLatch(1);
-                    CountDownLatch allTaskExecuted = new CountDownLatch(1);
-                    WorkerStatusListener listener = new WorkerStatusListener() {
-
-                        @Override
-                        public void connectionEvent(String event, WorkerCore core) {
-                            if (event.equals(WorkerStatusListener.EVENT_CONNECTED)) {
-                                connectedLatch.countDown();
-                            }
-                            if (event.equals(WorkerStatusListener.EVENT_DISCONNECTED)) {
-                                disconnectedLatch.countDown();
-                            }
-                        }
-
-                    };
+                    CountDownLatch taskStartedLatch = new CountDownLatch(1);
                     Map<String, Integer> tags = new HashMap<>();
                     tags.put(TASKTYPE_MYTYPE, 1);
 
@@ -187,54 +160,92 @@ public class SlotsRecoveryTest {
                     config.setWorkerId(workerId);
                     config.setMaxThreadsByTaskType(tags);
                     config.setGroups(Arrays.asList(group));
-                    try (WorkerCore core = new WorkerCore(config, workerId, locator, listener);) {
+                    config.setTasksRequestTimeout(1000);
+                    try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
                         core.start();
-                        assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
-
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
-                                allTaskExecuted.countDown();
+                                System.out.println("executeTask: " + parameters);
+                                resourcesPresentAtFirstRun.set("resource1,resource2".equals(parameters.get("resources")));
+                                taskStartedLatch.countDown();
+                                Integer attempt = (Integer) parameters.get("attempt");
+                                if (attempt == null || attempt == 1) {
+                                    core.die();
+                                    return null;
+                                }
                                 return "theresult";
                             }
 
                         }
                         );
 
-                        assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
+                        assertTrue(taskStartedLatch.await(30, TimeUnit.SECONDS));
+                    }
+                }
 
-                        boolean okFinishedForBroker = false;
+                boolean ok = false;
+                for (int i = 0; i < 100; i++) {
+                    Task task = broker.getBrokerStatus().getTask(taskId);
+//                    System.out.println("task:" + task);
+                    if (task.getStatus() == Task.STATUS_WAITING) {
+                        ok = true;
+                        break;
+                    }
+                    Thread.sleep(1000);
+                }
+                assertTrue(ok);
+
+                // boot the worker again
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
+                    CountDownLatch taskStartedLatch = new CountDownLatch(1);
+                    Map<String, Integer> tags = new HashMap<>();
+                    tags.put(TASKTYPE_MYTYPE, 1);
+
+                    WorkerCoreConfiguration config = new WorkerCoreConfiguration();
+                    config.setMaxPendingFinishedTaskNotifications(1);
+                    config.setWorkerId(workerId);
+                    config.setMaxThreadsByTaskType(tags);
+                    config.setGroups(Arrays.asList(group));
+                    try (WorkerCore core = new WorkerCore(config, "process2", locator, null);) {
+                        core.start();
+                        core.setExecutorFactory(
+                                (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
+                                resourcesPresentAtSecondRun.set("resource1,resource2".equals(parameters.get("resources")));
+                                System.out.println("executeTask2: " + parameters + " ,taskStartedLatch:" + taskStartedLatch.getCount());
+                                taskStartedLatch.countDown();
+
+                                Integer attempt = (Integer) parameters.get("attempt");
+                                if (attempt == null || attempt == 1) {
+                                    throw new RuntimeException("impossible!");
+                                }
+                                return "theresult";
+                            }
+
+                        }
+                        );
+                        assertTrue(taskStartedLatch.await(10, TimeUnit.SECONDS));
+                        ok = false;
                         for (int i = 0; i < 100; i++) {
-                            TaskStatusView task = broker.getClient().getTask(taskId);
+                            Task task = broker.getBrokerStatus().getTask(taskId);
+                            System.out.println("task2:" + task);
                             if (task.getStatus() == Task.STATUS_FINISHED) {
-                                okFinishedForBroker = true;
+                                ok = true;
+                                assertEquals("theresult", task.getResult());
                                 break;
                             }
                             Thread.sleep(1000);
                         }
-                        assertTrue(okFinishedForBroker);
+                        assertTrue(ok);
                     }
-                    assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
-
-                    // now the slot is free
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
-                    assertTrue(taskId > 0);
                 }
-                // transactions
-                long transaction_1 = broker.getClient().beginTransaction();
-                String SLOTTRANSACTION_1 = "sltr1";
-                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertTrue(slotTransactionTaskId > 0);
-                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertEquals(0, slotTransactionTaskId2);
-                broker.getClient().rollbackTransaction(transaction_1);
-                long transaction_2 = broker.getClient().beginTransaction();
-                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
-                assertTrue(slotTransactionTaskId3 > 0);
-                broker.getClient().commitTransaction(transaction_2);
 
             }
+            assertTrue(resourcesPresentAtFirstRun.get());
+            assertTrue(resourcesPresentAtSecondRun.get());
         }
 
     }

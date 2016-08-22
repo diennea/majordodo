@@ -27,7 +27,8 @@ import majordodo.replication.ReplicatedCommitLog;
 import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
 import majordodo.task.FileCommitLog;
-import majordodo.task.GroupMapperFunction;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TaskProperties;
 import majordodo.task.MemoryCommitLog;
 import majordodo.task.StatusChangesLog;
 import majordodo.task.TasksHeap;
@@ -49,11 +50,11 @@ public class EmbeddedBroker implements AutoCloseable {
 
     private Broker broker;
     private BrokerConfiguration brokerConfiguration;
-    private GroupMapperFunction groupMapperFunction = new GroupMapperFunction() {
 
+    private TaskPropertiesMapperFunction taskPropertiesMapperFunction = new TaskPropertiesMapperFunction() {
         @Override
-        public int getGroup(long taskid, String taskType, String userid) {
-            return 1;
+        public TaskProperties getTaskProperties(long taskid, String taskType, String userid) {
+            return new TaskProperties(1, null);
         }
     };
     private StatusChangesLog statusChangesLog;
@@ -98,12 +99,12 @@ public class EmbeddedBroker implements AutoCloseable {
         return configuration;
     }
 
-    public GroupMapperFunction getGroupMapperFunction() {
-        return groupMapperFunction;
+    public TaskPropertiesMapperFunction getTaskPropertiesMapperFunction() {
+        return taskPropertiesMapperFunction;
     }
 
-    public void setGroupMapperFunction(GroupMapperFunction groupMapperFunction) {
-        this.groupMapperFunction = groupMapperFunction;
+    public void setTaskPropertiesMapperFunction(TaskPropertiesMapperFunction taskPropertiesMapperFunction) {
+        this.taskPropertiesMapperFunction = taskPropertiesMapperFunction;
     }
 
     public Broker getBroker() {
@@ -180,7 +181,7 @@ public class EmbeddedBroker implements AutoCloseable {
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
         brokerConfiguration.setSharedSecret(sharedSecret);
         brokerConfiguration.read(configuration.getProperties());
-        broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), groupMapperFunction));
+        broker = new Broker(brokerConfiguration, statusChangesLog, new TasksHeap(brokerConfiguration.getTasksHeapSize(), taskPropertiesMapperFunction));
         broker.setAuthenticationManager(authenticationManager);
         broker.setBrokerId(id);
         switch (mode) {

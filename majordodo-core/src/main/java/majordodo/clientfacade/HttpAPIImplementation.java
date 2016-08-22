@@ -118,6 +118,21 @@ public class HttpAPIImplementation {
                     resultMap.put("status", "not_started");
                 }
                 break;
+            case "resources":
+                if (broker != null) {
+                    String workerId = req.getParameter("workerId");
+                    if (workerId == null || workerId.isEmpty()) {
+                        resultMap.put("resources", broker.getClient().getAllResources());
+                    } else {
+                        resultMap.put("workerId", workerId);
+                        resultMap.put("resources", broker.getClient().getAllResourcesForWorker(workerId));
+                    }
+
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
             case "tasksheap":
                 if (broker != null) {
                     resultMap.put("tasksheap", broker.getClient().getHeapStatus());

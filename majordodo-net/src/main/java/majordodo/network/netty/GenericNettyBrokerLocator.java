@@ -70,7 +70,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
                 throw new BrokerNotAvailableException(e);
             }
 
-            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups());
+            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits());
             try {
                 Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
                 if (connectionResponse.type == Message.TYPE_ACK) {

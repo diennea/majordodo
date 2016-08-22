@@ -42,6 +42,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Basic tests for recovery
@@ -129,7 +130,7 @@ public class SimpleZKBrokerLocatorWithSupplierTest extends BasicBrokerEnv {
         config.setWorkerId("workerid");
         config.setMaxThreadsByTaskType(tags);
         config.setGroups(Arrays.asList(group));
-        groupsMap.put(userId, group);
+        declareGroupForUser(userId, group);
         try (WorkerCore core = new WorkerCore(config, "here", getBrokerLocator(), listener);) {
             core.start();
             assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
@@ -146,7 +147,7 @@ public class SimpleZKBrokerLocatorWithSupplierTest extends BasicBrokerEnv {
             });
 
             String taskParams = "param";
-            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
+            long taskId = getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
             assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
         }

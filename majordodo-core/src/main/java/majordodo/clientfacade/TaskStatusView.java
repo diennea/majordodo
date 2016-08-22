@@ -43,6 +43,7 @@ public class TaskStatusView {
     private long executionDeadline;
     private String mode;
     private String codePoolId;
+    private String resources;
 
     public static String convertTaskStatusForClient(int taskStatus) {
         String status;
@@ -67,7 +68,7 @@ public class TaskStatusView {
 
     @Override
     public String toString() {
-        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", executionDeadline=" + executionDeadline + '}';
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", resources=" + resources + ", executionDeadline=" + executionDeadline + '}';
     }
 
     public String getSlot() {
@@ -180,6 +181,14 @@ public class TaskStatusView {
 
     public void setCodePoolId(String codePoolId) {
         this.codePoolId = codePoolId;
+    }
+
+    public String getResources() {
+        return resources;
+    }
+
+    public void setResources(String resources) {
+        this.resources = resources;
     }
 
 }

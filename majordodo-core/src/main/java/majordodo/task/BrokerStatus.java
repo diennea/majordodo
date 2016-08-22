@@ -37,6 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import majordodo.clientfacade.CodePoolView;
+import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.TransactionStatus;
 import majordodo.codepools.CodePool;
 
@@ -141,6 +142,7 @@ public class BrokerStatus {
         if (task.getCodepool() != null) {
             s.setCodePoolId(task.getCodepool());
         }
+        s.setResources(task.getResources());
         return s;
     }
 
@@ -473,6 +475,7 @@ public class BrokerStatus {
         }
     }
 
+    
     public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
@@ -590,6 +593,7 @@ public class BrokerStatus {
                 case StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER: {
                     long taskId = edit.taskId;
                     String workerId = edit.workerId;
+                    String resources = edit.resources;
                     Task task = tasks.get(taskId);
                     if (task == null) {
                         throw new RuntimeException("task " + taskId + " not present in brokerstatus. maybe you are recovering broken snapshot");
@@ -600,6 +604,9 @@ public class BrokerStatus {
                         throw new RuntimeException("bug " + edit);
                     }
                     task.setWorkerId(workerId.intern());
+                    if (resources != null) {
+                        task.setResources(resources.intern());
+                    }
                     task.setAttempts(edit.attempt);
                     stats.taskStatusChange(oldStatus, task.getStatus());
                     return new ModificationResult(num, null, null);

@@ -19,7 +19,6 @@
  */
 package majordodo.replication;
 
-import majordodo.task.GroupMapperFunction;
 import majordodo.task.TasksHeap;
 import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
@@ -31,6 +30,8 @@ import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
 import majordodo.utils.TestUtils;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
@@ -65,14 +66,10 @@ public class AcquireLeadershipTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -120,19 +117,19 @@ public class AcquireLeadershipTest {
             Broker broker2 = null;
             Broker broker3 = null;
             try {
-                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
+                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server1 = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server1.start();
 
                     try {
-                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
+                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                         broker2.start();
                         Broker _broker2 = broker2;
                         try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
                             server2.start();
 
-                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
+                            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
 
                             // need to write at least another entry to the ledger, if not the second broker could not see the add_task entry
                             broker1.noop();
@@ -155,7 +152,7 @@ public class AcquireLeadershipTest {
 
                         // start a third broker, wait to get the new task
                         try {
-                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host3, port3, "", false, null))), new TasksHeap(1000, createGroupMapperFunction()));
+                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host3, port3, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                             broker3.start();
                             Broker _broker3 = broker3;
                             try (NettyChannelAcceptor server3 = new NettyChannelAcceptor(broker3.getAcceptor(), host3, port3)) {

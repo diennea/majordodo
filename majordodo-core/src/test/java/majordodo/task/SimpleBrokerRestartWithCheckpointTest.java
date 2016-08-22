@@ -110,14 +110,10 @@ public class SimpleBrokerRestartWithCheckpointTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -144,11 +140,11 @@ public class SimpleBrokerRestartWithCheckpointTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
-                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(),server.isSsl())) {
+                try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {
 
                     CountDownLatch connectedLatch = new CountDownLatch(1);
                     CountDownLatch disconnectedLatch = new CountDownLatch(1);
@@ -180,17 +176,17 @@ public class SimpleBrokerRestartWithCheckpointTest {
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
-                                    @Override
-                                    public String executeTask(Map<String, Object> parameters) throws Exception {
+                            @Override
+                            public String executeTask(Map<String, Object> parameters) throws Exception {
 
-                                        allTaskExecuted.countDown();
-                                        return "theresult";
-                                    }
+                                allTaskExecuted.countDown();
+                                return "theresult";
+                            }
 
-                                }
+                        }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0,null,null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
                         assertTrue(allTaskExecuted.await(30, TimeUnit.SECONDS));
 
                         boolean okFinishedForBroker = false;
@@ -214,7 +210,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         }
 
         // startAsWritable another broker
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             // ask for task status and worker status
             TaskStatusView task = broker.getClient().getTask(taskId);

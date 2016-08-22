@@ -63,7 +63,7 @@ public class Workers {
         });
     }
 
-    public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot) {
+    public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot, ResourceUsageCounters globalResourceUsageCounters) {
         Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
         Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
         for (WorkerStatus workerStatus : workersAtBoot) {
@@ -82,11 +82,17 @@ public class Workers {
                             LOGGER.log(Level.FINE, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
                             toRecoverForWorker.add(task.getTaskId());
                         } else {
-                            LOGGER.log(Level.FINE, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId());
-                            manager.taskShouldBeRunning(task.getTaskId());
+                            String resources = task.getResources();
+                            LOGGER.log(Level.FINE, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId() + ", resources " + resources);
+                            String[] resourceIds = null;
+                            if (resources != null) {
+                                resourceIds = resources.split(",");
+                            }
+                            manager.taskRunningDuringBrokerBoot(new AssignedTask(task.getTaskId(), resourceIds, resources));
+                            globalResourceUsageCounters.useResources(resourceIds);
                         }
                     } else {
-                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));                        
+                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));
                     }
                 }
             }
@@ -142,6 +148,15 @@ public class Workers {
     public void wakeUp() {
         synchronized (waitForEvent) {
             waitForEvent.notify();
+        }
+    }
+
+    public WorkerManager getWorkerManagerNoCreate(String id) {
+        lock.readLock().lock();
+        try {
+            return nodeManagers.get(id);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 

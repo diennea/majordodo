@@ -19,9 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.Task;
-import majordodo.task.TasksHeap;
-import majordodo.task.GroupMapperFunction;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,19 +34,23 @@ public class TasksHeapBenchTest {
     private static final int GROUPID1 = 9713;
     private static final int GROUPID2 = 972;
 
-    private final GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
-
+    private final TaskPropertiesMapperFunction DEFAULT_FUNCTION = new TaskPropertiesMapperFunction() {
         @Override
-        public int getGroup(long taskid, String tasktype, String assignerData) {
-            switch (assignerData) {
+        public TaskProperties getTaskProperties(long taskid, String taskType, String userid) {
+            int groupId;
+            switch (userid) {
                 case USERID1:
-                    return GROUPID1;
+                    groupId = GROUPID1;
+                    break;
                 case USERID2:
-                    return GROUPID2;
+                    groupId = GROUPID2;
+                    break;
                 default:
-                    return -1;
+                    groupId = -1;
             }
+            return new TaskProperties(groupId, null);
         }
+
     };
 
     @Test
@@ -75,7 +76,7 @@ public class TasksHeapBenchTest {
             Map<String, Integer> availableSpace = new HashMap<>();
             availableSpace.put(TASKTYPE_MYTASK1, 1);
             for (int i = 0; i < 1000; i++) {
-                instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+                instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
 //                instance.scan(entry -> {
 //                    System.out.println("entry:" + entry);
 //                });

@@ -80,7 +80,7 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads, Map<String, Integer> maxThreadsByTaskType, List<Integer> groups, Set<Integer> excludedGroups) {
+    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads, Map<String, Integer> maxThreadsByTaskType, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> resources) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("processId", processId);
@@ -90,6 +90,7 @@ public final class Message {
         params.put("maxThreads", maxThreads);
         params.put("maxThreadsByTaskType", maxThreadsByTaskType);
         params.put("groups", groups);
+        params.put("resources", resources);
         params.put("excludedGroups", excludedGroups);
         return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
     }
@@ -102,7 +103,7 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_PING(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> maxThreadsByTaskType, int max) {
+    public static Message WORKER_PING(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> maxThreadsByTaskType, int max, Map<String, Integer> resources) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);
@@ -110,6 +111,7 @@ public final class Message {
         params.put("maxThreadsByTaskType", maxThreadsByTaskType);
         params.put("maxThreads", max);
         params.put("excludedGroups", excludedGroups);
+        params.put("resources", resources);
         return new Message(processId, TYPE_WORKER_PING, params);
     }
 

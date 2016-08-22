@@ -47,4 +47,6 @@ public interface ConnectionRequestInfo {
     public List<Integer> getGroups();
 
     public Set<Integer> getExcludedGroups();
+
+    public Map<String, Integer> getResourceLimits();
 }

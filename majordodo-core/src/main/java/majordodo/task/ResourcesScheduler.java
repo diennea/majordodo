@@ -30,13 +30,13 @@ import java.util.logging.Logger;
  *
  * @author enrico.olivelli
  */
-public class GroupMapperScheduler {
+public class ResourcesScheduler {
 
     private final BrokerConfiguration configuration;
     private final ScheduledExecutorService timer;
     private final Broker broker;
 
-    public GroupMapperScheduler(BrokerConfiguration configuration, Broker broker) {
+    public ResourcesScheduler(BrokerConfiguration configuration, Broker broker) {
         this.configuration = configuration;
         this.broker = broker;
         if (this.configuration.getRecomputeGroupsPeriod() > 0) {

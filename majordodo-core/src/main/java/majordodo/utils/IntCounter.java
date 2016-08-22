@@ -17,17 +17,27 @@
  under the License.
 
  */
-package majordodo.task;
+package majordodo.utils;
 
 /**
- * Function which maps a task to a group of user. This funciton must be very
- * fast, usually the implementation will be a HashMap lookup. This function must
- * be trehead safe must it should never impose any lock
+ * A simple wrapper for an integer.
  *
  * @author enrico.olivelli
  */
-@FunctionalInterface
-public interface GroupMapperFunction {
+public class IntCounter {
 
-    public int getGroup(long taskid, String taskType, String userid);
+    public IntCounter() {
+    }
+
+    public IntCounter(int count) {
+        this.count = count;
+    }
+
+    public int count;
+
+    @Override
+    public String toString() {
+        return Integer.toString(count);
+    }
+
 }

@@ -19,9 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.Task;
-import majordodo.task.TasksHeap;
-import majordodo.task.GroupMapperFunction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,19 +38,23 @@ public class TasksHeapCompactionTest {
     private static final int GROUPID1 = 9713;
     private static final int GROUPID2 = 972;
 
-    private GroupMapperFunction DEFAULT_FUNCTION = new GroupMapperFunction() {
-
+    private final TaskPropertiesMapperFunction DEFAULT_FUNCTION = new TaskPropertiesMapperFunction() {
         @Override
-        public int getGroup(long taskid, String tasktype, String assignerData) {
-            switch (assignerData) {
+        public TaskProperties getTaskProperties(long taskid, String taskType, String userid) {
+            int groupId;
+            switch (userid) {
                 case USERID1:
-                    return GROUPID1;
+                    groupId = GROUPID1;
+                    break;
                 case USERID2:
-                    return GROUPID2;
+                    groupId = GROUPID2;
+                    break;
                 default:
-                    return -1;
+                    groupId = -1;
             }
+            return new TaskProperties(groupId, null);
         }
+
     };
 
     @Test
@@ -76,9 +77,9 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task2, entries.get(1).taskid);
 
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(task1, taskids.get(0).longValue());
+        assertEquals(task1, taskids.get(0).taskid);
 
         System.out.println("after take first");
         entries.clear();
@@ -135,11 +136,11 @@ public class TasksHeapCompactionTest {
         assertEquals(task5, entries.get(4).taskid);
         assertEquals(task6, entries.get(5).taskid);
 
-        List<Long> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(3, taskids.size());
-        assertEquals(task2, taskids.get(0).longValue());
-        assertEquals(task4, taskids.get(1).longValue());
-        assertEquals(task5, taskids.get(2).longValue());
+        assertEquals(task2, taskids.get(0).taskid);
+        assertEquals(task4, taskids.get(1).taskid);
+        assertEquals(task5, taskids.get(2).taskid);
 
         System.out.println("after take first");
         entries.clear();
@@ -166,7 +167,7 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task3, entries.get(1).taskid);
         assertEquals(task6, entries.get(2).taskid);
-        assertEquals(0, entries.get(3).taskid);        
+        assertEquals(0, entries.get(3).taskid);
 
     }
 
@@ -190,9 +191,9 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task2, entries.get(1).taskid);
 
-        List<Long> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
         assertEquals(1, taskids.size());
-        assertEquals(task1, taskids.get(0).longValue());
+        assertEquals(task1, taskids.get(0).taskid);
 
         System.out.println("after take first");
         entries.clear();
@@ -218,7 +219,7 @@ public class TasksHeapCompactionTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID1);
         entries.clear();
         instance.scan(entries::add);
-        assertEquals(2,entries.size());
+        assertEquals(2, entries.size());
 
     }
 

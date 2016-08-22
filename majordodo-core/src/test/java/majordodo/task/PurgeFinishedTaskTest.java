@@ -109,14 +109,10 @@ public class PurgeFinishedTaskTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -146,7 +142,7 @@ public class PurgeFinishedTaskTest {
         BrokerConfiguration bc = new BrokerConfiguration();
         bc.setFinishedTasksRetention(0);
         bc.setFinishedTasksPurgeSchedulerPeriod(1000);
-        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(bc, new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();

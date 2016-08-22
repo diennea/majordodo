@@ -19,12 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.StatusChangesLog;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.MemoryCommitLog;
-import majordodo.task.Broker;
 import majordodo.clientfacade.ClientFacade;
 import majordodo.network.BrokerLocator;
 import majordodo.network.jvm.JVMBrokerLocator;
@@ -138,14 +132,15 @@ public abstract class BasicBrokerEnv {
         return new MemoryCommitLog();
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
+    protected GlobalResourceLimitsConfiguration createGlobalResourceLimitsConfiguration() throws Exception {
+        return new NoLimitsGlobalResourceLimitsConfiguration();
+    }
 
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            String[] resources = resourcesMap.getOrDefault(userid, null);
+            return new TaskProperties(group1, resources);
         };
     }
 
@@ -153,13 +148,25 @@ public abstract class BasicBrokerEnv {
         return 1000;
     }
 
-    protected Map<String, Integer> groupsMap = new HashMap<>();
+    private Map<String, Integer> groupsMap = new HashMap<>();
+    private Map<String, String[]> resourcesMap = new HashMap<>();
+
+    protected void declareResourcesForUser(String userId, String[] resources) {
+        resourcesMap.put(userId, resources);
+    }
+
+    protected void declareGroupForUser(String userId, int group) {
+        groupsMap.put(userId, group);
+    }
 
     @Before
     public void startBroker() throws Exception {
+        groupsMap.clear();
+        resourcesMap.clear();
         setupWorkdir();
         beforeStartBroker();
-        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createGroupMapperFunction()));
+        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createTaskPropertiesMapperFunction()));
+        broker.setGlobalResourceLimitsConfiguration(createGlobalResourceLimitsConfiguration());
         broker.startAsWritable();
         afterStartBroker();
     }

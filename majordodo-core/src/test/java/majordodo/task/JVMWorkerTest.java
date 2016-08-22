@@ -19,9 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.network.BrokerLocator;
-import majordodo.network.jvm.JVMBrokerLocator;
-
 /**
  * Simple tests
  *
@@ -29,4 +26,5 @@ import majordodo.network.jvm.JVMBrokerLocator;
  */
 public class JVMWorkerTest extends SimpleBrokerSuite {
 
+    
 }

@@ -19,19 +19,12 @@
  */
 package majordodo.task;
 
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.TasksHeap;
-import majordodo.task.FileCommitLog;
-import majordodo.task.Task;
-import majordodo.task.GroupMapperFunction;
-import majordodo.task.Broker;
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -42,15 +35,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -116,14 +105,10 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
 
-    protected GroupMapperFunction createGroupMapperFunction() {
-        return new GroupMapperFunction() {
-
-            @Override
-            public int getGroup(long taskid, String tasktype, String userid) {
-                return groupsMap.getOrDefault(userid, 0);
-
-            }
+    protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
+        return (long taskid, String taskType, String userid) -> {
+            int group1 = groupsMap.getOrDefault(userid, 0);
+            return new TaskProperties(group1, null);
         };
     }
 
@@ -150,7 +135,7 @@ public class TaskExecutionRecoveryTooManyErrorsTest {
         String taskParams = "param";
 
         // startAsWritable a broker and do some work
-        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createGroupMapperFunction()));) {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();

@@ -95,6 +95,14 @@ public class ClientFacade {
         return broker.getBrokerStatus().getAllWorkers();
     }
 
+    public List<ResourceStatusView> getAllResources() {
+        return broker.getAllResources();
+    }
+    
+    public List<ResourceStatusView> getAllResourcesForWorker(String workerId) {
+        return broker.getAllResourcesForWorker(workerId);
+    }
+
     public TaskStatusView getTask(long taskid) {
         return broker.getBrokerStatus().getTaskStatus(taskid);
     }
