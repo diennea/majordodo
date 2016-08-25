@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.6.0-ALPHA1</version>
+    <version>0.6.0-ALPHA2</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
     <url>http://majordodo.org</url>

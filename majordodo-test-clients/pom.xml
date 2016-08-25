@@ -5,7 +5,7 @@
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Test Clients</name>
-    <version>0.6.0-ALPHA1</version>
+    <version>0.6.0-ALPHA2</version>
     <groupId>org.majordodo</groupId>
     <artifactId>majordodo-test-clients</artifactId>
     <build>
