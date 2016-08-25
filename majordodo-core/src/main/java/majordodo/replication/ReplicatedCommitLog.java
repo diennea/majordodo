@@ -318,7 +318,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         try {
             this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata);
             this.zKClusterManager.waitForConnection();
-            this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());            
+            this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());
             this.snapshotsDirectory = snapshotsDirectory;
             this.zKClusterManager.start();
         } catch (Exception t) {
@@ -541,8 +541,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                                     }
                                     count.countDown();
                                 }
-                            }, null);                                                        
-                            count.await();                            
+                            }, null);
+                            count.await();
                         }
                     }
                 } finally {
@@ -811,7 +811,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         try {
             if (closed) {
                 return;
-            }            
+            }
             closeCurrentWriter();
             if (zKClusterManager != null) {
                 try {
@@ -886,12 +886,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                         continue;
                     }
                     Enumeration<LedgerEntry> entries = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
-                    while (entries.hasMoreElements()) {
-                        LedgerEntry e = entries.nextElement();
-                        long entryId = e.getEntryId();
-                        byte[] entryData = e.getEntry();
-                        StatusEdit statusEdit = StatusEdit.read(entryData);
-                        buffer.add(new AbstractMap.SimpleImmutableEntry<>(entryId, statusEdit));
+                    if (entries != null) {
+                        while (entries.hasMoreElements()) {
+                            LedgerEntry e = entries.nextElement();
+                            long entryId = e.getEntryId();
+                            byte[] entryData = e.getEntry();
+                            StatusEdit statusEdit = StatusEdit.read(entryData);
+                            buffer.add(new AbstractMap.SimpleImmutableEntry<>(entryId, statusEdit));
+                        }
                     }
                 } catch (BKException.BKLedgerRecoveryException | BKBookieHandleNotAvailableException temporaryError) {
                     LOGGER.log(Level.SEVERE, "temporary error " + temporaryError, temporaryError);
