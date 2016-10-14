@@ -117,13 +117,13 @@ public class AcquireLeadershipTest {
             Broker broker2 = null;
             Broker broker3 = null;
             try {
-                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server1 = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server1.start();
 
                     try {
-                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                        broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                         broker2.start();
                         Broker _broker2 = broker2;
                         try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
@@ -152,7 +152,7 @@ public class AcquireLeadershipTest {
 
                         // start a third broker, wait to get the new task
                         try {
-                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host3, port3, "", false, null))), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                            broker3 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots3.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host3, port3, "", false, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
                             broker3.start();
                             Broker _broker3 = broker3;
                             try (NettyChannelAcceptor server3 = new NettyChannelAcceptor(broker3.getAcceptor(), host3, port3)) {

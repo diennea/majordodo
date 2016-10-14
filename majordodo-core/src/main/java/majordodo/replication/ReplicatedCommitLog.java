@@ -309,14 +309,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     };
 
-    public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata) throws Exception {
+    public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata, boolean writeacls) throws Exception {
         if (localhostdata == null) {
             localhostdata = new byte[0];
         }
         ClientConfiguration config = new ClientConfiguration();
         config.setThrottleValue(0);
         try {
-            this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata);
+            this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata, writeacls);
             this.zKClusterManager.waitForConnection();
             this.bookKeeper = new BookKeeper(config, zKClusterManager.getZooKeeper());
             this.snapshotsDirectory = snapshotsDirectory;
@@ -640,8 +640,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
 
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
-                BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
-                GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+            BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+            GZIPOutputStream zout = new GZIPOutputStream(bout)) {
             BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
@@ -723,7 +723,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 snapshot = downloadSnapshotFromMaster(leaderData);
                 LOGGER.log(Level.SEVERE, "downloaded " + snapshot.length + " snapshot data from actual leader");
                 try (InputStream in = new ByteArrayInputStream(snapshot);
-                        GZIPInputStream gzip = new GZIPInputStream(in)) {
+                    GZIPInputStream gzip = new GZIPInputStream(in)) {
                     BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                     writeSnapshotOnDisk(result);
                     currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
@@ -769,20 +769,20 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         if (snapshotfilename != null) {
             LOGGER.log(Level.SEVERE, "Loading snapshot from " + snapshotfilename);
             try (InputStream in = Files.newInputStream(snapshotfilename);
-                    BufferedInputStream bin = new BufferedInputStream(in);
-                    GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                BufferedInputStream bin = new BufferedInputStream(in);
+                GZIPInputStream gzip = new GZIPInputStream(bin)) {
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
 
                 LOGGER.log(Level.SEVERE,
-                        "Snapshot has been taken at ledgerId=" + result.getActualLogSequenceNumber().ledgerId + ", sequenceNumber=" + result.getActualLogSequenceNumber().sequenceNumber);
+                    "Snapshot has been taken at ledgerId=" + result.getActualLogSequenceNumber().ledgerId + ", sequenceNumber=" + result.getActualLogSequenceNumber().sequenceNumber);
                 if (_actualLedgersList.getActiveLedgers()
-                        .contains(currentLedgerId)) {
+                    .contains(currentLedgerId)) {
                     return result;
                 }
 
                 LOGGER.log(Level.SEVERE,
-                        "Actually the loaded snapshot is not recoveable given the actual ledgers list. This file cannot be used for recovery");
+                    "Actually the loaded snapshot is not recoveable given the actual ledgers list. This file cannot be used for recovery");
             } catch (IOException err) {
                 LOGGER.log(Level.SEVERE, "error while reading snapshot data", err);
                 throw new LogNotAvailableException(err);
@@ -878,7 +878,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
                 // first of all we read data from the leader
                 try (LedgerHandle lh = bookKeeper.openLedgerNoRecovery(previous,
-                        BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));) {
+                    BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));) {
                     long lastAddConfirmed = lh.getLastAddConfirmed();
                     LOGGER.log(Level.FINE, "followTheLeader openLedger {0} -> lastAddConfirmed:{1}, nextEntry:{2}", new Object[]{previous, lastAddConfirmed, nextEntry});
                     if (nextEntry > lastAddConfirmed) {

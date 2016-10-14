@@ -19,17 +19,12 @@
  */
 package majordodo.replication;
 
-import majordodo.task.LogNotAvailableException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
+import majordodo.task.LogNotAvailableException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -39,6 +34,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 
 /**
@@ -88,11 +84,14 @@ public class ZKClusterManager implements AutoCloseable {
     private final String discoverypath;
     private final String ledgersPath;
     private final int connectionTimeout;
+    private final List<ACL> acls;
 
-    public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener, byte[] localhostdata) throws Exception {
+    public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener,
+        byte[] localhostdata, boolean writeacls) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
         this.basePath = basePath;
         this.listener = listener;
+        this.acls = writeacls ? ZooDefs.Ids.CREATOR_ALL_ACL : ZooDefs.Ids.OPEN_ACL_UNSAFE;
         this.localhostdata = localhostdata;
         this.leaderpath = basePath + "/leader";
         this.discoverypath = basePath + "/discoverypath";
@@ -101,8 +100,7 @@ public class ZKClusterManager implements AutoCloseable {
     }
 
     /**
-     * Let (embedded) brokers read actual list of ledgers used. in order to
-     * perform extrernal clean ups
+     * Let (embedded) brokers read actual list of ledgers used. in order to perform extrernal clean ups
      *
      * @param zk
      * @param ledgersPath
@@ -149,7 +147,7 @@ public class ZKClusterManager implements AutoCloseable {
                         LOGGER.log(Level.SEVERE, "save new ledgers list " + info);
                         return;
                     } catch (KeeperException.NoNodeException firstboot) {
-                        zk.create(ledgersPath, actualLedgers, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                        zk.create(ledgersPath, actualLedgers, acls, CreateMode.PERSISTENT);
                     } catch (KeeperException.BadVersionException fenced) {
                         throw new LogNotAvailableException(new Exception("ledgers actual list was fenced, expecting version " + info.getZkVersion() + " " + fenced, fenced).fillInStackTrace());
                     }
@@ -169,26 +167,26 @@ public class ZKClusterManager implements AutoCloseable {
     public void start() throws Exception {
         try {
             if (this.zk.exists(basePath, false) == null) {
-                LOGGER.log(Level.SEVERE, "creating base path " + basePath);
+                LOGGER.log(Level.SEVERE, "creating base path " + basePath + ", acls:" + acls);
                 try {
-                    this.zk.create(basePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                    this.zk.create(basePath, new byte[0], acls, CreateMode.PERSISTENT);
                 } catch (KeeperException anyError) {
-                    throw new Exception("Could not init Zookeeper space at path " + basePath, anyError);
+                    throw new Exception("Could not init Zookeeper space at path " + basePath + ": " + anyError, anyError);
                 }
             }
             if (this.zk.exists(discoverypath, false) == null) {
                 LOGGER.log(Level.SEVERE, "creating discoverypath path " + discoverypath);
                 try {
-                    this.zk.create(discoverypath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                    this.zk.create(discoverypath, new byte[0], acls, CreateMode.PERSISTENT);
                 } catch (KeeperException anyError) {
                     throw new Exception("Could not init Zookeeper space at path " + discoverypath, anyError);
                 }
             }
-            String newPath = zk.create(discoverypath + "/brokers", localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+            String newPath = zk.create(discoverypath + "/brokers", localhostdata, acls, CreateMode.EPHEMERAL_SEQUENTIAL);
             LOGGER.log(Level.SEVERE, "my own discoverypath path is " + newPath);
 
         } catch (KeeperException error) {
-            throw new Exception("Could not init Zookeeper space at path " + basePath, error);
+            throw new Exception("Could not init Zookeeper space at path " + basePath + ": " + error, error);
         }
     }
 
@@ -300,7 +298,7 @@ public class ZKClusterManager implements AutoCloseable {
     }
 
     public void requestLeadership() {
-        zk.create(leaderpath, localhostdata, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL, masterCreateCallback, null);
+        zk.create(leaderpath, localhostdata, acls, CreateMode.EPHEMERAL, masterCreateCallback, null);
     }
 
     @Override

@@ -110,7 +110,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
             BrokerConfiguration brokerConfig = new BrokerConfiguration();
             brokerConfig.setMaxWorkerIdleTime(5000);
 
-            try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)));
+            try (ReplicatedCommitLog log1 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
                     Broker broker1 = new Broker(brokerConfig, log1, new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
@@ -141,7 +141,7 @@ public class BrokerStatusReplicationWithLedgerDeletionTest {
                     assertEquals(1, log1.getActualLedgersList().getActiveLedgers().size());
                     assertFalse(log1.getActualLedgersList().getActiveLedgers().contains(log1.getActualLedgersList().getFirstLedger()));
 
-                    try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)));
+                    try (ReplicatedCommitLog log2 = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)), false);
                             Broker broker2 = new Broker(brokerConfig, log2, new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                         broker2.start();
 

@@ -31,6 +31,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
 
     public static String KEY_ZKADDRESS = "zk.address";
     public static String KEY_ZKSESSIONTIMEOUT = "zk.sessiontimeout";
+    public static String KEY_ZKSECURE = "zk.secure";
     public static String KEY_ZKPATH = "zk.path";
     public static String KEY_ZKCLIENTSUPPLIER = "zk.client.supplier";
         
@@ -42,6 +43,7 @@ public abstract class AbstractEmbeddedServiceConfiguration {
 
     public static final String KEY_SHAREDSECRET = "sharedsecret";
     public static final String KEY_SHAREDSECRET_DEFAULT = "dodo";
+    public static final boolean KEY_ZKSECURE_DEFAULT = false;
 
     private final Map<String, Object> properties = new HashMap<>();
 

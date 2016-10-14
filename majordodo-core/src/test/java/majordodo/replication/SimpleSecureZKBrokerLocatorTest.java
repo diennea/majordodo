@@ -19,12 +19,12 @@
  */
 package majordodo.replication;
 
+import java.io.File;
 import majordodo.task.StatusChangesLog;
 import majordodo.executors.TaskExecutor;
 import majordodo.network.BrokerLocator;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.task.BasicBrokerEnv;
-import majordodo.task.Broker;
 import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
 import majordodo.worker.WorkerStatusListener;
@@ -33,19 +33,34 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import org.junit.After;
-import static org.junit.Assert.assertTrue;
+import org.junit.AfterClass;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
+import org.junit.Before;
+import org.junit.BeforeClass;
 
 /**
  * Basic tests for recovery
  *
  * @author enrico.olivelli
  */
-public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
+public class SimpleSecureZKBrokerLocatorTest extends BasicBrokerEnv {
+
+    @BeforeClass
+    public static void setUpJaas() {
+        System.setProperty("java.security.auth.login.config", new File("src/test/resources/test_jaas.conf").getAbsolutePath());
+    }
+
+    @AfterClass
+    public static void clearUpJaas() {
+        System.clearProperty("java.security.auth.login.config");
+    }
 
     NettyChannelAcceptor server;
     ZKTestEnv zkEnv;
@@ -59,7 +74,7 @@ public class SimpleZKBrokerLocatorTest extends BasicBrokerEnv {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), true);
     }
 
     @Override

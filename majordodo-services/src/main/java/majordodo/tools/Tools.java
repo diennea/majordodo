@@ -93,13 +93,14 @@ public class Tools {
                     String zkAddress = configuration.getProperty("zk.address", "localhost:1281");
                     int zkSessionTimeout = Integer.parseInt(configuration.getProperty("zk.sessiontimeout", "40000"));
                     String zkPath = configuration.getProperty("zk.path", "/majordodo");
+                    boolean zkSecure = Boolean.parseBoolean(configuration.getProperty("zk.secure", "false"));
                     String snapdir = configuration.getProperty("data.dir", "data");
 
                     Map<String, String> additional = new HashMap<>();
                     additional.put("tools-jvmid", ManagementFactory.getRuntimeMXBean().getName());
                     additional.put("tools-command", command);
                     ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
-                            BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additional))
+                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additional)), zkSecure
                     );
                     log = _log;
                     int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));

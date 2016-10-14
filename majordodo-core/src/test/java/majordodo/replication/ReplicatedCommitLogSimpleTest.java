@@ -50,7 +50,7 @@ public class ReplicatedCommitLogSimpleTest {
     public void test() throws Exception {
         try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());) {
             zkServer.startBookie();
-            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null);) {
+            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null, false);) {
                 BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
                 log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
                     fail();
@@ -69,7 +69,7 @@ public class ReplicatedCommitLogSimpleTest {
                 LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
             }
 
-            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null);) {
+            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null, false);) {
                 BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
                 System.out.println("snapshot:" + snapshot);
                 // no snapshot was taken...

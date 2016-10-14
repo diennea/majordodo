@@ -20,21 +20,20 @@
 package majordodo.replication;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
-import org.apache.curator.test.TestingServer;
 
 public class ZKTestEnv implements AutoCloseable {
 
-    TestingServer zkServer;
+    TestingZookeeperServerEmbedded zkServer;
     BookieServer bookie;
     Path path;
 
     public ZKTestEnv(Path path) throws Exception {
-        zkServer = new TestingServer(1282, path.toFile(), true);
+        zkServer = new TestingZookeeperServerEmbedded(1282, path.toFile());
+        zkServer.start();
         this.path = path;
     }
 

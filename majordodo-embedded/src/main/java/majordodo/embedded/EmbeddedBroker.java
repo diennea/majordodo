@@ -83,8 +83,7 @@ public class EmbeddedBroker implements AutoCloseable {
     }
 
     /**
-     * This callback wil be called when the broker dies, for example in case of
-     * "leadership lost" or "broker commit log"
+     * This callback wil be called when the broker dies, for example in case of "leadership lost" or "broker commit log"
      *
      * @return
      */
@@ -93,8 +92,7 @@ public class EmbeddedBroker implements AutoCloseable {
     }
 
     /**
-     * This callback wil be called when the broker dies, for example in case of
-     * "leadership lost" or "broker commit log"
+     * This callback wil be called when the broker dies, for example in case of "leadership lost" or "broker commit log"
      *
      * @param brokerDiedCallback
      */
@@ -147,6 +145,7 @@ public class EmbeddedBroker implements AutoCloseable {
         String clientapiurl = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_CLIENTAPIURL, "");
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
         long maxFileSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_LOGSMAXFILESIZE, 1024 * 1024);
+        boolean zkSecure = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_ZKSECURE, EmbeddedBrokerConfiguration.KEY_ZKSECURE_DEFAULT);
         Map<String, String> additionalInfo = new HashMap<>();
         additionalInfo.put("client.api.url", clientapiurl);
         additionalInfo.put("broker.id", id);
@@ -173,7 +172,8 @@ public class EmbeddedBroker implements AutoCloseable {
                     Files.createDirectory(_snapshotsDirectory);
                 }
                 ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
-                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo))
+                    BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
+                    zkSecure
                 );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());

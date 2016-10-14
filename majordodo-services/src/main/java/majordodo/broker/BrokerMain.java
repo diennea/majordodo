@@ -208,9 +208,11 @@ public class BrokerMain implements AutoCloseable {
                 int zkSessionTimeout = Integer.parseInt(configuration.getProperty("zk.sessiontimeout", "40000"));
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 String snapdir = configuration.getProperty("data.dir", "data");
+                boolean zkSecure = Boolean.parseBoolean(configuration.getProperty("zk.secure", "false"));
 
                 ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
-                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo))
+                    BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
+                    zkSecure
                 );
                 log = _log;
                 int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));
