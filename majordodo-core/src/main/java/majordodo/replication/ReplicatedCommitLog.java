@@ -601,7 +601,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         if (zKClusterManager != null && zKClusterManager.isLeader()) {
-            dropOldLedgers();
+            dropOldLedgers(snapshotData.getActualLogSequenceNumber());
         }
     }
 
@@ -654,32 +654,38 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         return snapshotfilename;
     }
 
-    private void dropOldLedgers() throws LogNotAvailableException {
+    private void dropOldLedgers(LogSequenceNumber latestSnapshotPosition) throws LogNotAvailableException {
         if (ledgersRetentionPeriod > 0) {
             long min_timestamp = System.currentTimeMillis() - ledgersRetentionPeriod;
             List<Long> oldLedgers;
             writeLock.lock();
             try {
                 oldLedgers = actualLedgersList.getOldLedgers(min_timestamp);
-                oldLedgers.remove(this.currentLedgerId);
             } finally {
                 writeLock.unlock();
             }
             if (oldLedgers.isEmpty()) {
                 return;
             }
-            LOGGER.log(Level.SEVERE, "dropping ledgers before ", new java.sql.Timestamp(min_timestamp) + ": " + oldLedgers);
+            LOGGER.log(Level.SEVERE, "dropping ledgers before " + new java.sql.Timestamp(min_timestamp) + ", oldLedgers " + oldLedgers + ", currentLedgerId:" + currentLedgerId + ", latestSnapshotLedgerId:" + latestSnapshotPosition.ledgerId);
             for (long ledgerId : oldLedgers) {
+                if (ledgerId >= latestSnapshotPosition.ledgerId
+                    || ledgerId >= currentLedgerId) {
+                    LOGGER.log(Level.SEVERE, "ledger " + ledgerId + " cannot be dropped");
+                    continue;
+                }
+
                 writeLock.lock();
                 try {
-                    LOGGER.log(Level.SEVERE, "dropping ledger {0}", ledgerId);
+                    LOGGER.log(Level.SEVERE, "remove ledger " + ledgerId+" from the actualLedgersList");
                     actualLedgersList.removeLedger(ledgerId);
+                    zKClusterManager.saveActualLedgersList(actualLedgersList);
+                    LOGGER.log(Level.SEVERE, "dropping ledger " + ledgerId+" on BookKeeper");
                     try {
                         bookKeeper.deleteLedger(ledgerId);
                     } catch (BKNoSuchLedgerExistsException error) {
-                        LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                        LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId + ": " + error, error);
                     }
-                    zKClusterManager.saveActualLedgersList(actualLedgersList);
                     LOGGER.log(Level.SEVERE, "dropping ledger {0}, finished", ledgerId);
                 } catch (BKException | InterruptedException error) {
                     LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
@@ -764,7 +770,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             throw new LogNotAvailableException(err);
         }
         LedgersInfo _actualLedgersList = zKClusterManager.getActualLedgersList();
-        LOGGER.log(Level.SEVERE, "ActualLedgersList " + actualLedgersList);
+        LOGGER.log(Level.SEVERE, "ActualLedgersList from ZK: " + _actualLedgersList);
 
         if (snapshotfilename != null) {
             LOGGER.log(Level.SEVERE, "Loading snapshot from " + snapshotfilename);
