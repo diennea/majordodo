@@ -107,6 +107,7 @@ public class NettyConnector implements AutoCloseable {
                     public void initChannel(SocketChannel ch) throws Exception {
                         channel = new NettyChannel(host + ":" + port, ch, callbackExecutor, NettyConnector.this);
                         channel.setMessagesReceiver(receiver);
+                        channel.setRemoteHost(host);
                         if (ssl) {
                             ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
                         }

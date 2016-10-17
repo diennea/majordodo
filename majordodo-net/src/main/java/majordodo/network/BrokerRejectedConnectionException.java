@@ -29,4 +29,9 @@ public class BrokerRejectedConnectionException extends Exception {
     public BrokerRejectedConnectionException(String message) {
         super(message);
     }
+
+    public BrokerRejectedConnectionException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
 }

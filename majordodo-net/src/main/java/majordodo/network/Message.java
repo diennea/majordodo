@@ -80,6 +80,31 @@ public final class Message {
         return new Message(workerProcessId, TYPE_ACK, new HashMap<>());
     }
 
+    public static Message SASL_TOKEN_MESSAGE_REQUEST(String saslMech, byte[] firstToken) {
+        HashMap<String, Object> data = new HashMap<>();
+        String ts = System.currentTimeMillis() + "";
+        data.put("ts", ts);
+        data.put("mech", saslMech);
+        data.put("token", firstToken);
+        return new Message(null, TYPE_SASL_TOKEN_MESSAGE_REQUEST, data);
+    }
+
+    public static Message SASL_TOKEN_SERVER_RESPONSE(byte[] saslTokenChallenge) {
+        HashMap<String, Object> data = new HashMap<>();
+        String ts = System.currentTimeMillis() + "";
+        data.put("ts", ts);
+        data.put("token", saslTokenChallenge);
+        return new Message(null, TYPE_SASL_TOKEN_SERVER_RESPONSE, data);
+    }
+
+    public static Message SASL_TOKEN_MESSAGE_TOKEN(byte[] token) {
+        HashMap<String, Object> data = new HashMap<>();
+        String ts = System.currentTimeMillis() + "";
+        data.put("ts", ts);
+        data.put("token", token);
+        return new Message(null, TYPE_SASL_TOKEN_MESSAGE_TOKEN, data);
+    }
+
     public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads, Map<String, Integer> maxThreadsByTaskType, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> resources) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
@@ -139,6 +164,10 @@ public final class Message {
     public static final int TYPE_DOWNLOAD_CODEPOOL = 11;
     public static final int TYPE_DOWNLOAD_CODEPOOL_RESPONSE = 12;
 
+    public static final int TYPE_SASL_TOKEN_MESSAGE_REQUEST = 100;
+    public static final int TYPE_SASL_TOKEN_SERVER_RESPONSE = 101;
+    public static final int TYPE_SASL_TOKEN_MESSAGE_TOKEN = 102;
+
     public static String typeToString(int type) {
         switch (type) {
             case TYPE_TASK_FINISHED:
@@ -165,6 +194,12 @@ public final class Message {
                 return "TYPE_DOWNLOAD_CODEPOOL";
             case TYPE_DOWNLOAD_CODEPOOL_RESPONSE:
                 return "TYPE_DOWNLOAD_CODEPOOL_RESPONSE";
+            case TYPE_SASL_TOKEN_MESSAGE_REQUEST:
+                return "SASL_TOKEN_MESSAGE_REQUEST";
+            case TYPE_SASL_TOKEN_SERVER_RESPONSE:
+                return "SASL_TOKEN_SERVER_RESPONSE";
+            case TYPE_SASL_TOKEN_MESSAGE_TOKEN:
+                return "SASL_TOKEN_MESSAGE_TOKEN";
             default:
                 return "?" + type;
         }

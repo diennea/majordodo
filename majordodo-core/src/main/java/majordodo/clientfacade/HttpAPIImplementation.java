@@ -402,8 +402,7 @@ public class HttpAPIImplementation {
         }
         int taskStatus = t.getStatus();
         String status = TaskStatusView.convertTaskStatusForClient(taskStatus);
-        map.put("status", status);
-        System.out.println("restask:" + map);
+        map.put("status", status);        
         return map;
     }
 

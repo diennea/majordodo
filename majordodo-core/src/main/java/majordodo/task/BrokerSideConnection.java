@@ -37,6 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPOutputStream;
 import majordodo.codepools.CodePool;
+import majordodo.security.sasl.SaslNettyServer;
 
 /**
  * Connection to a node from the broker side
@@ -55,6 +56,9 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     private Channel channel;
     private Broker broker;
     private long lastReceivedMessageTs;
+    private volatile SaslNettyServer saslNettyServer;
+    private volatile boolean authenticated;
+    private volatile String username;
     private static final AtomicLong sessionId = new AtomicLong();
 
     public BrokerSideConnection() {
@@ -120,12 +124,62 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     @Override
     public void messageReceived(Message message) {
         lastReceivedMessageTs = System.currentTimeMillis();
-        if (channel == null) {
+        Channel _channel = channel;
+        if (_channel == null) {
             LOGGER.log(Level.SEVERE, "receivedMessageFromWorker {0}, but channel is closed", message);
             return;
         }
         LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
+            case Message.TYPE_SASL_TOKEN_MESSAGE_REQUEST: {
+                try {
+                    byte[] token = (byte[]) message.parameters.get("token");
+                    if (token == null) {
+                        token = new byte[0];
+                    }                    
+                    String mech = (String) message.parameters.get("mech");
+                    if (saslNettyServer == null) {
+                        saslNettyServer = new SaslNettyServer(broker.getConfiguration().getSharedSecret(), mech);
+                    }
+                    byte[] responseToken = saslNettyServer.response(token);
+                    Message tokenChallenge = Message.SASL_TOKEN_SERVER_RESPONSE(responseToken);
+                    _channel.sendReplyMessage(message, tokenChallenge);
+                } catch (Exception err) {
+                    Message error = Message.ERROR(null, err);
+                    _channel.sendReplyMessage(message, error);
+                }
+                break;
+            }
+            case Message.TYPE_SASL_TOKEN_MESSAGE_TOKEN: {
+                try {
+
+                    if (saslNettyServer == null) {
+                        Message error = Message.ERROR(null, new Exception("Authentication failed (SASL protocol error)"));
+                        _channel.sendReplyMessage(message, error);
+                        return;
+                    }
+                    byte[] token = (byte[]) message.parameters.get("token");                    
+                    byte[] responseToken = saslNettyServer.response(token);
+                    Message tokenChallenge = Message.SASL_TOKEN_SERVER_RESPONSE(responseToken);
+                    if (saslNettyServer.isComplete()) {
+                        username = saslNettyServer.getUserName();
+                        authenticated = true;
+                        LOGGER.severe("client " + channel + " completed SASL authentication as " + username);
+                        saslNettyServer = null;
+                    }
+                    _channel.sendReplyMessage(message, tokenChallenge);
+                } catch (Exception err) {
+                    if (err instanceof javax.security.sasl.SaslException) {
+                        LOGGER.log(Level.SEVERE, "SASL error " + err, err);
+                        Message error = Message.ERROR(null, new Exception("Authentication failed (SASL error)"));
+                        _channel.sendReplyMessage(message, error);
+                    } else {
+                        Message error = Message.ERROR(null, err);
+                        _channel.sendReplyMessage(message, error);
+                    }
+                }
+                break;
+            }
             case Message.TYPE_WORKER_CONNECTION_REQUEST: {
                 LOGGER.log(Level.INFO, "connection request {0}", message);
                 String sharedSecret = (String) message.parameters.get("secret");
@@ -181,6 +235,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 channel.setName(workerId);
+                channel.setRemoteHost(location);
                 broker.getAcceptor().connectionAccepted(this);
                 this.manager = broker.getWorkers().getWorkerManager(workerId);
                 manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
@@ -190,6 +245,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             }
 
             case Message.TYPE_TASK_FINISHED:
+                if (!authenticated) {
+                    Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
+                    _channel.sendReplyMessage(message, error);
+                    break;
+                }
                 List<Map<String, Object>> tasksData = (List<Map<String, Object>>) message.parameters.get("tasksData");
                 LOGGER.log(Level.FINEST, "tasksFinished {0} {1}", new Object[]{tasksData, message.parameters});
                 List<TaskFinishedData> finishedTasksInfo = new ArrayList<>(tasksData.size());
@@ -204,12 +264,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
                 try {
                     broker.tasksFinished(workerId, finishedTasksInfo);
-                    Channel _channel = channel;
                     if (_channel != null) {
                         _channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                     }
                 } catch (LogNotAvailableException error) {
-                    Channel _channel = channel;
                     if (_channel != null) {
                         _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                     }
@@ -217,6 +275,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_WORKER_PING:
+                if (!authenticated) {
+                    Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
+                    _channel.sendReplyMessage(message, error);
+                    break;
+                }
                 String processId = (String) message.parameters.getOrDefault("processId", "");
                 Integer maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
                 Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
@@ -237,17 +300,27 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
+                if (!authenticated) {
+                    Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
+                    _channel.sendReplyMessage(message, error);
+                    break;
+                }
                 LOGGER.log(Level.SEVERE, "worker " + workerId + " at " + location + ", processid " + workerProcessId + " sent shutdown message");
                 /// ignore
                 break;
             case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
+                if (!authenticated) {
+                    Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
+                    _channel.sendReplyMessage(message, error);
+                    break;
+                }
                 LOGGER.log(Level.SEVERE, "creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from " + this.channel);
                 try {
                     BrokerStatusSnapshot snapshot = broker.getBrokerStatus().createSnapshot();
 
                     byte[] data;
                     try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            GZIPOutputStream zout = new GZIPOutputStream(out)) {
+                        GZIPOutputStream zout = new GZIPOutputStream(out)) {
                         BrokerStatusSnapshot.serializeSnapshot(snapshot, zout);
                         zout.close();
                         data = out.toByteArray();
@@ -262,6 +335,11 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_DOWNLOAD_CODEPOOL:
+                if (!authenticated) {
+                    Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
+                    _channel.sendReplyMessage(message, error);
+                    break;
+                }
                 String codePoolId = (String) message.parameters.get("codePoolId");
                 LOGGER.log(Level.SEVERE, "serving codepool " + codePoolId);
                 try {

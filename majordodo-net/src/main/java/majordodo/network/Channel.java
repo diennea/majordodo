@@ -34,6 +34,7 @@ public abstract class Channel implements AutoCloseable {
 
     protected ChannelEventListener messagesReceiver;
     protected String name = "unnamed";
+    protected String remoteHost = "localhost";
 
     public Channel() {
     }
@@ -77,15 +78,23 @@ public abstract class Channel implements AutoCloseable {
             throw new RuntimeException(err.getCause());
         }
     }
-    
+
     public abstract boolean isValid();
 
     public String getName() {
         return name;
-}
+    }
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getRemoteHost() {
+        return remoteHost;
+    }
+
+    public void setRemoteHost(String remoteHost) {
+        this.remoteHost = remoteHost;
     }
 
 }

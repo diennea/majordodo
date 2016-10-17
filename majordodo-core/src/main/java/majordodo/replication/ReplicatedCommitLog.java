@@ -44,8 +44,8 @@ import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -59,10 +59,11 @@ import javax.xml.ws.Holder;
 import majordodo.network.BrokerHostData;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
+import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
+import majordodo.network.ConnectionRequestInfo;
 import majordodo.network.Message;
-import majordodo.network.netty.NettyChannel;
-import majordodo.network.netty.NettyConnector;
+import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
@@ -130,20 +131,69 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         LOGGER.log(Level.SEVERE, "Downloading snapshot from " + hostdata + " ssl=" + ssl);
         boolean ok = false;
 
-        try (NettyConnector connector = new NettyConnector(new ChannelEventListener() {
-            @Override
-            public void messageReceived(Message message) {
-            }
+        try (NettyBrokerLocator connector = new NettyBrokerLocator(hostdata.getAddress().getHostAddress(), hostdata.getPort(), brokerData.isSsl())) {
 
-            @Override
-            public void channelClosed() {
+            try (Channel channel = connector.connect(new ChannelEventListener() {
+                @Override
+                public void messageReceived(Message message) {
 
-            }
-        })) {
-            connector.setPort(hostdata.getPort());
-            connector.setHost(hostdata.getAddress().getHostAddress());
-            connector.setSsl(brokerData.isSsl());
-            try (NettyChannel channel = connector.connect();) {
+                }
+
+                @Override
+                public void channelClosed() {
+
+                }
+            }, new ConnectionRequestInfo() {
+                @Override
+                public Set<Long> getRunningTaskIds() {
+                    return Collections.emptySet();
+                }
+
+                @Override
+                public String getWorkerId() {
+                    return "remote_broker";
+                }
+
+                @Override
+                public String getProcessId() {
+                    return "";
+                }
+
+                @Override
+                public String getLocation() {
+                    return "";
+                }
+
+                @Override
+                public String getSharedSecret() {
+                    return sharedSecret;
+                }
+
+                @Override
+                public int getMaxThreads() {
+                    return 0;
+                }
+
+                @Override
+                public Map<String, Integer> getMaxThreadsByTaskType() {
+                    return Collections.emptyMap();
+                }
+
+                @Override
+                public List<Integer> getGroups() {
+                    return Collections.emptyList();
+                }
+
+                @Override
+                public Set<Integer> getExcludedGroups() {
+                    return Collections.emptySet();
+                }
+
+                @Override
+                public Map<String, Integer> getResourceLimits() {
+                    return Collections.emptyMap();
+                }
+            });) {
 
                 Message acceptMessage = Message.SNAPSHOT_DOWNLOAD_REQUEST();
                 try {
@@ -677,10 +727,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
                 writeLock.lock();
                 try {
-                    LOGGER.log(Level.SEVERE, "remove ledger " + ledgerId+" from the actualLedgersList");
+                    LOGGER.log(Level.SEVERE, "remove ledger " + ledgerId + " from the actualLedgersList");
                     actualLedgersList.removeLedger(ledgerId);
                     zKClusterManager.saveActualLedgersList(actualLedgersList);
-                    LOGGER.log(Level.SEVERE, "dropping ledger " + ledgerId+" on BookKeeper");
+                    LOGGER.log(Level.SEVERE, "dropping ledger " + ledgerId + " on BookKeeper");
                     try {
                         bookKeeper.deleteLedger(ledgerId);
                     } catch (BKNoSuchLedgerExistsException error) {
