@@ -244,6 +244,9 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
                 Map<String, Integer> resourceLimits = (Map<String, Integer>) message.parameters.getOrDefault("resources", Collections.emptyMap());
 
+                this.clientId = _clientId;
+                this.location = (String) message.parameters.get("location");
+                this.workerProcessId = (String) message.parameters.get("processId");
                 if (isWorker) {
                     LOGGER.log(Level.SEVERE, "registering worker connection " + connectionId + ", workerId:" + _clientId + ", processId=" + message.parameters.get("processId") + ", location=" + message.parameters.get("location"));
                     BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_clientId);
@@ -257,10 +260,6 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                             return;
                         }
                     }
-
-                    this.clientId = _clientId;
-                    this.workerProcessId = (String) message.parameters.get("processId");
-                    this.location = (String) message.parameters.get("location");
                     try {
                         this.broker.workerConnected(clientId, workerProcessId, location, actualRunningTasks, System.currentTimeMillis());
                     } catch (LogNotAvailableException error) {
