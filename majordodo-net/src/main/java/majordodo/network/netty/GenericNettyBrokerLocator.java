@@ -31,8 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.network.BrokerHostData;
-import majordodo.security.sasl.SaslNettyClient;
-import majordodo.security.sasl.SaslUtils;
+import static majordodo.security.sasl.ClientAuthenticationUtils.performAuthentication;
 
 /**
  * Network connection, based on Netty
@@ -103,39 +102,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
         }
     }
 
-    private void performAuthentication(Channel _channel, String serverHostname, String sharedSecret) throws Exception {
-
-        SaslNettyClient saslNettyClient = new SaslNettyClient(
-            "worker", sharedSecret,
-            serverHostname
-        );
-
-        byte[] firstToken = new byte[0];
-        if (saslNettyClient.hasInitialResponse()) {
-            firstToken = saslNettyClient.evaluateChallenge(new byte[0]);
-        }
-        Message saslResponse = _channel.sendMessageWithReply(Message.SASL_TOKEN_MESSAGE_REQUEST(SaslUtils.AUTH_DIGEST_MD5, firstToken), 10000);
-
-        for (int i = 0; i < 100; i++) {
-            byte[] responseToSendToServer;
-            switch (saslResponse.type) {
-                case Message.TYPE_SASL_TOKEN_SERVER_RESPONSE:
-                    byte[] token = (byte[]) saslResponse.parameters.get("token");
-                    responseToSendToServer = saslNettyClient.evaluateChallenge(token);
-                    saslResponse = _channel.sendMessageWithReply(Message.SASL_TOKEN_MESSAGE_TOKEN(responseToSendToServer), 10000);
-                    if (saslNettyClient.isComplete()) {
-                        LOGGER.severe("SASL auth completed with success");
-                        return;
-                    }
-                    break;
-                case Message.TYPE_ERROR:
-                    throw new Exception("Server returned ERROR during SASL negotiation, Maybe authentication failure (" + saslResponse.parameters + ")");
-                default:
-                    throw new Exception("Unexpected server response during SASL negotiation (" + saslResponse + ")");
-            }
-        }
-        throw new Exception("SASL negotiation took too many steps");
-    }
+    
     private static final Logger LOGGER = Logger.getLogger(GenericNettyBrokerLocator.class.getName());
 
 }

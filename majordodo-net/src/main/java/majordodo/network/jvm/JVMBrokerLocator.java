@@ -27,6 +27,8 @@ import majordodo.network.Message;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
 import java.util.concurrent.TimeoutException;
+import static majordodo.security.sasl.ClientAuthenticationUtils.performAuthentication;
+
 
 /**
  * Connects to the broker inside the same JVM (for tests)
@@ -58,6 +60,13 @@ public class JVMBrokerLocator implements BrokerLocator {
         broker.getAcceptor().createConnection(brokerSide);
         brokerSide.setOtherSide(workerSide);
         workerSide.setOtherSide(brokerSide);
+
+        try {
+            performAuthentication(workerSide, workerSide.getRemoteHost(), workerInfo.getSharedSecret());
+        } catch (Exception err) {
+            throw new BrokerRejectedConnectionException("auth failed:" + err, err);
+        }
+
         Message acceptMessage = Message.CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits(), workerInfo.getClientType());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);
