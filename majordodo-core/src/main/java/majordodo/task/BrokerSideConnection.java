@@ -282,7 +282,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             }
 
             case Message.TYPE_TASK_FINISHED:
-                if (!authenticated) {
+                if (!authenticated && requireAuthentication) {
                     Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
                     _channel.sendReplyMessage(message, error);
                     break;
@@ -317,7 +317,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_WORKER_PING:
-                if (!authenticated) {
+                if (!authenticated && requireAuthentication) {
                     Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
                     _channel.sendReplyMessage(message, error);
                     break;
@@ -347,7 +347,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
-                if (!authenticated) {
+                if (!authenticated && requireAuthentication) {
                     Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
                     _channel.sendReplyMessage(message, error);
                     break;
@@ -361,7 +361,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 /// ignore
                 break;
             case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
-                if (!authenticated) {
+                if (!authenticated && requireAuthentication) {
                     Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
                     _channel.sendReplyMessage(message, error);
                     break;
@@ -392,7 +392,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 break;
             case Message.TYPE_DOWNLOAD_CODEPOOL:
-                if (!authenticated) {
+                if (!authenticated && requireAuthentication) {
                     Message error = Message.ERROR(null, new Exception("autentication required (client " + channel + ")"));
                     _channel.sendReplyMessage(message, error);
                     break;
