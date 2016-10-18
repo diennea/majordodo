@@ -28,6 +28,7 @@ import majordodo.network.ConnectionRequestInfo;
 import majordodo.network.Message;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.network.BrokerHostData;
 import majordodo.security.sasl.SaslNettyClient;
@@ -58,12 +59,17 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {
             BrokerHostData broker = getServer();
+            LOGGER.log(Level.SEVERE, "connect to broker " + broker);
             if (broker == null) {
                 throw new BrokerNotAvailableException(new Exception("no broker available"));
             }
             InetSocketAddress addre = broker.getSocketAddress();
             connector.setPort(addre.getPort());
-            connector.setHost(addre.getAddress().getHostAddress());
+            String host = addre.getHostName();
+            if (host == null) {
+                host = addre.getAddress().getHostAddress();
+            }
+            connector.setHost(host);
             connector.setSsl(broker.isSsl());
             connector.setSslUnsecure(sslUnsecure);
             NettyChannel channel;
@@ -78,7 +84,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
                 throw new BrokerRejectedConnectionException("auth failed:" + err, err);
             }
 
-            Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits());
+            Message acceptMessage = Message.CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits(), workerInfo.getClientType());
             try {
                 Message connectionResponse = channel.sendMessageWithReply(acceptMessage, 10000);
                 if (connectionResponse.type == Message.TYPE_ACK) {
@@ -117,7 +123,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
                     byte[] token = (byte[]) saslResponse.parameters.get("token");
                     responseToSendToServer = saslNettyClient.evaluateChallenge(token);
                     saslResponse = _channel.sendMessageWithReply(Message.SASL_TOKEN_MESSAGE_TOKEN(responseToSendToServer), 10000);
-                    if (saslNettyClient.isComplete()) {                        
+                    if (saslNettyClient.isComplete()) {
                         LOGGER.severe("SASL auth completed with success");
                         return;
                     }

@@ -48,5 +48,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
     
     public static String KEY_BROKERWORKERTHREADS = "broker.worker.threads";
+    public static String KEY_REQUIREAUTHENTICATION = "broker.requireauthentication";
+    public static boolean KEY_REQUIREAUTHENTICATION_DEFAULT = true;
 
 }

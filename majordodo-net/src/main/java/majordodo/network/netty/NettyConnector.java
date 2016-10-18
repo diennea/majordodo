@@ -36,6 +36,8 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Worker-side connector
@@ -97,39 +99,42 @@ public class NettyConnector implements AutoCloseable {
             }
         }
         group = new NioEventLoopGroup();
+        LOG.log(Level.SEVERE, "Trying to connect to broker at " + host + ":" + port + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure);
 
         Bootstrap b = new Bootstrap();
         b.group(group)
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        channel = new NettyChannel(host + ":" + port, ch, callbackExecutor, NettyConnector.this);
-                        channel.setMessagesReceiver(receiver);
-                        channel.setRemoteHost(host);
-                        if (ssl) {
-                            ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
-                        }
-                        ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
-                        ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-//
-                        ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
-                        ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
-                        ch.pipeline().addLast(new InboundMessageHandler(channel));
+            .channel(NioSocketChannel.class)
+            .option(ChannelOption.TCP_NODELAY, true)
+            .handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                public void initChannel(SocketChannel ch) throws Exception {
+                    channel = new NettyChannel(host + ":" + port, ch, callbackExecutor, NettyConnector.this);
+                    channel.setMessagesReceiver(receiver);
+                    channel.setRemoteHost(host);
+                    if (ssl) {
+                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
                     }
-                });
+                    ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
+                    ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+//
+                    ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
+                    ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
+                    ch.pipeline().addLast(new InboundMessageHandler(channel));
+                }
+            });
 
         ChannelFuture f = b.connect(host, port).sync();
         socketchannel = f.channel();
         return channel;
 
     }
+    private static final Logger LOG = Logger.getLogger(NettyConnector.class.getName());
 
     public NettyChannel getChannel() {
         return channel;
     }
 
+    @Override
     public void close() {
         if (channel != null) {
             channel.close();

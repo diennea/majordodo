@@ -32,8 +32,7 @@ public class BrokerConfiguration {
     private int maxWorkerIdleTime = 30000;
 
     /**
-     * Maximum time to wait for a worker to demonstrate its liveness. defaults
-     * to 30 seconds
+     * Maximum time to wait for a worker to demonstrate its liveness. defaults to 30 seconds
      *
      * @return
      */
@@ -78,8 +77,8 @@ public class BrokerConfiguration {
     private int recomputeGroupsPeriod = 0;
 
     /**
-     * Period for recomputation of task to group mapping. 0 means 'never', that
-     * is that groups are assigned at task submission time. Defaults to 0.
+     * Period for recomputation of task to group mapping. 0 means 'never', that is that groups are assigned at task
+     * submission time. Defaults to 0.
      *
      * @return
      */
@@ -183,9 +182,8 @@ public class BrokerConfiguration {
     }
 
     /**
-     * Forces the broker to remove all data at boot. In a replicated environment
-     * it clears the leadgers list on ZooKeeper, every broker must be stopped
-     * and then restarted with this option
+     * Forces the broker to remove all data at boot. In a replicated environment it clears the leadgers list on
+     * ZooKeeper, every broker must be stopped and then restarted with this option
      *
      */
     private boolean clearStatusAtBoot;
@@ -199,8 +197,7 @@ public class BrokerConfiguration {
     }
 
     /**
-     * Shared secret among all the brokers and workers. Provides minimum
-     * security level
+     * Shared secret among all the brokers and workers. Provides minimum security level
      */
     private String sharedSecret = "dodo";
 
@@ -225,6 +222,21 @@ public class BrokerConfiguration {
 
     public void setNetworkTimeout(int networkTimeout) {
         this.networkTimeout = networkTimeout;
+    }
+
+    private boolean requireAuthentication = true;
+
+    /**
+     * Require every network comunication (worker-to-broker and broker-to-broker) to be authenticated.
+     *
+     * @return
+     */
+    public boolean isRequireAuthentication() {
+        return requireAuthentication;
+    }
+
+    public void setRequireAuthentication(boolean requireAuthentication) {
+        this.requireAuthentication = requireAuthentication;
     }
 
 }

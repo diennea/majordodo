@@ -170,6 +170,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
         this.brokerLifeThread.setDaemon(true);
         this.log.setSharedSecret(configuration.getSharedSecret());
+        LOGGER.log(Level.SEVERE, "requireAuthentication is set to " + configuration.isRequireAuthentication());
     }
 
     private boolean recoveryInProgress = false;
@@ -342,7 +343,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         Map<String, Integer> globalResourceLimits = globalResourceLimitsConfiguration.getGlobalResourceLimits();
         long start = System.currentTimeMillis();
         List<AssignedTask> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace,
-                workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters
+            workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters
         );
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();
@@ -632,16 +633,16 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
         List<TaskFinishedData> data = new ArrayList<>();
         tasksId.forEach(
-                taskId -> {
-                    Task task = brokerStatus.getTask(taskId);
-                    if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
-                        data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
-                    } else if (task != null) {
-                        LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
-                    } else {
-                        LOGGER.log(Level.SEVERE, "task {0} no more exists, no real need to recovery", new Object[]{taskId});
-                    }
+            taskId -> {
+                Task task = brokerStatus.getTask(taskId);
+                if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
+                    data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
+                } else if (task != null) {
+                    LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
+                } else {
+                    LOGGER.log(Level.SEVERE, "task {0} no more exists, no real need to recovery", new Object[]{taskId});
                 }
+            }
         );
         tasksFinished(workerId, data);
     }

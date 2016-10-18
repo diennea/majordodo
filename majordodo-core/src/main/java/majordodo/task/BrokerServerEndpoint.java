@@ -47,6 +47,7 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
     public BrokerSideConnection createConnection(Channel channel) {
         BrokerSideConnection connection = new BrokerSideConnection();
         connection.setBroker(broker);
+        connection.setRequireAuthentication(broker.getConfiguration().isRequireAuthentication());
         connection.setChannel(channel);
         channel.setMessagesReceiver(connection);
         connections.put(connection.getConnectionId(), connection);
@@ -67,14 +68,14 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
 
     void connectionAccepted(BrokerSideConnection con) {
         LOGGER.log(Level.SEVERE, "connectionAccepted {0}", con);
-        workersConnections.put(con.getWorkerId(), con);
+        workersConnections.put(con.getClientId(), con);
     }
 
     void connectionClosed(BrokerSideConnection con) {
         LOGGER.log(Level.SEVERE, "connectionClosed {0}", con);
         connections.remove(con.getConnectionId());
-        if (con.getWorkerId() != null) {
-            workersConnections.remove(con.getWorkerId()); // to be remove only if the connection is the current connection
+        if (con.getClientId() != null) {
+            workersConnections.remove(con.getClientId()); // to be remove only if the connection is the current connection
         }
     }
 

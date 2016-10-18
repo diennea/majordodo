@@ -21,6 +21,7 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.security.auth.Subject;
 import javax.security.auth.callback.Callback;
@@ -70,6 +71,7 @@ public class SaslNettyServer {
 
     private SaslServer createSaslServer(final String mech, final Subject subject) throws SaslException, IOException {
         if (subject == null) {
+            LOG.log(Level.SEVERE, "Authentication will use SASL/DIGEST-MD5, no JAAS");
             SaslDigestCallbackHandler ch = new SaslNettyServer.SaslDigestCallbackHandler();
             return Sasl.createSaslServer(mech, null,
                 SaslUtils.DEFAULT_REALM, SaslUtils.getSaslProps(), ch);
@@ -77,6 +79,7 @@ public class SaslNettyServer {
             SaslServerCallbackHandler callbackHandler = new SaslServerCallbackHandler(Configuration.getConfiguration());
             // server is using a JAAS-authenticated subject: determine service principal name and hostname from zk server's subject.
             if (subject.getPrincipals().size() > 0) {
+                LOG.log(Level.SEVERE, "Authentication will use SASL/JAAS/Kerberos");
                 try {
                     final Object[] principals = subject.getPrincipals().toArray();
                     final Principal servicePrincipal = (Principal) principals[0];
@@ -125,6 +128,7 @@ public class SaslNettyServer {
                     throw new RuntimeException(e);
                 }
             } else {
+                LOG.log(Level.SEVERE, "Authentication will use SASL/JAAS/DIGEST-MD5");
                 try {
                     SaslServer saslServer = Sasl.createSaslServer("DIGEST-MD5", "majordodo", "majordodo", null, callbackHandler);
                     return saslServer;
@@ -143,6 +147,7 @@ public class SaslNettyServer {
         String section = "MajordodoServer";
         AppConfigurationEntry[] entries = Configuration.getConfiguration().getAppConfigurationEntry(section);
         if (entries == null) {
+            LOG.log(Level.SEVERE,"JAAS not configured or no "+section+" present in JAAS Configuration file");
             return null;
         }
         LoginContext loginContext = new LoginContext(section, new ClientCallbackHandler(null));

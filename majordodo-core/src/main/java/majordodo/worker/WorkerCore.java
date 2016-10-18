@@ -174,14 +174,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         Channel _channel = channel;
         if (_channel != null) {
             _channel.sendOneWayMessage(Message.WORKER_PING(processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads(), config.getResourcesLimits()),
-                    (Message originalMessage, Throwable error) -> {
-                        if (error != null) {
-                            if (!stopped) {
-                                LOGGER.log(Level.SEVERE, "ping error ", error);
-                                disconnect();
-                            }
+                (Message originalMessage, Throwable error) -> {
+                    if (error != null) {
+                        if (!stopped) {
+                            LOGGER.log(Level.SEVERE, "ping error ", error);
+                            disconnect();
                         }
-                    });
+                    }
+                });
         } else {
             LOGGER.log(Level.FINER, "ping not connected");
         }
@@ -190,10 +190,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     private WorkerCoreConfiguration config;
 
     public WorkerCore(
-            WorkerCoreConfiguration config,
-            String processId,
-            BrokerLocator brokerLocator,
-            WorkerStatusListener listener) {
+        WorkerCoreConfiguration config,
+        String processId,
+        BrokerLocator brokerLocator,
+        WorkerStatusListener listener) {
         this.config = config;
 
         if (listener == null) {
@@ -235,13 +235,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         if (executorFactory == null) {
             if (codePoolsDirectory == null) {
                 executorFactory = new TaskModeAwareExecutorFactory(
-                        new NotImplementedTaskExecutorFactory()
+                    new NotImplementedTaskExecutorFactory()
                 );
             } else {
                 executorFactory = new CodePoolAwareExecutorFactory(
-                        new TaskModeAwareExecutorFactory(
-                                new NotImplementedTaskExecutorFactory()
-                        ), classloadersManager);
+                    new TaskModeAwareExecutorFactory(
+                        new NotImplementedTaskExecutorFactory()
+                    ), classloadersManager);
             }
         }
         this.coreThread.start();
@@ -505,6 +505,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     @Override
     public String getLocation() {
         return location;
+    }
+
+    @Override
+    public String getClientType() {
+        return CLIENT_TYPE_WORKER;
     }
 
     @Override

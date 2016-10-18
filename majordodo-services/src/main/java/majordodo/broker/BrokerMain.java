@@ -232,7 +232,7 @@ public class BrokerMain implements AutoCloseable {
         BrokerConfiguration config = new BrokerConfiguration();
         Map<String, Object> props = new HashMap<>();
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
-        config.setSharedSecret(sharedsecret);
+        config.setSharedSecret(sharedsecret);        
         config.read(props);
         broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
         broker.setAuthenticationManager(new SingleUserAuthenticationManager(adminuser, adminpassword));

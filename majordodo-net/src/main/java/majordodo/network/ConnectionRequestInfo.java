@@ -30,6 +30,16 @@ import java.util.Set;
  */
 public interface ConnectionRequestInfo {
 
+    /**
+     * Connection will be used by a worker
+     */
+    public static final String CLIENT_TYPE_WORKER = "worker";
+    
+    /**
+     * Connection will be used by a broker
+     */
+    public static final String CLIENT_TYPE_BROKER = "broker";
+
     Set<Long> getRunningTaskIds();
 
     String getWorkerId();
@@ -49,4 +59,6 @@ public interface ConnectionRequestInfo {
     public Set<Integer> getExcludedGroups();
 
     public Map<String, Integer> getResourceLimits();
+
+    public String getClientType();
 }

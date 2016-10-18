@@ -58,7 +58,7 @@ public class JVMBrokerLocator implements BrokerLocator {
         broker.getAcceptor().createConnection(brokerSide);
         brokerSide.setOtherSide(workerSide);
         workerSide.setOtherSide(brokerSide);
-        Message acceptMessage = Message.WORKER_CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits());
+        Message acceptMessage = Message.CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits(), workerInfo.getClientType());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);
             if (connectionResponse.type == Message.TYPE_ACK) {

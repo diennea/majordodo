@@ -108,4 +108,10 @@ public class BrokerHostData {
             throw new RuntimeException(impossible);
         }
     }
+
+    @Override
+    public String toString() {
+        return "BrokerHostData{" + "port=" + port + ", host=" + host + ", version=" + version + ", ssl=" + ssl + ", additionalData=" + additionalData + '}';
+    }
+
 }

@@ -20,25 +20,15 @@
 package majordodo.worker;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
-import java.io.OutputStream;
 import java.net.URLClassLoader;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorFactory;
 import majordodo.task.Task;
-import org.apache.commons.io.IOUtils;
 
 /**
  * TaskExecutorFactory with handles CodePools

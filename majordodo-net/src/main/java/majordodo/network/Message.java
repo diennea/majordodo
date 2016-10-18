@@ -105,9 +105,20 @@ public final class Message {
         return new Message(null, TYPE_SASL_TOKEN_MESSAGE_TOKEN, data);
     }
 
-    public static Message WORKER_CONNECTION_REQUEST(String workerId, String processId, String location, String sharedSecret, Set<Long> actualRunningTasks, int maxThreads, Map<String, Integer> maxThreadsByTaskType, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> resources) {
+    public static Message CONNECTION_REQUEST(String workerId,
+        String processId,
+        String location,
+        String sharedSecret,
+        Set<Long> actualRunningTasks,
+        int maxThreads,
+        Map<String, Integer> maxThreadsByTaskType,
+        List<Integer> groups,
+        Set<Integer> excludedGroups,
+        Map<String, Integer> resources,
+        String clientType) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
+        params.put("clientType", clientType);
         params.put("processId", processId);
         params.put("actualRunningTasks", actualRunningTasks);
         params.put("location", location);
@@ -117,7 +128,7 @@ public final class Message {
         params.put("groups", groups);
         params.put("resources", resources);
         params.put("excludedGroups", excludedGroups);
-        return new Message(processId, TYPE_WORKER_CONNECTION_REQUEST, params);
+        return new Message(processId, TYPE_CONNECTION_REQUEST, params);
     }
 
     public static Message TASK_FINISHED(String processId, List<Map<String, Object>> tasksData) {
@@ -156,7 +167,7 @@ public final class Message {
     public static final int TYPE_ERROR = 3;
     public static final int TYPE_ACK = 4;
     public static final int TYPE_WORKER_SHUTDOWN = 5;
-    public static final int TYPE_WORKER_CONNECTION_REQUEST = 6;
+    public static final int TYPE_CONNECTION_REQUEST = 6;
     public static final int TYPE_TASK_ASSIGNED = 7;
     public static final int TYPE_WORKER_PING = 8;
     public static final int TYPE_SNAPSHOT_DOWNLOAD_REQUEST = 9;
@@ -184,8 +195,8 @@ public final class Message {
                 return "TYPE_ACK";
             case TYPE_WORKER_SHUTDOWN:
                 return "TYPE_WORKER_SHUTDOWN";
-            case TYPE_WORKER_CONNECTION_REQUEST:
-                return "TYPE_WORKER_CONNECTION_REQUEST";
+            case TYPE_CONNECTION_REQUEST:
+                return "TYPE_CONNECTION_REQUEST";
             case TYPE_TASK_ASSIGNED:
                 return "TYPE_TASK_ASSIGNED";
             case TYPE_WORKER_PING:

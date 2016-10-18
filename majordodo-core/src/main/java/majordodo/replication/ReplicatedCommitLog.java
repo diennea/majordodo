@@ -62,6 +62,7 @@ import majordodo.network.BrokerRejectedConnectionException;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.ConnectionRequestInfo;
+import static majordodo.network.ConnectionRequestInfo.CLIENT_TYPE_BROKER;
 import majordodo.network.Message;
 import majordodo.network.netty.NettyBrokerLocator;
 import majordodo.utils.FileUtils;
@@ -143,57 +144,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 public void channelClosed() {
 
                 }
-            }, new ConnectionRequestInfo() {
-                @Override
-                public Set<Long> getRunningTaskIds() {
-                    return Collections.emptySet();
-                }
-
-                @Override
-                public String getWorkerId() {
-                    return "remote_broker";
-                }
-
-                @Override
-                public String getProcessId() {
-                    return "";
-                }
-
-                @Override
-                public String getLocation() {
-                    return "";
-                }
-
-                @Override
-                public String getSharedSecret() {
-                    return sharedSecret;
-                }
-
-                @Override
-                public int getMaxThreads() {
-                    return 0;
-                }
-
-                @Override
-                public Map<String, Integer> getMaxThreadsByTaskType() {
-                    return Collections.emptyMap();
-                }
-
-                @Override
-                public List<Integer> getGroups() {
-                    return Collections.emptyList();
-                }
-
-                @Override
-                public Set<Integer> getExcludedGroups() {
-                    return Collections.emptySet();
-                }
-
-                @Override
-                public Map<String, Integer> getResourceLimits() {
-                    return Collections.emptyMap();
-                }
-            });) {
+            }, brokerConnectionRequestInfo);) {
 
                 Message acceptMessage = Message.SNAPSHOT_DOWNLOAD_REQUEST();
                 try {
@@ -342,6 +293,64 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         }
     }
+
+    private final ConnectionRequestInfo brokerConnectionRequestInfo = new ConnectionRequestInfo() {
+        @Override
+        public Set<Long> getRunningTaskIds() {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public String getWorkerId() {
+            return "broker";
+        }
+
+        @Override
+        public String getProcessId() {
+            return "";
+        }
+
+        @Override
+        public String getLocation() {
+            return "";
+        }
+
+        @Override
+        public String getSharedSecret() {
+            return sharedSecret;
+        }
+
+        @Override
+        public int getMaxThreads() {
+            return 0;
+        }
+
+        @Override
+        public Map<String, Integer> getMaxThreadsByTaskType() {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public List<Integer> getGroups() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Set<Integer> getExcludedGroups() {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public Map<String, Integer> getResourceLimits() {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public String getClientType() {
+            return CLIENT_TYPE_BROKER;
+        }
+
+    };
 
     private final LeaderShipChangeListener leaderShiplistener = new LeaderShipChangeListener() {
 

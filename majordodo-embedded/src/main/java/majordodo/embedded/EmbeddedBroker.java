@@ -133,6 +133,7 @@ public class EmbeddedBroker implements AutoCloseable {
         int workerthreads = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BROKERWORKERTHREADS, 16);
         int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
         boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
+        boolean requireAuthentication = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION, EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION_DEFAULT);
         File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
         File certchainfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
         String sslciphers = configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CIPHERS, "").toString();
@@ -189,6 +190,7 @@ public class EmbeddedBroker implements AutoCloseable {
             }
         }
         brokerConfiguration = new BrokerConfiguration();
+        brokerConfiguration.setRequireAuthentication(requireAuthentication);
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
         brokerConfiguration.setSharedSecret(sharedSecret);
         brokerConfiguration.read(configuration.getProperties());
