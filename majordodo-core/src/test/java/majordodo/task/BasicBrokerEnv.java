@@ -158,6 +158,10 @@ public abstract class BasicBrokerEnv {
     protected void declareGroupForUser(String userId, int group) {
         groupsMap.put(userId, group);
     }
+    
+    protected BrokerConfiguration createBrokerConfiguration() {
+        return new BrokerConfiguration();
+    }
 
     @Before
     public void startBroker() throws Exception {
@@ -165,7 +169,7 @@ public abstract class BasicBrokerEnv {
         resourcesMap.clear();
         setupWorkdir();
         beforeStartBroker();
-        broker = new Broker(new BrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createTaskPropertiesMapperFunction()));
+        broker = new Broker(createBrokerConfiguration(), createStatusChangesLog(), new TasksHeap(getTasksHeapsSize(), createTaskPropertiesMapperFunction()));
         broker.setGlobalResourceLimitsConfiguration(createGlobalResourceLimitsConfiguration());
         broker.startAsWritable();
         afterStartBroker();

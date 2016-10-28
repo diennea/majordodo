@@ -149,7 +149,7 @@ public class SimpleJAASKerberosTest extends BasicBrokerEnv {
 
     NettyChannelAcceptor server;
     ZKTestEnv zkEnv;
-    String host = "localhost";
+    String host = "localhost.localdomain";
     int port = 7000;
 
     @Override
