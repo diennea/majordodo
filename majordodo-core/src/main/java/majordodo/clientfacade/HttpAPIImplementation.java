@@ -41,8 +41,7 @@ import majordodo.task.Task;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * Implementation of the HTTP API, both for embedded and for standalone
- * installation
+ * Implementation of the HTTP API, both for embedded and for standalone installation
  *
  * @author enrico.olivelli
  */
@@ -79,7 +78,9 @@ public class HttpAPIImplementation {
     }
 
     public static void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+
         String view = req.getParameter("view");
         if (view == null) {
             view = "overview";
@@ -89,6 +90,10 @@ public class HttpAPIImplementation {
         if (broker == null) {
             resultMap.put("error", "broker_not_started");
             resultMap.put("ok", "false");
+        } else {
+            if (broker.getConfiguration().isApiCorsEnabled()) {
+                resp.setHeader("Access-Control-Allow-Origin", "*");
+            }
         }
         switch (view) {
             case "status": {
@@ -308,7 +313,7 @@ public class HttpAPIImplementation {
                             break;
                         case "running":
                             filterPred = (t)
-                                    -> t.getStatus() == Task.STATUS_RUNNING;
+                                -> t.getStatus() == Task.STATUS_RUNNING;
                             break;
                         case "error":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_ERROR;
@@ -337,10 +342,10 @@ public class HttpAPIImplementation {
                     }
 
                     Map<String, Long> groupByTaskType = broker.getClient().getAllTasks().stream()
-                            .filter(filterPred).filter(filterWorker).filter(filterTasktype)
-                            .collect(
-                                    Collectors.groupingBy(TaskStatusView::getType, Collectors.counting())
-                            );
+                        .filter(filterPred).filter(filterWorker).filter(filterTasktype)
+                        .collect(
+                            Collectors.groupingBy(TaskStatusView::getType, Collectors.counting())
+                        );
 
                     resultMap.put("tasks", groupByTaskType);
                     resultMap.put("count", groupByTaskType.values().stream().collect(Collectors.summingLong((l) -> l)));
@@ -402,7 +407,7 @@ public class HttpAPIImplementation {
         }
         int taskStatus = t.getStatus();
         String status = TaskStatusView.convertTaskStatusForClient(taskStatus);
-        map.put("status", status);        
+        map.put("status", status);
         return map;
     }
 
@@ -422,6 +427,9 @@ public class HttpAPIImplementation {
             resultMap.put("error", "broker_not_started");
             resultMap.put("ok", false);
         } else {
+            if (broker.getConfiguration().isApiCorsEnabled()) {
+                resp.setHeader("Access-Control-Allow-Origin", "*");
+            }
             if (auth_user == null) {
                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
                 return;
@@ -465,7 +473,7 @@ public class HttpAPIImplementation {
                     }
 
                     if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                            && !auth_user.getUserId().equals(user)) {
+                        && !auth_user.getUserId().equals(user)) {
                         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
                         return;
                     }
@@ -496,7 +504,7 @@ public class HttpAPIImplementation {
                             String type = (String) task.get("tasktype");
                             String user = (String) task.get("userid");
                             if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                                    && !auth_user.getUserId().equals(user)) {
+                                && !auth_user.getUserId().equals(user)) {
                                 resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
                                 return;
                             }
