@@ -45,8 +45,10 @@ import majordodo.network.BrokerHostData;
 import majordodo.replication.ReplicatedCommitLog;
 import majordodo.task.SingleUserAuthenticationManager;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.webapp.WebAppContext;
 
 /**
  * Created by enrico.olivelli on 23/03/2015.
@@ -232,7 +234,7 @@ public class BrokerMain implements AutoCloseable {
         BrokerConfiguration config = new BrokerConfiguration();
         Map<String, Object> props = new HashMap<>();
         configuration.keySet().forEach(k -> props.put(k.toString(), configuration.get(k)));
-        config.setSharedSecret(sharedsecret);        
+        config.setSharedSecret(sharedsecret);
         config.read(props);
         broker = new Broker(config, log, new TasksHeap(taskheapsize, mapper));
         broker.setAuthenticationManager(new SingleUserAuthenticationManager(adminuser, adminpassword));
@@ -264,12 +266,24 @@ public class BrokerMain implements AutoCloseable {
         server.start();
 
         httpserver = new Server(new InetSocketAddress(httphost, httpport));
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        ContextHandlerCollection contexts = new ContextHandlerCollection();
+        httpserver.setHandler(contexts);
+
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.GZIP);
         context.setContextPath("/");
-        httpserver.setHandler(context);
         ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
         jerseyServlet.setInitOrder(0);
         context.addServlet(jerseyServlet, httppath);
+        contexts.addHandler(context);
+
+        File webUi = new File("web/ui");
+        if (webUi.isDirectory()) {
+            WebAppContext webApp = new WebAppContext(new File("web/ui").getAbsolutePath(), "/ui");
+            contexts.addHandler(webApp);
+        } else {
+            System.out.println("Cannot find " + webUi.getAbsolutePath() + " directory. Web UI will not be deployed");
+        }
+
         System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport + " base client url " + clientapiurl);
         httpserver.start();
         System.out.println("Broker starter");

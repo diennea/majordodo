@@ -44,6 +44,16 @@
             <name>Matteo Casadei</name>
             <organization>Diennea</organization>
         </developer>
+        <developer>
+            <id>nicolo.boschi</id>
+            <name>Nicolò Boschi</name>
+            <organization>Diennea</organization>
+        </developer>
+        <developer>
+            <id>francesco.caliumi</id>
+            <name>Francesco Caliumi</name>
+            <organization>Diennea</organization>
+        </developer>
     </developers>
     <issueManagement>
         <url>https://dev.majordodo.org/jira</url>		
@@ -75,7 +85,8 @@
                 <module>./majordodo-net</module>
                 <module>./majordodo-core</module>        
                 <module>./majordodo-services</module>                        
-                <module>./majordodo-embedded</module>        
+                <module>./majordodo-web-ui</module>
+                <module>./majordodo-embedded</module>                        
             </modules>
             <distributionManagement>        
                 <repository>            
@@ -125,7 +136,8 @@
                 <module>./majordodo-worker</module>                
                 <module>./majordodo-client</module>
                 <module>./majordodo-net</module>
-                <module>./majordodo-core</module>                
+                <module>./majordodo-core</module>
+                <module>./majordodo-web-ui</module>            
                 <module>./majordodo-embedded</module>        
             </modules>
             <distributionManagement>
@@ -217,5 +229,5 @@
                 </plugins>              
             </build>
         </profile>
-    </profiles>  
+    </profiles>    
 </project>
