@@ -125,14 +125,16 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         return actualLedgersList;
     }
 
-    private byte[] downloadSnapshotFromMaster(BrokerHostData brokerData) throws Exception {
+    private byte[] downloadSnapshotFromMaster(BrokerHostData broker) throws Exception {
 
-        InetSocketAddress hostdata = brokerData.getSocketAddress();
-        boolean ssl = brokerData.isSsl();
-        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + hostdata + " ssl=" + ssl);
-        boolean ok = false;
-
-        try (NettyBrokerLocator connector = new NettyBrokerLocator(hostdata.getAddress().getHostAddress(), hostdata.getPort(), brokerData.isSsl())) {
+        InetSocketAddress addre = broker.getSocketAddress();
+        boolean ssl = broker.isSsl();
+        String host = addre.getHostName();
+        if (host == null) {
+            host = addre.getAddress().getHostAddress();
+        }
+        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + addre + " ssl=" + ssl + ", using hostname " + host);
+        try (NettyBrokerLocator connector = new NettyBrokerLocator(host, addre.getPort(), broker.isSsl())) {
 
             try (Channel channel = connector.connect(new ChannelEventListener() {
                 @Override
