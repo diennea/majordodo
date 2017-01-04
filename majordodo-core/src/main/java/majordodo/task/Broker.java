@@ -112,7 +112,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.8.0-ALPHA1";
+        return "0.8.0-ALPHA2";
     }
 
     private final Workers workers;
@@ -467,8 +467,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         } else {
             res.setClusterMode("FOLLOWER");
         }
-        res.setCurrentLedgerId(log.getCurrentLedgerId());
-        res.setCurrentSequenceNumber(log.getCurrentSequenceNumber());
+        LogSequenceNumber currentPos = log.getLastSequenceNumber();
+        res.setCurrentLedgerId(currentPos.ledgerId);
+        res.setCurrentSequenceNumber(currentPos.sequenceNumber);
         res.setTasks(brokerStatus.getStats().getTasks());
         res.setPendingTasks(brokerStatus.getStats().getPendingTasks());
         res.setRunningTasks(brokerStatus.getStats().getRunningTasks());

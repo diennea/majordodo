@@ -38,13 +38,8 @@ public class MemoryCommitLog extends StatusChangesLog {
     private final ReentrantLock lock = new ReentrantLock();
 
     @Override
-    public long getCurrentLedgerId() {
-        return 0;
-    }
-
-    @Override
-    public long getCurrentSequenceNumber() {
-        return sequenceNumber;
+    public LogSequenceNumber getLastSequenceNumber() {
+        return new LogSequenceNumber(0, sequenceNumber);
     }
 
     @Override

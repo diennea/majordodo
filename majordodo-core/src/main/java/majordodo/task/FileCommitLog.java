@@ -24,6 +24,8 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -35,7 +37,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
@@ -43,11 +49,9 @@ import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import majordodo.utils.FileUtils;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * Log data and snapshots are stored on the local disk. Suitable for single
- * broker setups
+ * Log data and snapshots are stored on the local disk. Suitable for single broker setups
  *
  * @author enrico.olivelli
  */
@@ -55,17 +59,23 @@ public class FileCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(FileCommitLog.class.getName());
 
-    private Path snapshotsDirectory;
-    private Path logDirectory;
+    private final Path snapshotsDirectory;
+    private final Path logDirectory;
+    private LogSequenceNumber recoveredLogSequence;
 
     private long currentLedgerId = 0;
-    private long currentSequenceNumber = 0;
+    private boolean writable = false;    
     private long maxLogFileSize = 1024 * 1024;
     private long writtenBytes = 0;
 
-    private volatile CommitFileWriter writer;
+    private final int MAX_UNSYNCHED_BATCH = 1000;
+    private final int MAX_SYNCH_TIME = 10;
 
-    private final ReentrantLock writeLock = new ReentrantLock();
+    private volatile CommitFileWriter writer;
+    private Thread spool;
+
+    private final BlockingQueue<StatusEditHolderFuture> writeQueue = new LinkedBlockingQueue<>(100000);
+
     private final ReentrantLock snapshotLock = new ReentrantLock();
 
     private final static byte ENTRY_START = 13;
@@ -73,17 +83,27 @@ public class FileCommitLog extends StatusChangesLog {
 
     private class CommitFileWriter implements AutoCloseable {
 
+        final long ledgerId;
+        long sequenceNumber;
+        FileOutputStream fOut;
         DataOutputStream out;
         Path filename;
 
-        private CommitFileWriter(long ledgerId) throws IOException {
+        private CommitFileWriter(long ledgerId, long sequenceNumber) throws IOException {
+            this.ledgerId = ledgerId;
+            this.sequenceNumber = sequenceNumber;
             filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
             // in case of IOException the stream is not opened, not need to close it
             LOGGER.log(Level.SEVERE, "starting new file {0} ", filename);
+            File file = filename.toFile();
+            if (file.isFile()) {
+                throw new IOException("File " + file.getAbsolutePath() + " already exists");
+            }
+            this.fOut = new FileOutputStream(file);
             this.out = new DataOutputStream(
-                    new BufferedOutputStream(
-                            Files.newOutputStream(filename, StandardOpenOption.CREATE_NEW)
-                    )
+                new BufferedOutputStream(
+                    this.fOut
+                )
             );
             writtenBytes = 0;
         }
@@ -98,18 +118,16 @@ public class FileCommitLog extends StatusChangesLog {
             writtenBytes += (1 + 8 + 4 + serialize.length + 1);
         }
 
-        public void flush() throws LogNotAvailableException {
-            // TODO: FD.synch ??
-            try {
-                this.out.flush();
-            } catch (IOException err) {
-                throw new LogNotAvailableException(err);
-            }
+        public void synch() throws IOException {
+            this.out.flush();
+            this.fOut.getFD().sync();
         }
 
+        @Override
         public void close() throws LogNotAvailableException {
             try {
                 out.close();
+                fOut.close();
             } catch (IOException err) {
                 throw new LogNotAvailableException(err);
             }
@@ -132,8 +150,9 @@ public class FileCommitLog extends StatusChangesLog {
 
         DataInputStream in;
         long ledgerId;
+        boolean lastFile;
 
-        private CommitFileReader(long ledgerId) throws IOException {
+        private CommitFileReader(long ledgerId, boolean lastFile) throws IOException {
             this.ledgerId = ledgerId;
             Path filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION);
             // in case of IOException the stream is not opened, not need to close it
@@ -147,22 +166,33 @@ public class FileCommitLog extends StatusChangesLog {
             } catch (EOFException okEnd) {
                 return null;
             }
-            if (entryStart != ENTRY_START) {
-                throw new IOException("corrupted stream");
+            try {
+                if (entryStart != ENTRY_START) {
+                    throw new IOException("corrupted stream");
+                }
+                long seqNumber = this.in.readLong();
+                int len = this.in.readInt();
+                byte[] data = new byte[len];
+                int rr = this.in.read(data);
+                if (rr != data.length) {
+                    return null;
+                }
+                int entryEnd = this.in.readByte();
+                if (entryEnd != ENTRY_END) {
+                    throw new IOException("corrupted stream");
+                }
+                StatusEdit edit = StatusEdit.read(data);
+                return new StatusEditWithSequenceNumber(new LogSequenceNumber(ledgerId, seqNumber), edit);
+            } catch (EOFException truncatedLog) {
+                // if we hit EOF the entry has not been written, and so not acked, we can ignore it and say that the file is finished
+                // it is important that this is the last file in the set
+                if (lastFile) {
+                    LOGGER.log(Level.SEVERE, "found unfinished entry in file " + this.ledgerId + ". entry was not acked. ignoring " + truncatedLog);
+                    return null;
+                } else {
+                    throw truncatedLog;
+                }
             }
-            long seqNumber = this.in.readLong();
-            int len = this.in.readInt();
-            byte[] data = new byte[len];
-            int rr = this.in.read(data);
-            if (rr != data.length) {
-                throw new IOException("corrupted read");
-            }
-            int entryEnd = this.in.readByte();
-            if (entryEnd != ENTRY_END) {
-                throw new IOException("corrupted stream");
-            }
-            StatusEdit edit = StatusEdit.read(data);
-            return new StatusEditWithSequenceNumber(new LogSequenceNumber(ledgerId, seqNumber), edit);
         }
 
         public void close() throws IOException {
@@ -171,21 +201,18 @@ public class FileCommitLog extends StatusChangesLog {
     }
 
     private void openNewLedger() throws LogNotAvailableException {
-        writeLock.lock();
+
         try {
             if (writer != null) {
                 LOGGER.log(Level.SEVERE, "closing actual file {0}", writer.filename);
                 writer.close();
             }
             ensureDirectories();
-            currentLedgerId++;
-            currentSequenceNumber = 0;
-            writer = new CommitFileWriter(currentLedgerId);
+
+            writer = new CommitFileWriter(++currentLedgerId, -1);
+
         } catch (IOException err) {
-            signalBrokerFailed();
             throw new LogNotAvailableException(err);
-        } finally {
-            writeLock.unlock();
         }
     }
 
@@ -193,33 +220,154 @@ public class FileCommitLog extends StatusChangesLog {
         this.maxLogFileSize = maxLogFileSize;
         this.snapshotsDirectory = snapshotsDirectory.toAbsolutePath();
         this.logDirectory = logDirectory.toAbsolutePath();
+        this.spool = new Thread(new SpoolTask(), "commitlog-" + logDirectory);
+        this.spool.setDaemon(true);
         LOGGER.log(Level.SEVERE, "snapshotdirectory:{0}, logdirectory:{1},maxLogFileSize {2} bytes", new Object[]{snapshotsDirectory, logDirectory, maxLogFileSize});
+    }
+
+    private class SpoolTask implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                openNewLedger();
+                int count = 0;
+                List<StatusEditHolderFuture> doneEntries = new ArrayList<>();
+                while (!closed || !writeQueue.isEmpty()) {
+                    StatusEditHolderFuture entry = writeQueue.poll(MAX_SYNCH_TIME, TimeUnit.MILLISECONDS);
+                    boolean timedOut = false;
+                    if (entry != null) {
+                        writeEntry(entry);
+                        doneEntries.add(entry);
+                        count++;
+                    } else {
+                        timedOut = true;
+                    }
+                    if (timedOut || count >= MAX_UNSYNCHED_BATCH) {
+                        count = 0;
+                        if (!doneEntries.isEmpty()) {
+                            synch();
+                            for (StatusEditHolderFuture e : doneEntries) {
+                                if (e.synch) {
+                                    e.synchDone();
+                                }
+                            }
+                            doneEntries.clear();
+                        }
+
+                    }
+                }
+            } catch (Throwable t) {
+                LOGGER.log(Level.SEVERE, "general commit log failure on " + FileCommitLog.this.logDirectory);
+            }
+        }
+
+    }
+
+    private static class StatusEditHolderFuture {
+
+        final CompletableFuture<LogSequenceNumber> ack = new CompletableFuture<>();
+        final StatusEdit entry;
+        LogSequenceNumber sequenceNumber;
+        Throwable error;
+        final boolean synch;
+
+        public StatusEditHolderFuture(StatusEdit entry, boolean synch) {
+            this.entry = entry;
+            this.synch = synch;
+        }
+
+        public void error(Throwable error) {
+            this.error = error;
+            if (!synch) {
+                synchDone();
+            }
+        }
+
+        public void done(LogSequenceNumber sequenceNumber) {
+            this.sequenceNumber = sequenceNumber;
+            if (!synch) {
+                synchDone();
+            }
+        }
+
+        private void synchDone() {
+            if (sequenceNumber == null && error == null) {
+                throw new IllegalStateException();
+            }
+            if (error != null) {
+                ack.completeExceptionally(error);
+            } else {
+                ack.complete(sequenceNumber);
+            }
+        }
+
+    }
+
+    private void writeEntry(StatusEditHolderFuture entry) {
+        try {
+            CommitFileWriter writer = this.writer;
+
+            if (writer == null) {
+                throw new IOException("not yet writable");
+            }
+
+            long newSequenceNumber = ++writer.sequenceNumber;
+            writer.writeEntry(newSequenceNumber, entry.entry);
+
+            if (writtenBytes > maxLogFileSize) {
+                openNewLedger();
+            }
+
+            entry.done(new LogSequenceNumber(writer.ledgerId, newSequenceNumber));
+        } catch (IOException | LogNotAvailableException err) {
+            entry.error(err);
+        }
+    }
+
+    private void synch() throws IOException {
+        if (writer == null) {
+            return;
+        }
+        writer.synch();
     }
 
     @Override
     public LogSequenceNumber logStatusEdit(StatusEdit edit) throws LogNotAvailableException {
-        writeLock.lock();
+        return logStatusEdit(edit, true);
+    }
+
+    private LogSequenceNumber logStatusEdit(StatusEdit edit, boolean synch) throws LogNotAvailableException {
+
+        if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.log(Level.FINEST, "log {0}", edit);
+        }
+        StatusEditHolderFuture future = new StatusEditHolderFuture(edit, synch);
         try {
-            if (writer == null) {
-                throw new LogNotAvailableException(new Exception("not yet writable"));
-            }
-            long newSequenceNumber = ++currentSequenceNumber;
-            writer.writeEntry(newSequenceNumber, edit);
-            if (writtenBytes > maxLogFileSize) {
-                openNewLedger();
-            }
-            return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
-        } catch (IOException err) {
-            signalBrokerFailed();
+            writeQueue.put(future);
+            return future.ack.get();
+        } catch (InterruptedException err) {
+            Thread.currentThread().interrupt();
             throw new LogNotAvailableException(err);
-        } finally {
-            writeLock.unlock();
+        } catch (ExecutionException err) {
+            throw new LogNotAvailableException(err.getCause());
         }
     }
 
     @Override
+    public List<LogSequenceNumber> logStatusEditBatch(List<StatusEdit> edits) throws LogNotAvailableException {
+        List<LogSequenceNumber> res = new ArrayList<>();
+        int size = edits.size();
+        for (int i = 0; i < size; i++) {
+            boolean synchLast = i == size - 1;
+            res.add(logStatusEdit(edits.get(i), synchLast));
+        }
+        return res;
+    }
+
+    @Override
     public boolean isWritable() {
-        return writer != null;
+        return writable && !closed;
     }
 
     @Override
@@ -234,14 +382,19 @@ public class FileCommitLog extends StatusChangesLog {
                 }
             }
             names.sort(Comparator.comparing(Path::toString));
+            final Path last = names.isEmpty() ? null : names.get(names.size() - 1);
+
             for (Path p : names) {
-                LOGGER.log(Level.SEVERE, "logfile is {0}", p.toAbsolutePath());
+                boolean lastFile = p.equals(last);
+
+                LOGGER.log(Level.SEVERE, "logfile is {0}, lastFile {1}", new Object[]{p.toAbsolutePath(), lastFile});
+
                 String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
                 long ledgerId = Long.parseLong(name, 16);
                 if (ledgerId > currentLedgerId) {
                     currentLedgerId = ledgerId;
                 }
-                try (CommitFileReader reader = new CommitFileReader(ledgerId)) {
+                try (CommitFileReader reader = new CommitFileReader(ledgerId, lastFile)) {
                     StatusEditWithSequenceNumber n = reader.nextEntry();
                     while (n != null) {
 
@@ -264,13 +417,13 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public void startWriting() throws LogNotAvailableException {
-        openNewLedger();
+        spool.start();
+        writable = true;
     }
 
     @Override
     public void clear() throws LogNotAvailableException {
         this.currentLedgerId = 0;
-        this.currentSequenceNumber = 0;
         try {
             FileUtils.cleanDirectory(logDirectory);
             FileUtils.cleanDirectory(snapshotsDirectory);
@@ -309,8 +462,8 @@ public class FileCommitLog extends StatusChangesLog {
         LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
 
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
-                BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
-                GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+            BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+            GZIPOutputStream zout = new GZIPOutputStream(bout)) {
             BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
@@ -358,35 +511,31 @@ public class FileCommitLog extends StatusChangesLog {
             Path snapshotfilename = writeSnapshotOnDisk(snapshotData);
             deleteOldSnapshots(snapshotfilename);
 
-            writeLock.lock();
-            try {
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
-                    List<Path> names = new ArrayList<>();
-                    for (Path path : stream) {
-                        if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
-                            names.add(path);
-                        }
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
+                List<Path> names = new ArrayList<>();
+                for (Path path : stream) {
+                    if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
+                        names.add(path);
                     }
-                    names.sort(Comparator.comparing(Path::toString));
-                    for (Path p : names) {
-
-                        String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
-                        long ledgerId = Long.parseLong(name, 16);
-
-                        if (ledgerId < snapshotData.actualLogSequenceNumber.ledgerId) {
-                            LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be removed (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
-                            Files.deleteIfExists(p);
-                        } else {
-                            LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be kept (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
-                        }
-                    }
-                } catch (IOException err) {
-                    throw new LogNotAvailableException(err);
                 }
+                names.sort(Comparator.comparing(Path::toString));
+                for (Path p : names) {
 
-            } finally {
-                writeLock.unlock();
+                    String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
+                    long ledgerId = Long.parseLong(name, 16);
+
+                    if (ledgerId < snapshotData.actualLogSequenceNumber.ledgerId
+                        && ledgerId < currentLedgerId) {
+                        LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be removed (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                        Files.deleteIfExists(p);
+                    } else {
+                        LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be kept (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                    }
+                }
+            } catch (IOException err) {
+                throw new LogNotAvailableException(err);
             }
+
         } finally {
             snapshotLock.unlock();
         }
@@ -434,8 +583,8 @@ public class FileCommitLog extends StatusChangesLog {
         } else {
 
             try (InputStream in = Files.newInputStream(snapshotfilename);
-                    BufferedInputStream bin = new BufferedInputStream(in);
-                    GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                BufferedInputStream bin = new BufferedInputStream(in);
+                GZIPInputStream gzip = new GZIPInputStream(bin)) {
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;
@@ -448,12 +597,15 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public void close() throws LogNotAvailableException {
+        closed = true;
+        try {
+            spool.join();
+        } catch (InterruptedException err) {
+            Thread.currentThread().interrupt();
+            throw new LogNotAvailableException(err);
+        }
         if (writer != null) {
-            try {
-                writer.close();
-            } finally {
-                closed = true;
-            }
+            writer.close();
         }
     }
 
@@ -463,13 +615,13 @@ public class FileCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public long getCurrentLedgerId() {
-        return currentLedgerId;
-    }
-
-    @Override
-    public long getCurrentSequenceNumber() {
-        return currentSequenceNumber;
+    public LogSequenceNumber getLastSequenceNumber() {
+        final CommitFileWriter writer = this.writer;
+        if (writer == null) {
+            return (recoveredLogSequence == null) ? new LogSequenceNumber(currentLedgerId, -1) : recoveredLogSequence;
+        } else {
+            return new LogSequenceNumber(writer.ledgerId, writer.sequenceNumber);
+        }
     }
 
 }

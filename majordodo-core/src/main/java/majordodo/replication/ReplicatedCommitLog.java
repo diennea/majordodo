@@ -995,13 +995,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     @Override
-    public long getCurrentLedgerId() {
-        return currentLedgerId;
-    }
-
-    @Override
-    public long getCurrentSequenceNumber() {
-        return lastSequenceNumber;
+    public LogSequenceNumber getLastSequenceNumber() {
+        return new LogSequenceNumber(currentLedgerId, lastSequenceNumber);
     }
 
 }

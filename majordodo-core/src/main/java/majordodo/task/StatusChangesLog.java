@@ -71,9 +71,8 @@ public abstract class StatusChangesLog implements AutoCloseable {
     public void close() throws LogNotAvailableException {
     }
 
-    public abstract long getCurrentLedgerId();
-
-    public abstract long getCurrentSequenceNumber();
+    public abstract LogSequenceNumber getLastSequenceNumber();
+    
 
     public boolean isLeader() {
         return true;
