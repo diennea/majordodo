@@ -20,6 +20,7 @@
 package majordodo.clientfacade;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -27,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -358,15 +358,16 @@ public class HttpAPIImplementation {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        LOGGER.log(Level.FINE, "GET  -> " + resultMap);
+        LOGGER.log(Level.FINER, "GET  -> {0}", resultMap);
         String s = mapper.writeValueAsString(resultMap);
         byte[] res = s.getBytes(StandardCharsets.UTF_8);
 
         resp.setContentLength(res.length);
 
         resp.setContentType("application/json;charset=utf-8");
-        resp.getOutputStream().write(res);
-        resp.getOutputStream().close();
+        try (OutputStream out = resp.getOutputStream()) {
+            out.write(res);
+        }
     }
 
     private static Map<String, Object> serializeCodePoolForClient(CodePoolView t) {
@@ -412,274 +413,282 @@ public class HttpAPIImplementation {
     }
 
     public static void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> data = mapper.readValue(req.getInputStream(), Map.class);
-        AuthenticatedUser auth_user = login(req);
-        LOGGER.log(Level.FINE, "POST " + data + " broker=" + broker + ", user: " + auth_user);
-        String action = data.get("action") + "";
-        Map<String, Object> resultMap = new HashMap<>();
-        resultMap.put("action", action);
-        if (data.containsKey("transaction")) {
-            resultMap.put("transaction", data.get("transaction"));
-        }
-        if (broker == null) {
-            resultMap.put("error", "broker_not_started");
-            resultMap.put("ok", false);
-        } else {
-            if (broker.getConfiguration().isApiCorsEnabled()) {
-                resp.setHeader("Access-Control-Allow-Origin", "*");
+        try {
+            Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> data = mapper.readValue(req.getInputStream(), Map.class);
+            AuthenticatedUser auth_user = login(req);
+            LOGGER.log(Level.FINE, "POST {0} broker={1}, user: {2}", new Object[]{data, broker, auth_user});
+            String action = data.get("action") + "";
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("action", action);
+            if (data.containsKey("transaction")) {
+                resultMap.put("transaction", data.get("transaction"));
             }
-            if (auth_user == null) {
-                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
-                return;
-            }
-            switch (action) {
-                case "submitTask": {
-                    String error = "";
-                    String type = (String) data.get("tasktype");
-                    String user = (String) data.get("userid");
-                    String parameters = (String) data.get("data");
-                    String _maxattempts = (String) data.get("maxattempts");
-                    String _attempt = (String) data.get("attempt");
-                    long transaction = 0;
-                    if (data.containsKey("transaction")) {
-                        transaction = Long.parseLong(data.get("transaction") + "");
-                    }
-                    int attempt = 0;
-                    if (_attempt != null) {
-                        attempt = Integer.parseInt(_attempt);
-                    }
-                    int maxattempts = 1;
-                    if (_maxattempts != null) {
-                        maxattempts = Integer.parseInt(_maxattempts);
-                    }
-                    String _deadline = (String) data.get("deadline");
-                    long deadline = 0;
-                    if (_deadline != null) {
-                        deadline = Long.parseLong(_deadline);
-                    }
-                    String slot = (String) data.get("slot");
-                    if (slot != null && slot.trim().isEmpty()) {
-                        slot = null;
-                    }
-                    String codepool = (String) data.get("codePoolId");
-                    if (codepool != null && codepool.trim().isEmpty()) {
-                        codepool = null;
-                    }
-                    String mode = (String) data.get("mode");
-                    if (mode != null && mode.trim().isEmpty()) {
-                        mode = null;
-                    }
-
-                    if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                        && !auth_user.getUserId().equals(user)) {
-                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
-                        return;
-                    }
-
-                    SubmitTaskResult result;
-                    try {
-                        result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
-                        long taskId = result.getTaskId();
-                        resultMap.put("taskId", taskId);
-                        resultMap.put("result", result.getOutcome());
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                    }
-                    resultMap.put("error", error);
-                    resultMap.put("ok", error.isEmpty());
-                    break;
+            if (broker == null) {
+                resultMap.put("error", "broker_not_started");
+                resultMap.put("ok", false);
+            } else {
+                if (broker.getConfiguration().isApiCorsEnabled()) {
+                    resp.setHeader("Access-Control-Allow-Origin", "*");
                 }
-                case "submitTasks": {
-                    String error = "";
-                    List<Map<String, Object>> results = new ArrayList<>();
-                    List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
-                    if (tasks == null) {
-                        error = "tasks element not present in json";
-                    } else {
-                        List<AddTaskRequest> requests = new ArrayList<>();
-                        for (Map<String, Object> task : tasks) {
-                            String type = (String) task.get("tasktype");
-                            String user = (String) task.get("userid");
-                            if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                                && !auth_user.getUserId().equals(user)) {
-                                resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
-                                return;
-                            }
-                            String parameters = (String) task.get("data");
-                            String _maxattempts = (String) task.get("maxattempts");
-                            String _attempt = (String) task.get("attempt");
-                            long transaction = 0;
-                            if (task.containsKey("transaction")) {
-                                transaction = Long.parseLong(task.get("transaction") + "");
-                            }
-                            int maxattempts = 1;
-                            if (_maxattempts != null) {
-                                maxattempts = Integer.parseInt(_maxattempts);
-                            }
-                            int attempt = 0;
-                            if (_attempt != null) {
-                                attempt = Integer.parseInt(_attempt);
-                            }
-                            String _deadline = (String) task.get("deadline");
-                            long deadline = 0;
-                            if (_deadline != null) {
-                                deadline = Long.parseLong(_deadline);
-                            }
-                            String slot = (String) task.get("slot");
-                            if (slot != null && slot.trim().isEmpty()) {
-                                slot = null;
-                            }
-                            String codepool = (String) data.get("codePoolId");
-                            if (codepool != null && codepool.trim().isEmpty()) {
-                                codepool = null;
-                            }
-                            String mode = (String) data.get("mode");
-                            if (mode != null && mode.trim().isEmpty()) {
-                                mode = null;
-                            }
-
-                            requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
+                if (auth_user == null) {
+                    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                    return;
+                }
+                switch (action) {
+                    case "submitTask": {
+                        String error = "";
+                        String type = (String) data.get("tasktype");
+                        String user = (String) data.get("userid");
+                        String parameters = (String) data.get("data");
+                        String _maxattempts = (String) data.get("maxattempts");
+                        String _attempt = (String) data.get("attempt");
+                        long transaction = 0;
+                        if (data.containsKey("transaction")) {
+                            transaction = Long.parseLong(data.get("transaction") + "");
                         }
+                        int attempt = 0;
+                        if (_attempt != null) {
+                            attempt = Integer.parseInt(_attempt);
+                        }
+                        int maxattempts = 1;
+                        if (_maxattempts != null) {
+                            maxattempts = Integer.parseInt(_maxattempts);
+                        }
+                        String _deadline = (String) data.get("deadline");
+                        long deadline = 0;
+                        if (_deadline != null) {
+                            deadline = Long.parseLong(_deadline);
+                        }
+                        String slot = (String) data.get("slot");
+                        if (slot != null && slot.trim().isEmpty()) {
+                            slot = null;
+                        }
+                        String codepool = (String) data.get("codePoolId");
+                        if (codepool != null && codepool.trim().isEmpty()) {
+                            codepool = null;
+                        }
+                        String mode = (String) data.get("mode");
+                        if (mode != null && mode.trim().isEmpty()) {
+                            mode = null;
+                        }
+
+                        if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                            && !auth_user.getUserId().equals(user)) {
+                            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                            return;
+                        }
+
+                        SubmitTaskResult result;
                         try {
-                            List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);
-                            int i = 0;
-                            for (AddTaskRequest addreq : requests) {
-                                SubmitTaskResult result;
-
-                                result = addresults.get(i++);
-
-                                long taskId = result.getTaskId();
-                                Map<String, Object> resForTask = new HashMap<>();
-                                resForTask.put("taskId", taskId);
-                                if (addreq.transaction > 0) {
-                                    resForTask.put("transaction", addreq.transaction);
-                                }
-                                resForTask.put("result", result.getOutcome());
-                                results.add(resForTask);
-                            }
+                            result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
+                            long taskId = result.getTaskId();
+                            resultMap.put("taskId", taskId);
+                            resultMap.put("result", result.getOutcome());
                         } catch (Exception err) {
-                            // very bad error                            
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                        }
+                        resultMap.put("error", error);
+                        resultMap.put("ok", error.isEmpty());
+                        break;
+                    }
+                    case "submitTasks": {
+                        String error = "";
+                        List<Map<String, Object>> results = new ArrayList<>();
+                        List<Map<String, Object>> tasks = (List<Map<String, Object>>) data.get("tasks");
+                        if (tasks == null) {
+                            error = "tasks element not present in json";
+                        } else {
+                            List<AddTaskRequest> requests = new ArrayList<>();
+                            for (Map<String, Object> task : tasks) {
+                                String type = (String) task.get("tasktype");
+                                String user = (String) task.get("userid");
+                                if (auth_user.getRole() != UserRole.ADMINISTRATOR
+                                    && !auth_user.getUserId().equals(user)) {
+                                    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                                    return;
+                                }
+                                String parameters = (String) task.get("data");
+                                String _maxattempts = (String) task.get("maxattempts");
+                                String _attempt = (String) task.get("attempt");
+                                long transaction = 0;
+                                if (task.containsKey("transaction")) {
+                                    transaction = Long.parseLong(task.get("transaction") + "");
+                                }
+                                int maxattempts = 1;
+                                if (_maxattempts != null) {
+                                    maxattempts = Integer.parseInt(_maxattempts);
+                                }
+                                int attempt = 0;
+                                if (_attempt != null) {
+                                    attempt = Integer.parseInt(_attempt);
+                                }
+                                String _deadline = (String) task.get("deadline");
+                                long deadline = 0;
+                                if (_deadline != null) {
+                                    deadline = Long.parseLong(_deadline);
+                                }
+                                String slot = (String) task.get("slot");
+                                if (slot != null && slot.trim().isEmpty()) {
+                                    slot = null;
+                                }
+                                String codepool = (String) data.get("codePoolId");
+                                if (codepool != null && codepool.trim().isEmpty()) {
+                                    codepool = null;
+                                }
+                                String mode = (String) data.get("mode");
+                                if (mode != null && mode.trim().isEmpty()) {
+                                    mode = null;
+                                }
+
+                                requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
+                            }
+                            try {
+                                List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);
+                                int i = 0;
+                                for (AddTaskRequest addreq : requests) {
+                                    SubmitTaskResult result;
+
+                                    result = addresults.get(i++);
+
+                                    long taskId = result.getTaskId();
+                                    Map<String, Object> resForTask = new HashMap<>();
+                                    resForTask.put("taskId", taskId);
+                                    if (addreq.transaction > 0) {
+                                        resForTask.put("transaction", addreq.transaction);
+                                    }
+                                    resForTask.put("result", result.getOutcome());
+                                    results.add(resForTask);
+                                }
+                            } catch (Exception err) {
+                                // very bad error
+                                LOGGER.log(Level.SEVERE, "error for " + data, err);
+                                error = err + "";
+                            }
+
+                        }
+                        resultMap.put("results", results);
+                        resultMap.put("ok", error.isEmpty());
+                        resultMap.put("error", error);
+                        break;
+                    }
+
+                    case "beginTransaction": {
+                        String error = null;
+                        long transactionId = 0;
+                        try {
+                            transactionId = broker.getClient().beginTransaction();
+                        } catch (Exception err) {
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                        }
+                        resultMap.put("transaction", transactionId);
+                        resultMap.put("ok", error == null && transactionId > 0);
+                        resultMap.put("error", error);
+                        break;
+                    }
+                    case "commitTransaction": {
+                        long transactionId = Long.parseLong(data.get("transaction") + "");
+                        String error = null;
+                        try {
+                            broker.getClient().commitTransaction(transactionId);
+                        } catch (Exception err) {
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                        }
+                        resultMap.put("ok", true);
+                        resultMap.put("transaction", transactionId);
+                        resultMap.put("ok", error == null && transactionId > 0);
+                        break;
+                    }
+                    case "rollbackTransaction": {
+                        long transactionId = Long.parseLong(data.get("transaction") + "");
+                        String error = null;
+                        try {
+                            broker.getClient().rollbackTransaction(transactionId);
+                        } catch (Exception err) {
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                        }
+                        resultMap.put("ok", true);
+                        resultMap.put("transaction", transactionId);
+                        resultMap.put("ok", error == null && transactionId > 0);
+                        break;
+                    }
+                    case "deleteCodePool": {
+                        String error = "";
+                        String id = (String) data.get("id");
+                        try {
+                            broker.getClient().deleteCodePool(id);
+                            resultMap.put("ok", true);
+                        } catch (Exception err) {
                             LOGGER.log(Level.SEVERE, "error for " + data, err);
                             error = err + "";
                         }
 
+                        if (!error.isEmpty()) {
+                            resultMap.put("ok", false);
+                            resultMap.put("error", error);
+                        }
+                        break;
                     }
-                    resultMap.put("results", results);
-                    resultMap.put("ok", error.isEmpty());
-                    resultMap.put("error", error);
-                    break;
-                }
+                    case "createCodePool": {
+                        String error = "";
+                        String id = (String) data.get("id");
+                        long ttl = 0;
+                        String codepooldata = (String) data.get("data");
 
-                case "beginTransaction": {
-                    String error = null;
-                    long transactionId = 0;
-                    try {
-                        transactionId = broker.getClient().beginTransaction();
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                    }
-                    resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error == null && transactionId > 0);
-                    resultMap.put("error", error);
-                    break;
-                }
-                case "commitTransaction": {
-                    long transactionId = Long.parseLong(data.get("transaction") + "");
-                    String error = null;
-                    try {
-                        broker.getClient().commitTransaction(transactionId);
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                    }
-                    resultMap.put("ok", true);
-                    resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error == null && transactionId > 0);
-                    break;
-                }
-                case "rollbackTransaction": {
-                    long transactionId = Long.parseLong(data.get("transaction") + "");
-                    String error = null;
-                    try {
-                        broker.getClient().rollbackTransaction(transactionId);
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                    }
-                    resultMap.put("ok", true);
-                    resultMap.put("transaction", transactionId);
-                    resultMap.put("ok", error == null && transactionId > 0);
-                    break;
-                }
-                case "deleteCodePool": {
-                    String error = "";
-                    String id = (String) data.get("id");
-                    try {
-                        broker.getClient().deleteCodePool(id);
-                        resultMap.put("ok", true);
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                    }
+                        if (data.containsKey("ttl")) {
+                            ttl = Long.parseLong(data.get("ttl") + "");
+                        }
 
-                    if (!error.isEmpty()) {
+                        if (auth_user.getRole() != UserRole.ADMINISTRATOR) {
+                            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
+                            return;
+                        }
+
+                        CreateCodePoolResult result;
+                        try {
+                            result = broker.getClient().createCodePool(new CreateCodePoolRequest(id, System.currentTimeMillis(), ttl, Base64.getDecoder().decode(codepooldata)));
+                            resultMap.put("ok", result.ok);
+                            resultMap.put("result", result.outcome);
+                        } catch (Exception err) {
+                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            error = err + "";
+                            result = null;
+                        }
+
+                        if (!error.isEmpty()) {
+                            resultMap.put("ok", false);
+                            resultMap.put("error", error);
+                        }
+                        break;
+                    }
+                    default: {
                         resultMap.put("ok", false);
-                        resultMap.put("error", error);
+                        resultMap.put("error", "bad action " + action);
                     }
-                    break;
-                }
-                case "createCodePool": {
-                    String error = "";
-                    String id = (String) data.get("id");
-                    long ttl = 0;
-                    String codepooldata = (String) data.get("data");
-
-                    if (data.containsKey("ttl")) {
-                        ttl = Long.parseLong(data.get("ttl") + "");
-                    }
-
-                    if (auth_user.getRole() != UserRole.ADMINISTRATOR) {
-                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
-                        return;
-                    }
-
-                    CreateCodePoolResult result;
-                    try {
-                        result = broker.getClient().createCodePool(new CreateCodePoolRequest(id, System.currentTimeMillis(), ttl, Base64.getDecoder().decode(codepooldata)));
-                        resultMap.put("ok", result.ok);
-                        resultMap.put("result", result.outcome);
-                    } catch (Exception err) {
-                        LOGGER.log(Level.SEVERE, "error for " + data, err);
-                        error = err + "";
-                        result = null;
-                    }
-
-                    if (!error.isEmpty()) {
-                        resultMap.put("ok", false);
-                        resultMap.put("error", error);
-                    }
-                    break;
-                }
-                default: {
-                    resultMap.put("ok", false);
-                    resultMap.put("error", "bad action " + action);
                 }
             }
+
+            LOGGER.log(Level.FINE, "POST " + data + " -> " + resultMap);
+            String s = mapper.writeValueAsString(resultMap);
+            byte[] res = s.getBytes(StandardCharsets.UTF_8);
+
+            resp.setContentLength(res.length);
+
+            resp.setContentType("application/json;charset=utf-8");
+            try (OutputStream out = resp.getOutputStream()) {
+                out.write(res);
+            }
+        } catch (IOException err) {
+            LOGGER.log(Level.FINER, "IO error: " + err, err);
+            throw err;
+        } catch (Exception err) {
+            LOGGER.log(Level.SEVERE, "Unhandled error: " + err, err);
+            throw err;
         }
-
-        LOGGER.log(Level.FINE, "POST " + data + " -> " + resultMap);
-        String s = mapper.writeValueAsString(resultMap);
-        byte[] res = s.getBytes(StandardCharsets.UTF_8);
-
-        resp.setContentLength(res.length);
-
-        resp.setContentType("application/json;charset=utf-8");
-        resp.getOutputStream().write(res);
-        resp.getOutputStream().close();
-
     }
 }
