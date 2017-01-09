@@ -660,7 +660,7 @@ public class BrokerStatus {
                     // release slots
                     for (Task task : transaction.getPreparedTasks()) {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                            LOGGER.log(Level.SEVERE, "Rollback transaction {0}, relase slot ", new Object[]{edit.transactionId, task.getSlot()});
+                            LOGGER.log(Level.SEVERE, "Rollback transaction {0}, released slot {1}", new Object[]{edit.transactionId, task.getSlot()});
                             slotsManager.releaseSlot(task.getSlot());
                         }
                     }
