@@ -612,6 +612,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             }
         }
         List<BrokerStatus.ModificationResult> batch = this.brokerStatus.applyModifications(edits);
+        if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.log(Level.FINEST, "addTasks {0}", requests);
+            LOGGER.log(Level.FINEST, "addTasks results {0}", batch);
+        }
         for (int i = 0; i < size; i++) {
             StatusEdit addTask = edits.get(i);
             BrokerStatus.ModificationResult result = batch.get(i);

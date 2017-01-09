@@ -36,6 +36,7 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.SubmitTaskResult;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
@@ -500,6 +501,20 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
     }
 
     @Test
+    public void submitTaskBadTransaction() throws Exception {
+
+        // submit 10 tasks in transaction
+        Set<Long> todo = new ConcurrentSkipListSet<>();
+        long transaction = getClient().beginTransaction();
+        getClient().rollbackTransaction(transaction);
+        for (int i = 0; i < 10; i++) {
+            String taskParams = "p1=value1,p2=value2";
+            long taskId = getClient().submitTask(new AddTaskRequest(transaction, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+            assertEquals(0, taskId);
+        }
+    }
+
+    @Test
     public void transactionTest() throws Exception {
 
         // submit 10 tasks in transaction
@@ -678,5 +693,5 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
         assertTrue(todo.isEmpty());
     }
-   
+
 }

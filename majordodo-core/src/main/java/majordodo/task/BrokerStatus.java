@@ -42,9 +42,8 @@ import majordodo.clientfacade.TransactionStatus;
 import majordodo.codepools.CodePool;
 
 /**
- * Replicated status of the broker. Each broker, leader or follower, contains a
- * copy of this status. The status is replicated to follower by reading the
- * StatusChangesLog
+ * Replicated status of the broker. Each broker, leader or follower, contains a copy of this status. The status is
+ * replicated to follower by reading the StatusChangesLog
  *
  * @author enrico.olivelli
  */
@@ -341,10 +340,10 @@ public class BrokerStatus {
             log.requestLeadership();
             while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
                 log.followTheLeader(this.lastLogSequenceNumber,
-                        (logSeqNumber, edit) -> {
-                            LOGGER.log(Level.INFO, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
-                            applyEdit(logSeqNumber, edit);
-                        });
+                    (logSeqNumber, edit) -> {
+                        LOGGER.log(Level.INFO, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
+                        applyEdit(logSeqNumber, edit);
+                    });
                 Thread.sleep(1000);
             }
         } catch (LogNotAvailableException err) {
@@ -384,13 +383,13 @@ public class BrokerStatus {
             LOGGER.severe("recoverForLeadership, from " + this.lastLogSequenceNumber);
             AtomicInteger done = new AtomicInteger();
             log.recovery(this.lastLogSequenceNumber,
-                    (logSeqNumber, edit) -> {
-                        applyEdit(logSeqNumber, edit);
-                        done.incrementAndGet();
-                        if (brokerFailed) {
-                            throw new RuntimeException("broker failed");
-                        }
-                    }, false);
+                (logSeqNumber, edit) -> {
+                    applyEdit(logSeqNumber, edit);
+                    done.incrementAndGet();
+                    if (brokerFailed) {
+                        throw new RuntimeException("broker failed");
+                    }
+                }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
             LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode. newTaskId=" + newTaskId + " newTransactionId=" + newTransactionId);
@@ -475,8 +474,7 @@ public class BrokerStatus {
         }
     }
 
-    
-    public static final class ModificationResult {
+    static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
         public final String error;
@@ -505,7 +503,7 @@ public class BrokerStatus {
         List<StatusEdit> toLog = new ArrayList<>();
         for (StatusEdit edit : edits) {
             if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
-                    && edit.slot != null) {
+                && edit.slot != null) {
                 if (!slotsManager.assignSlot(edit.slot, edit.taskId)) {
                     skip.add(index);
                 } else {
@@ -549,7 +547,7 @@ public class BrokerStatus {
         }
         LOGGER.log(Level.FINEST, "applyModification {0}", edit);
         if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
-                && edit.slot != null) {
+            && edit.slot != null) {
             if (slotsManager.assignSlot(edit.slot, edit.taskId)) {
                 try {
                     LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
@@ -577,9 +575,8 @@ public class BrokerStatus {
     }
 
     /**
-     * Apply the modification to the status, this operation cannot fail, a
-     * failure MUST lead to the death of the JVM because it will not be
-     * recoverable as the broker will go out of synch
+     * Apply the modification to the status, this operation cannot fail, a failure MUST lead to the death of the JVM
+     * because it will not be recoverable as the broker will go out of synch
      *
      * @param edit
      */
@@ -645,7 +642,7 @@ public class BrokerStatus {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
                         LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
-                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                        return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
                     }
                     for (Task task : transaction.getPreparedTasks()) {
                         tasks.put(task.getTaskId(), task);
@@ -658,7 +655,7 @@ public class BrokerStatus {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
                         LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
-                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                        return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
                     }
                     // release slots
                     for (Task task : transaction.getPreparedTasks()) {
@@ -705,7 +702,7 @@ public class BrokerStatus {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
                         LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
-                        return new ModificationResult(num, 0, "no transaction " + edit.transactionId);
+                        return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
                     }
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
@@ -841,12 +838,12 @@ public class BrokerStatus {
             }
             this.slotsManager.loadBusySlots(busySlots);
             log.recovery(snapshot.getActualLogSequenceNumber(),
-                    (logSeqNumber, edit) -> {
-                        applyEdit(logSeqNumber, edit);
-                        if (brokerFailed) {
-                            throw new RuntimeException("broker failed");
-                        }
-                    }, false);
+                (logSeqNumber, edit) -> {
+                    applyEdit(logSeqNumber, edit);
+                    if (brokerFailed) {
+                        throw new RuntimeException("broker failed");
+                    }
+                }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
