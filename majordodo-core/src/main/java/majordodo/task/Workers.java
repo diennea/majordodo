@@ -173,6 +173,7 @@ public class Workers {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
+                    LOGGER.log(Level.INFO, "creating WorkerManager for worker {0}", id);
                     man = new WorkerManager(id, broker);
                     nodeManagers.put(id, man);
                 }

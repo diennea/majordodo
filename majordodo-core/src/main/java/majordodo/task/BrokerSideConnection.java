@@ -430,7 +430,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         LOGGER.log(Level.SEVERE, "client " + clientId + " connection " + this + " closed");
         channel = null;
         if (clientId != null) {
-            broker.getWorkers().getWorkerManager(clientId).deactivateConnection(this);
+            WorkerManager workerManager = broker.getWorkers().getWorkerManagerNoCreate(clientId);
+            if (workerManager != null) {
+                workerManager.deactivateConnection(this);
+            }
         }
         broker.getAcceptor().connectionClosed(this);
         if (clientId != null) {
