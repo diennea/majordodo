@@ -57,7 +57,7 @@ function workersController($scope, $http, $route, $timeout, $location, $state, G
     }
 
     function popResourcesTask(workerId) {
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
         }
         $http.get($scope.brokerUrl + "&view=resources&workerId=" + workerId).
@@ -74,7 +74,7 @@ function workersController($scope, $http, $route, $timeout, $location, $state, G
     }
 
     function popUsagesTask(workerId) {
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
         }
         $http.get($scope.brokerUrl + "&view=tasks&status=running&workerId=" + workerId).
@@ -134,10 +134,6 @@ function workersController($scope, $http, $route, $timeout, $location, $state, G
 
     $scope.reloadData = function () {
         $state.brokerUrl = $scope.brokerUrl;
-if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
-            $scope.brokerUrl = $scope.brokerUrl + "?";
-            
-        }
         $http.get($scope.brokerUrl).
                 success(function (data, status, headers, config) {
                     $('#warning-alert').hide();

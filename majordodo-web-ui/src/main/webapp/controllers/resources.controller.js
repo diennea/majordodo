@@ -19,9 +19,8 @@ function resourcesController($scope, $http, $route, $timeout, $location, $state,
     }
 
     $scope.reloadData = function () {
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
-            
         }
         $state.brokerUrl = $scope.brokerUrl;
         var theUrl = $scope.brokerUrl + '&view=resources';
