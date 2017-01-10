@@ -5,7 +5,7 @@
     <parent>
         <artifactId>majordodo-parent</artifactId>
         <groupId>org.majordodo</groupId>
-        <version>0.8.0-ALPHA5</version>
+        <version>0.8.0-ALPHA6</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
