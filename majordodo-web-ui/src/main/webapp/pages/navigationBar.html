@@ -1,0 +1,56 @@
+<div class="navbar navbar-inverse navbar-static-top" role="navigation">
+
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <a href="" class="navbar-brand" >Majordodo
+        </a>
+        
+
+    </div>
+
+    <div class="collapse navbar-collapse navbar-ex1-collapse">
+
+        <ul class="nav navbar-nav">
+            <li id="li-home">
+                <a href="" ng-click="go('/home')">Home</a>
+            </li>
+            <li id="li-workers">
+                <a href="" ng-click="go('/workers')"> Workers</a>
+            </li>
+            <li id="li-search">
+                <a href="" ng-click="go('/search')">Tasks</a>
+            </li>
+            <li id="li-resources">
+                <a href="" ng-click="go('/resources')"> Resources</a>
+            </li>
+            <!-- separator-->
+            <li style="height: 50px; margin: 0 0;border-left: 1px solid #09A07C;"></li>
+            <!-- separator-->
+            <li class="pull-right" >
+                <a  style="color: #09A07C">Last refresh : {{ lastupdate | date : " dd-MM-yyyy HH:mm:ss"}}</a>
+            </li>
+        </ul>
+
+        <div class="col-sm-5 col-md-5 pull-right">
+
+            <form class="navbar-form" role="search">
+                <div class="input-group">
+                    <span style="width: 1%" class="icon input-group-addon refresh-span" ng-click="reloadData()"><span class="glyphicon glyphicon-refresh majordodo" ></span></span>
+                    <input style="min-width: 300px;" class="form-control " name="search" placeholder="Insert url"  ng-keyup="keyPress($event)" ng-model="$parent.brokerUrl"  type="text" >
+                </div>
+
+            </form>
+
+
+        </div>
+
+    </div>
+</div>
+<div id="warning-alert" class="alert alert-danger" >
+    <h4><strong>Error!</strong> Http's request caused an error. Probably {{$parent.badUrl}} is not correct.</h4>
+</div>

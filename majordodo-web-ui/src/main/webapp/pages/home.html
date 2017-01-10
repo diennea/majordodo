@@ -1,0 +1,109 @@
+<body>
+    <div id="wrapper">
+        <div ng-include="'pages/navigationBar.html'"></div>
+        <div id="page-wrapper" >
+            <div class="row">
+                <div class="col-lg-12">
+                    <h1 class="page-header majordodo">Home</h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-12 col-md-12">
+                    <div class="panel panel-gray">
+                        <div class="panel-heading">
+                            <div class="row">
+                                <div class="col-xs-12 ">
+                                    <div class="huge">{{status.clusterMode}}</div>
+                                    <div>Mode</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-6 col-md-6">
+                    <div class="panel panel-gray">
+                        <div class="panel-heading">
+                            <div class="row">
+                                <div class="col-xs-12 ">
+                                    <div class="huge">{{status.tasks}}</div>
+                                    <div>Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-6">
+                    <div class="panel panel-gray">
+                        <div class="panel-heading">
+                            <div class="row">
+
+                                <div class="col-xs-12 ">
+                                    <div class="huge">{{status.currentLedgerId}} / {{status.currentSequenceNumber}}</div>
+                                    <div>Log position</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-3 col-md-6">
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <div class="row">
+                                <div class="col-xs-9 ">
+                                    <div class="huge">{{status.finishedTasks}}</div>
+                                    <div>Finished Task</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="panel panel-green">
+                        <div class="panel-heading">
+                            <div class="row">
+
+                                <div class="col-xs-9 ">
+                                    <div class="huge">{{status.runningTasks}}</div>
+                                    <div>Running Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="panel panel-yellow">
+                        <div class="panel-heading">
+                            <div class="row">
+
+                                <div class="col-xs-9 ">
+                                    <div class="huge">{{status.waitingTasks}}</div>
+                                    <div>Waiting Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="panel panel-red">
+                        <div class="panel-heading">
+                            <div class="row">
+                                <div class="col-xs-9 ">
+                                    <div class="huge">{{status.errorTasks}}</div>
+                                    <div>Error Tasks</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>

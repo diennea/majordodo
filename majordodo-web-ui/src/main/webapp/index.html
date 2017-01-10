@@ -1,10 +1,29 @@
-<!DOCTYPE html>
-<html>
+<html ng-app="majordodo-web-ui-module">
     <head>
-        <title>Start Page</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        
+        <link rel="stylesheet" href="nvd3/nv.d3.min.css"/>    
+        <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/sb-admin-2.css" rel="stylesheet">
+
+        <script type='text/javascript' src='angular/angular.js'></script>
+        <script type='text/javascript' src='angular/angular-route.js'></script>
+        <script type='text/javascript' src='controllers/resources.controller.js'></script>
+        <script type='text/javascript' src='controllers/workers.controller.js'></script>
+        <script type='text/javascript' src='controllers/search.controller.js'></script>
+        <script type='text/javascript' src='controllers/home.controller.js'></script>
+        <script type='text/javascript' src='angular.configuration.js'></script>
+        <script src="nvd3/d3.min.js"></script>
+        <script src="nvd3/nv.d3.min.js"></script>
+        <script src="nvd3/angular-nvd3.min.js"></script>
+        <script src="jquery/jquery.min.js"></script>
+        <script src="bootstrap/js/bootstrap.min.js"></script>
+
+        <title>Majordodo</title>
+
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">        
     </head>
     <body>
-        <h1>Hello World!</h1>
+        <div ng-view=""></div>
     </body>
 </html>

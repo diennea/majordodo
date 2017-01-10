@@ -193,6 +193,7 @@ public class BrokerMain implements AutoCloseable {
         String httppath = "/majordodo";
         Map<String, String> additionalInfo = new HashMap<>();
         String clientapiurl = "http://" + host + ":" + httpport + httppath;
+        String uiurl = "http://" + host + ":" + httpport + "/ui/#/home?brokerUrl=../majordodo";
         additionalInfo.put("client.api.url", clientapiurl);
         additionalInfo.put("broker.id", id);
 
@@ -284,7 +285,9 @@ public class BrokerMain implements AutoCloseable {
             System.out.println("Cannot find " + webUi.getAbsolutePath() + " directory. Web UI will not be deployed");
         }
 
-        System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport + " base client url " + clientapiurl);
+        System.out.println("Listening for client (http) connections on " + httphost + ":" + httpport);
+        System.out.println("Base client url: " + clientapiurl);
+        System.out.println("Web Interface: " + uiurl);
         httpserver.start();
         System.out.println("Broker starter");
     }
