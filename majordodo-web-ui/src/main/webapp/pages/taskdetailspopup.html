@@ -1,0 +1,99 @@
+<div class="modal-dialog modal-sm">
+    <div class="modal-content">
+        <div class="modal-header">
+
+            <form class="form-inline pull-right">
+                <button type="button" class="btn btn-default" ng-click="reloadTask(taskdetails.taskId)" >Refresh</button>
+                <button type="button"  data-dismiss="modal" class="btn btn-primary">Close</button>
+            </form>
+            <h4 class="modal-title">Task {{taskdetails.taskId}}</h4>
+        </div>
+        <div class="modal-body">
+            <table width="100%" class="table table-striped table-hover table-bordered " >
+                <tbody >
+                    <tr>
+                        <th>
+                            User ID
+                        </th>
+                        <td>
+                            {{taskdetails.userId}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Tasktype
+                        </th>
+                        <td>
+                            {{taskdetails.tasktype}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Worker ID
+                        </th>
+                        <td>
+                            {{taskdetails.workerId}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Status
+                        </th>
+                        <td>
+                            {{taskdetails.status}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Slot
+                        </th>
+                        <td>
+                            {{taskdetails.slot}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Attempts
+                        </th>
+                        <td>
+                            {{taskdetails.attempts}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Max attempts
+                        </th>
+                        <td>
+                            {{taskdetails.maxattempts}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Created
+                        </th>
+                        <td>
+                            {{taskdetails.createdTimestamp| date:"dd/MM/yyyy 'at' h:mm ' ' a"}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Deadline
+                        </th>
+                        <td>
+                            {{taskdetails.deadline| date: "dd/MM/yyyy 'at' h:mm ' ' a"}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>
+                            Result
+                        </th>
+                        <td>
+                            {{taskdetails.result}}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
