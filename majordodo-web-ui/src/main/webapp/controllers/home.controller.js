@@ -23,10 +23,6 @@ function homeController($scope, $http, $route, $timeout, $location, $state, Glob
     }
 
     $scope.reloadData = function () {
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
-            $scope.brokerUrl = $scope.brokerUrl + "?";
-            
-        }
         $state.brokerUrl = $scope.brokerUrl;
         $http.get($scope.brokerUrl).
                 success(function (data, status, headers, config) {

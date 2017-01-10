@@ -64,7 +64,7 @@ function searchController($scope, $http, $route, $timeout, $location, $state, Gl
 
     $scope.reloadSearch = function () {
         $state.brokerUrl = $scope.brokerUrl;
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
 
         }
@@ -125,7 +125,7 @@ function searchController($scope, $http, $route, $timeout, $location, $state, Gl
 
     $scope.reloadHeap = function () {
         $state.brokerUrl = $scope.brokerUrl;
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
 
         }
@@ -177,7 +177,7 @@ function searchController($scope, $http, $route, $timeout, $location, $state, Gl
     };
     $scope.reloadSlots = function () {
         $state.brokerUrl = $scope.brokerUrl;
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
 
         }
@@ -204,9 +204,8 @@ function searchController($scope, $http, $route, $timeout, $location, $state, Gl
         popTask(id);
     }
     function popTask(taskId) {
-        if ($scope.brokerUrl[$scope.brokerUrl.length - 1] !== '?') {
+        if ($scope.brokerUrl.indexOf("?") === -1) {
             $scope.brokerUrl = $scope.brokerUrl + "?";
-
         }
         var theUrl = $scope.brokerUrl + '&view=task&taskId=' + taskId;
         $http.get(theUrl).
