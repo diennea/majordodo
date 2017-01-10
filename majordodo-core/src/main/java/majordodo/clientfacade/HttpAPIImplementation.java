@@ -19,7 +19,9 @@
  */
 package majordodo.clientfacade;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ import org.codehaus.jackson.map.ObjectMapper;
  */
 public class HttpAPIImplementation {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Logger LOGGER = Logger.getLogger(HttpAPIImplementation.class.getName());
 
     private static AuthenticatedUser login(HttpServletRequest req) {
@@ -357,9 +360,8 @@ public class HttpAPIImplementation {
 
         }
 
-        ObjectMapper mapper = new ObjectMapper();
         LOGGER.log(Level.FINER, "GET  -> {0}", resultMap);
-        String s = mapper.writeValueAsString(resultMap);
+        String s = MAPPER.writeValueAsString(resultMap);
         byte[] res = s.getBytes(StandardCharsets.UTF_8);
 
         resp.setContentLength(res.length);
@@ -415,8 +417,11 @@ public class HttpAPIImplementation {
     public static void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> data = mapper.readValue(req.getInputStream(), Map.class);
+            ByteArrayOutputStream oo = new ByteArrayOutputStream();
+            try (InputStream in = req.getInputStream()) {
+                copyStreams(in, oo);
+            }
+            Map<String, Object> data = MAPPER.readValue(oo.toString("utf-8"), Map.class);
             AuthenticatedUser auth_user = login(req);
             LOGGER.log(Level.FINE, "POST {0} broker={1}, user: {2}", new Object[]{data, broker, auth_user});
             String action = data.get("action") + "";
@@ -674,7 +679,7 @@ public class HttpAPIImplementation {
             }
 
             LOGGER.log(Level.FINE, "POST " + data + " -> " + resultMap);
-            String s = mapper.writeValueAsString(resultMap);
+            String s = MAPPER.writeValueAsString(resultMap);
             byte[] res = s.getBytes(StandardCharsets.UTF_8);
 
             resp.setContentLength(res.length);
@@ -690,5 +695,18 @@ public class HttpAPIImplementation {
             LOGGER.log(Level.SEVERE, "Unhandled error: " + err, err);
             throw err;
         }
+    }
+
+    private static final int COPY_BUFFER_SIZE = 64 * 1024;
+
+    private static long copyStreams(InputStream input, OutputStream output) throws IOException {
+        long count = 0;
+        int n = 0;
+        byte[] buffer = new byte[COPY_BUFFER_SIZE];
+        while (-1 != (n = input.read(buffer))) {
+            output.write(buffer, 0, n);
+            count += n;
+        }
+        return count;
     }
 }
