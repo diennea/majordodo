@@ -20,10 +20,12 @@
 package majordodo.tools;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
@@ -54,7 +56,7 @@ public class Tools {
                 return;
             }
             File configFile = new File(args[0]);
-            try (FileReader reader = new FileReader(configFile)) {
+            try (FileInputStream reader = new FileInputStream(configFile)) {
                 configuration.load(reader);
             }
             String command = args[1];
@@ -128,7 +130,7 @@ public class Tools {
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss.SSS");
                         if (!outputfilename.isEmpty()) {
                             System.out.println("Dumping contents of ledger " + ledgerId + " to file " + outputfilename);
-                            try (PrintWriter writer = new PrintWriter(new File(outputfilename))) {
+                            try (PrintWriter writer = new PrintWriter(new File(outputfilename), "utf-8")) {
                                 log.recovery(new LogSequenceNumber(ledgerId, 0), (LogSequenceNumber t, StatusEdit u) -> {
                                     writer.println(t.ledgerId + "," + t.sequenceNumber + ',' + u.toFormattedString(formatter));
                                 }, false);

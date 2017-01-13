@@ -22,8 +22,10 @@ package majordodo.codepools;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -55,8 +57,14 @@ public class CodePoolClassloadersManager {
                 return cl;
             }
             byte[] data = parent.downloadCodePool(codePoolId);
-            cl = new CodePoolClassloader(Thread.currentThread().getContextClassLoader(), codePoolId, data, codeTemporaryDirectory);            
-            classloaders.put(codePoolId, cl);
+            try {
+                cl = AccessController.doPrivileged((PrivilegedExceptionAction<CodePoolClassloader>) ()
+                    -> new CodePoolClassloader(Thread.currentThread().getContextClassLoader(),
+                        codePoolId, data, codeTemporaryDirectory));
+                classloaders.put(codePoolId, cl);
+            } catch (PrivilegedActionException err) {
+                throw err.getException();
+            }
             return cl;
         } finally {
             lock.unlock();

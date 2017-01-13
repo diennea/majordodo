@@ -65,10 +65,10 @@ public class WorkerManager {
     }
 
     public void applyConfiguration(int maxThreads,
-            Map<String, Integer> maxThreadsByTaskType,
-            List<Integer> groups,
-            Set<Integer> excludedGroups,
-            Map<String, Integer> resourceLimis) {
+        Map<String, Integer> maxThreadsByTaskType,
+        List<Integer> groups,
+        Set<Integer> excludedGroups,
+        Map<String, Integer> resourceLimis) {
         LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
@@ -91,7 +91,7 @@ public class WorkerManager {
             Map<String, Integer> availableSpace = new HashMap<>(this.maxThreadsByTaskType);
             int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
             LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1} maxThreadsByTaskType {6} ",
-                    new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
+                new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
             max = max - actuallyRunning;
             List<AssignedTask> tasks;
             if (max > 0 && !availableSpace.isEmpty()) {
@@ -186,42 +186,41 @@ public class WorkerManager {
                     lastActivity = connection.getLastReceivedMessageTs();
                 }
                 LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1}  taskToBeSubmittedToRemoteWorker {2} tasksRunningOnRemoteWorker {3}", new Object[]{workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker});
-                if (connection != null) {
-                    requestNewTasks();
-                    int max = 100;
-                    while (max-- > 0) {
-                        AssignedTask taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
-                        if (taskToBeSubmitted != null) {
-                            long taskId = taskToBeSubmitted.taskid;
-                            LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskId});
-                            Task task = broker.getBrokerStatus().getTask(taskId);
-                            if (task == null) {
-                                // task disappeared ?
-                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
-                            } else {
-                                if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted.taskid)) {
-                                    LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} is already running on worker", new Object[]{workerId, taskToBeSubmitted, task});
-                                    return;
-                                }
-                                if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
-                                    connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
-                                        if (error != null) {
-                                            // the write failed
-                                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure, rescheduling for retry:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
-                                            taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
-                                        } else {
-                                            tasksRunningOnRemoteWorker.add(taskToBeSubmitted.taskid);
-                                        }
-                                    });
-                                } else {
-                                    LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
-                                }
-                            }
+                requestNewTasks();
+                int max = 100;
+                while (max-- > 0) {
+                    AssignedTask taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
+                    if (taskToBeSubmitted != null) {
+                        long taskId = taskToBeSubmitted.taskid;
+                        LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskId});
+                        Task task = broker.getBrokerStatus().getTask(taskId);
+                        if (task == null) {
+                            // task disappeared ?
+                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
                         } else {
-                            break;
+                            if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted.taskid)) {
+                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} is already running on worker", new Object[]{workerId, taskToBeSubmitted, task});
+                                return;
+                            }
+                            if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
+                                connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
+                                    if (error != null) {
+                                        // the write failed
+                                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure, rescheduling for retry:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
+                                        taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
+                                    } else {
+                                        tasksRunningOnRemoteWorker.add(taskToBeSubmitted.taskid);
+                                    }
+                                });
+                            } else {
+                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                            }
                         }
+                    } else {
+                        break;
                     }
                 }
+
             }
         } finally {
             connectionLock.unlock();

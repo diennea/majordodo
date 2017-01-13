@@ -64,7 +64,7 @@ public class FileCommitLog extends StatusChangesLog {
     private LogSequenceNumber recoveredLogSequence;
 
     private long currentLedgerId = 0;
-    private boolean writable = false;    
+    private boolean writable = false;
     private long maxLogFileSize = 1024 * 1024;
     private long writtenBytes = 0;
 
@@ -377,7 +377,8 @@ public class FileCommitLog extends StatusChangesLog {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
             List<Path> names = new ArrayList<>();
             for (Path path : stream) {
-                if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
+                if (Files.isRegularFile(path)
+                    && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
                     names.add(path);
                 }
             }
@@ -389,7 +390,7 @@ public class FileCommitLog extends StatusChangesLog {
 
                 LOGGER.log(Level.SEVERE, "logfile is {0}, lastFile {1}", new Object[]{p.toAbsolutePath(), lastFile});
 
-                String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
+                String name = (p.getFileName() + "").replace(LOGFILEEXTENSION, "");
                 long ledgerId = Long.parseLong(name, 16);
                 if (ledgerId > currentLedgerId) {
                     currentLedgerId = ledgerId;
@@ -479,7 +480,7 @@ public class FileCommitLog extends StatusChangesLog {
     private void deleteOldSnapshots(Path snapshotfilename) throws LogNotAvailableException {
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String other_filename = path.getFileName().toString();
+                String other_filename = (path.getFileName() + "").toString();
                 if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
                     try {
@@ -514,14 +515,15 @@ public class FileCommitLog extends StatusChangesLog {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
                 List<Path> names = new ArrayList<>();
                 for (Path path : stream) {
-                    if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(LOGFILEEXTENSION)) {
+                    if (Files.isRegularFile(path)
+                        && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
                         names.add(path);
                     }
                 }
                 names.sort(Comparator.comparing(Path::toString));
                 for (Path p : names) {
 
-                    String name = p.getFileName().toString().replace(LOGFILEEXTENSION, "");
+                    String name = (p.getFileName() + "").replace(LOGFILEEXTENSION, "");
                     long ledgerId = Long.parseLong(name, 16);
 
                     if (ledgerId < snapshotData.actualLogSequenceNumber.ledgerId
@@ -551,7 +553,7 @@ public class FileCommitLog extends StatusChangesLog {
         ensureDirectories();
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String filename = path.getFileName().toString();
+                String filename = path.getFileName() + "";
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.severe("Processing snapshot file: " + path);
                     try {

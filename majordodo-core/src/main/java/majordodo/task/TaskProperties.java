@@ -22,8 +22,7 @@ package majordodo.task;
 import java.util.Arrays;
 
 /**
- * Describes runtime properties of a Task, such as "group" and the usage of
- * resources
+ * Describes runtime properties of a Task, such as "group" and the usage of resources
  *
  * @author enrico.olivelli
  */
@@ -32,6 +31,7 @@ public final class TaskProperties {
     public final int groupId;
     public final String[] resources;
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public TaskProperties(int groupId, String[] resources) {
         this.groupId = groupId;
         this.resources = resources;

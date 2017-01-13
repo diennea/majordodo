@@ -610,8 +610,12 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     handle.close();
                 }
             }
-        } catch (Exception err) {
+        } catch (InterruptedException | BKException err) {
             LOGGER.log(Level.SEVERE, "Fatal error during recovery", err);
+            signalBrokerFailed();
+            throw new LogNotAvailableException(err);
+        } catch (Exception err) {
+            LOGGER.log(Level.SEVERE, "Unknown fatal error during recovery", err);
             signalBrokerFailed();
             throw new LogNotAvailableException(err);
         }
@@ -669,7 +673,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private void deleteOldSnapshots(Path snapshotfilename) throws LogNotAvailableException {
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String other_filename = path.getFileName().toString();
+                String other_filename = path.getFileName()+"";
                 if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
                     try {
@@ -805,7 +809,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         LogSequenceNumber latest = null;
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String filename = path.getFileName().toString();
+                String filename = path.getFileName()+"";
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
                     try {

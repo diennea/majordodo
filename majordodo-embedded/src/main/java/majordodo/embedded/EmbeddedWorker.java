@@ -89,8 +89,8 @@ public class EmbeddedWorker {
                 break;
             case EmbeddedWorkerConfiguration.MODE_SIGLESERVER:
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
-                
-                ((NettyBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
+
+                ((NettyBrokerLocator) brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             case EmbeddedWorkerConfiguration.MODE_CLUSTERED:
                 if (supplier != null) {
@@ -98,8 +98,10 @@ public class EmbeddedWorker {
                 } else {
                     brokerLocator = new ZKBrokerLocator(zkAdress, zkSessionTimeout, zkPath);
                 }
-                ((ZKBrokerLocator)brokerLocator).setSslUnsecure(sslUnsecure);
+                ((ZKBrokerLocator) brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
+            default:
+                throw new IllegalArgumentException("Unsupported mode " + mode);
         }
         String sharedSecret = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_SHAREDSECRET, EmbeddedBrokerConfiguration.KEY_SHAREDSECRET_DEFAULT);
         workerConfiguration.setSharedSecret(sharedSecret);

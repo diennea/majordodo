@@ -210,6 +210,9 @@ public class BrokerStatus {
                                     case Task.STATUS_WAITING:
                                         hasTasks = true;
                                         break;
+                                    default:
+                                        // not interesting
+                                        break;
                                 }
                                 if (hasTasks) {
                                     break;
@@ -300,9 +303,9 @@ public class BrokerStatus {
         Set<Long> expired = new HashSet<>();
         int expiredcount = 0;
         this.lock.writeLock().lock();
-        // when running in FOLLOWER MODE we cannot expire tasks, but we need to remove them from memory, see MAJ-58
-        boolean allowExpire = this.log.isLeader() && this.log.isWritable();
         try {
+            // when running in FOLLOWER MODE we cannot expire tasks, but we need to remove them from memory, see MAJ-58
+            boolean allowExpire = this.log.isLeader() && this.log.isWritable();
             // tasks are only purged from memry, not from logs
             // in case of broker restart it may re-appear
             for (Iterator<Map.Entry<Long, Task>> it = tasks.entrySet().iterator(); it.hasNext();) {
@@ -326,6 +329,9 @@ public class BrokerStatus {
                             it.remove();
                             stats.taskStatusChange(t.getStatus(), -1);
                         }
+                        break;
+                    default:
+                        // not interesting
                         break;
                 }
             }
@@ -622,7 +628,11 @@ public class BrokerStatus {
                             case Task.STATUS_FINISHED:
                             case Task.STATUS_ERROR: {
                                 slotsManager.releaseSlot(task.getSlot());
+                                break;
                             }
+                            default:
+                                // not interesting
+                                break;
                         }
                     }
 
@@ -819,7 +829,11 @@ public class BrokerStatus {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                             busySlots.put(task.getSlot(), taskId);
                         }
+                        break;
                     }
+                    default:
+                        // not interesting
+                        break;
                 }
 
             }

@@ -59,6 +59,7 @@ public class ZKClusterManager implements AutoCloseable {
 
     CountDownLatch firstConnectionLatch = new CountDownLatch(1);
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "RV_RETURN_VALUE_IGNORED")
     void waitForConnection() throws InterruptedException {
         firstConnectionLatch.await(this.connectionTimeout, TimeUnit.MILLISECONDS);
     }
@@ -75,6 +76,8 @@ public class ZKClusterManager implements AutoCloseable {
                 case SyncConnected:
                     firstConnectionLatch.countDown();
                     break;
+                default:                    
+                    break;
             }
         }
     }
@@ -86,6 +89,7 @@ public class ZKClusterManager implements AutoCloseable {
     private final int connectionTimeout;
     private final List<ACL> acls;
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener,
         byte[] localhostdata, boolean writeacls) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
@@ -212,6 +216,9 @@ public class ZKClusterManager implements AutoCloseable {
                     break;
                 case NONODE:
                     requestLeadership();
+                    break;
+                default:
+                    LOGGER.log(Level.INFO, "masterCheckBallback - Unhandle code " + rc + " at " + path);
                     break;
             }
         }

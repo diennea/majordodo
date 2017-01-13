@@ -32,6 +32,7 @@ public class CodePool {
     private final byte[] codePoolData;
     private final long ttl;
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public CodePool(String id, long creationTimestamp, byte[] codePoolData, long ttl) {
         this.id = id;
         this.creationTimestamp = creationTimestamp;
@@ -47,6 +48,7 @@ public class CodePool {
         return creationTimestamp;
     }
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP")
     public byte[] getCodePoolData() {
         return codePoolData;
     }

@@ -31,6 +31,7 @@ public class CreateCodePoolRequest {
     public final long ttl;
     public final byte[] data;
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public CreateCodePoolRequest(String id, long creationTimestamp, long ttl, byte[] data) {
         this.id = id;
         this.creationTimestamp = creationTimestamp;

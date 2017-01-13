@@ -21,14 +21,16 @@ package majordodo.task;
 
 /**
  * Information about a Task which is running (assigned)
+ *
  * @author enrico.olivelli
  */
 public final class AssignedTask {
-    
+
     public final long taskid;
     public final String[] resourceIds;
     public final String resources;
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public AssignedTask(long taskid, String[] resourceIds, String resources) {
         this.taskid = taskid;
         this.resourceIds = resourceIds;
@@ -64,5 +66,5 @@ public final class AssignedTask {
         }
         return true;
     }
-    
+
 }

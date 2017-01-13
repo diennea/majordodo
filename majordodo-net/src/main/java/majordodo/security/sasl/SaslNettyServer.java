@@ -294,10 +294,10 @@ public class SaslNettyServer {
     private static class SaslServerCallbackHandler implements CallbackHandler {
 
         private static final String USER_PREFIX = "user_";
-        final String serverSection = "MajordodoServer";
+        private static final String serverSection = "MajordodoServer";
 
         private String userName;
-        private final Map<String, String> credentials = new HashMap<String, String>();
+        private final Map<String, String> credentials = new HashMap<>();
 
         public SaslServerCallbackHandler(Configuration configuration) throws IOException {
 

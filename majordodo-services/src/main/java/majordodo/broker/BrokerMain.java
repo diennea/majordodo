@@ -28,7 +28,7 @@ import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -113,13 +113,13 @@ public class BrokerMain implements AutoCloseable {
             File configFile;
             if (args.length > 0) {
                 configFile = new File(args[0]);
-                try (FileReader reader = new FileReader(configFile)) {
+                try (FileInputStream reader = new FileInputStream(configFile)) {
                     configuration.load(reader);
                 }
             } else {
                 configFile = new File("conf/broker.properties");
                 if (configFile.isFile()) {
-                    try (FileReader reader = new FileReader(configFile)) {
+                    try (FileInputStream reader = new FileInputStream(configFile)) {
                         configuration.load(reader);
                     }
                 } else {

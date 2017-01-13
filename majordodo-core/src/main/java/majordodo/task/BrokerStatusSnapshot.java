@@ -159,7 +159,6 @@ public class BrokerStatusSnapshot {
         List<CodePool> codePools = new ArrayList<>();
         List<Task> tasks = new ArrayList<>();
         List<WorkerStatus> workers = new ArrayList<>();
-        Map<String, Long> busySlots = new HashMap<>();
         nextToken(jParser);
 
         while (jParser.nextToken() != JsonToken.END_OBJECT) {

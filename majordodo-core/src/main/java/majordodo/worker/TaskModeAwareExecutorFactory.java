@@ -71,7 +71,6 @@ public class TaskModeAwareExecutorFactory implements TaskExecutorFactory {
                 return res;
             } else if (parameter.startsWith("newinstance:")) {
                 parameter = parameter.substring("newinstance:".length());
-                URLClassLoader cc = (URLClassLoader) tccl;
                 Class clazz = Class.forName(parameter, true, tccl);
                 TaskExecutor res = (TaskExecutor) clazz.newInstance();
                 return res;

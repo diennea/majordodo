@@ -306,13 +306,9 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
                 try {
                     broker.tasksFinished(clientId, finishedTasksInfo);
-                    if (_channel != null) {
-                        _channel.sendReplyMessage(message, Message.ACK(workerProcessId));
-                    }
+                    _channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                 } catch (LogNotAvailableException error) {
-                    if (_channel != null) {
-                        _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
-                    }
+                    _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                     LOGGER.log(Level.SEVERE, "error", error);
                 }
                 break;

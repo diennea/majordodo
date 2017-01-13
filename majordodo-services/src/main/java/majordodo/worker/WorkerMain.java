@@ -25,7 +25,8 @@ import majordodo.network.BrokerLocator;
 import majordodo.network.netty.NettyBrokerLocator;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.nio.file.Paths;
@@ -56,13 +57,13 @@ public class WorkerMain implements AutoCloseable {
             File configFile;
             if (args.length > 0) {
                 configFile = new File(args[0]);
-                try (FileReader reader = new FileReader(configFile)) {
+                try (InputStream reader = new FileInputStream(configFile)) {
                     configuration.load(reader);
                 }
             } else {
                 configFile = new File("conf/worker.properties");
                 if (configFile.isFile()) {
-                    try (FileReader reader = new FileReader(configFile)) {
+                    try (InputStream reader = new FileInputStream(configFile)) {
                         configuration.load(reader);
                     }
                 } else {

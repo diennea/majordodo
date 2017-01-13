@@ -73,7 +73,7 @@ public class CodePoolUtils {
     }
 
     /**
-     * Serializes an Executor for execution with TaskModeAwareExecutorFactory     
+     * Serializes an Executor for execution with TaskModeAwareExecutorFactory
      *
      * @param executor
      * @return
@@ -159,15 +159,21 @@ public class CodePoolUtils {
         String raw = file.getAbsolutePath().replace("\\", "/");
         if (raw.length() == skipprefix) {
             if (file.isDirectory()) {
-                for (File child : file.listFiles()) {
-                    addFileToZip(skipprefix, child, zipper);
+                File[] children = file.listFiles();
+                if (children != null) {
+                    for (File child : children) {
+                        addFileToZip(skipprefix, child, zipper);
+                    }
                 }
             }
         } else {
             String path = raw.substring(skipprefix + 1);
             if (file.isDirectory()) {
-                for (File child : file.listFiles()) {
-                    addFileToZip(skipprefix, child, zipper);
+                File[] children = file.listFiles();
+                if (children != null) {
+                    for (File child : children) {
+                        addFileToZip(skipprefix, child, zipper);
+                    }
                 }
             } else {
                 ZipEntry entry = new ZipEntry(path);
@@ -193,28 +199,32 @@ public class CodePoolUtils {
     }
 
     public static List<URL> unzipCodePoolData(Path directory, byte[] data) throws IOException {
-        LOGGER.log(Level.SEVERE, "unzipCodePoolData to " + directory);
+        LOGGER.log(Level.SEVERE, "unzipCodePoolData to {0}", directory);
         Files.createDirectories(directory);
         Path source = directory.resolve("source.zip");
         Files.write(source, data);
         List<URL> urls = new ArrayList<>();
-        ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));
-        ZipEntry nextEntry = zip.getNextEntry();
-        while (nextEntry != null) {
-            if (!nextEntry.isDirectory()) {
-                String filename = nextEntry.getName();
-                Path file = directory.resolve(filename);
-                LOGGER.log(Level.SEVERE, "unzipCodePoolData inflating " + filename + " to " + file);
-                Files.createDirectories(file.getParent());
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(data));) {
+            ZipEntry nextEntry = zip.getNextEntry();
+            while (nextEntry != null) {
+                if (!nextEntry.isDirectory()) {
+                    String filename = nextEntry.getName();
+                    Path file = directory.resolve(filename);
+                    LOGGER.log(Level.SEVERE, "unzipCodePoolData inflating {0} to {1}", new Object[]{filename, file});
+                    Path parent = file.getParent();
+                    if (parent != null) {
+                        Files.createDirectories(parent);
+                    }
 
-                try (OutputStream out = Files.newOutputStream(file)) {
-                    copyStreams(zip, out);
+                    try (OutputStream out = Files.newOutputStream(file)) {
+                        copyStreams(zip, out);
+                    }
+                    urls.add(file.toUri().toURL());
                 }
-                urls.add(file.toUri().toURL());
+                nextEntry = zip.getNextEntry();
             }
-            nextEntry = zip.getNextEntry();
+            return urls;
         }
-        return urls;
     }
 
 }

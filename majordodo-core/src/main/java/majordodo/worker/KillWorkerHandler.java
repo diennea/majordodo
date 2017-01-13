@@ -29,6 +29,7 @@ public class KillWorkerHandler {
     public static final KillWorkerHandler SHUTDOWN_JVM = new KillWorkerHandler() {
 
         @Override
+        @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "DM_EXIT")
         public void killWorker(WorkerCore core) {
             System.exit(0);
         }

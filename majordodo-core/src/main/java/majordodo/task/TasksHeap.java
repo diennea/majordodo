@@ -284,8 +284,10 @@ public class TasksHeap {
     }
 
     public void runCompaction() {
+        LOGGER.log(Level.FINEST, "running compaction,"
+            + "fragmentation " + fragmentation + ", actualsize " + actualsize
+            + ", size " + size + ", minValidPosition " + minValidPosition);
         lock.writeLock().lock();
-        LOGGER.log(Level.SEVERE, "running compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
         try {
             int[] nonemptypositions = new int[size];
             int insertpos = 0;

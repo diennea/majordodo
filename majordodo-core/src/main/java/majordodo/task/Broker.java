@@ -204,11 +204,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             Thread.sleep(500);
         }
     }
+
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "MS_SHOULD_BE_FINAL")
     public static boolean PERFORM_CHECKPOINT_AT_LEADERSHIP = true;
 
     private final Runnable brokerLife = new Runnable() {
 
         @Override
+        @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "RV_RETURN_VALUE_IGNORED")
         public void run() {
             try {
                 brokerStatusMonitor.start();
@@ -236,6 +239,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
+                            break;
+                        default:
+                            // not interesting
                             break;
 
                     }
@@ -268,7 +274,8 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
                         }
-                        stopperLatch.await(10, TimeUnit.SECONDS);
+                        stopperLatch.await(10, TimeUnit.SECONDS
+                        );
                     }
                 } catch (InterruptedException exit) {
                 }
@@ -619,14 +626,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         for (int i = 0; i < size; i++) {
             StatusEdit addTask = edits.get(i);
             BrokerStatus.ModificationResult result = batch.get(i);
+            Long taskId = (Long) result.data;
             if (addTask.editType == StatusEdit.TYPE_PREPARE_ADD_TASK) {
-                res.add(new AddTaskResult((Long) result.data, result.error));
+                res.add(new AddTaskResult(taskId != null ? taskId : 0, result.error));
             } else {
-                Long taskId = (Long) result.data;
                 if (taskId != null && taskId > 0 && result.error == null) {
                     this.tasksHeap.insertTask(taskId, addTask.taskType, addTask.userid);
                 }
-                res.add(new AddTaskResult((Long) result.data, result.error));
+                res.add(new AddTaskResult(taskId != null ? taskId : 0, result.error));
             }
         }
         return res;

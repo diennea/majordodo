@@ -188,6 +188,8 @@ public class EmbeddedBroker implements AutoCloseable {
 
                 break;
             }
+            default:
+                throw new IllegalArgumentException("Unsupported mode " + mode);
         }
         brokerConfiguration = new BrokerConfiguration();
         brokerConfiguration.setRequireAuthentication(requireAuthentication);
@@ -213,6 +215,8 @@ public class EmbeddedBroker implements AutoCloseable {
                 server.setSsl(ssl);
                 server.setWorkerThreads(workerthreads);
                 break;
+            default:
+                throw new IllegalArgumentException("Unsupported mode " + mode);
         }
         broker.setBrokerDiedCallback(brokerDiedCallback);
         broker.start();

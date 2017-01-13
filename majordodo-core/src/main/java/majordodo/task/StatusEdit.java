@@ -538,7 +538,10 @@ public final class StatusEdit {
                 res.timestamp = doo.readLong();
                 res.executionDeadline = doo.readLong();
                 res.payload = new byte[doo.readInt()];
-                doo.read(res.payload, 0, res.payload.length);
+                int countRead = doo.read(res.payload, 0, res.payload.length);
+                if (countRead != res.payload.length) {
+                    throw new IOException("short read " + countRead + " <> " + res.payload.length);
+                }
                 break;
             default:
                 throw new UnsupportedOperationException("editType=" + res.editType);

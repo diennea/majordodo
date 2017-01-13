@@ -68,6 +68,9 @@ public class BrokerStatusStats {
             case Task.STATUS_FINISHED:
                 finishedTasks--;
                 break;
+            default:
+                /// ?
+                break;
         }
         switch (newStatus) {
             case -1:
@@ -85,6 +88,9 @@ public class BrokerStatusStats {
                 break;
             case Task.STATUS_FINISHED:
                 finishedTasks++;
+                break;
+            default:
+                /// ?
                 break;
         }
     }

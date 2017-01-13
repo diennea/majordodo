@@ -32,8 +32,7 @@ import majordodo.task.Broker;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * Implementation of the HTTP API, both for embedded and for standalone
- * installation
+ * Implementation of the HTTP API, both for embedded and for standalone installation
  *
  * @author enrico.olivelli
  */
@@ -51,7 +50,24 @@ public class WorkerHttpAPIImplementation {
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("ok", "true");
         switch (view) {
-            case "status": {
+
+            case "tasks":
+                if (worker != null) {
+                    majordodo.worker.WorkerStatusView status = worker.createWorkerStatusView();
+                    resultMap.put("status", status.getStatus());
+                    resultMap.put("processId", worker.getProcessId());
+                    resultMap.put("location", worker.getLocation());
+                    resultMap.put("workerId", worker.getWorkerId());
+                    resultMap.put("runningTasks", status.getRunningTasks());
+                    Map<Long, String> tasks = new HashMap<>(worker.getRunningTasks());
+                    resultMap.put("tasks", tasks);
+                    resultMap.put("pendingNotifications", worker.getPendingFinishedTaskNotifications());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
+            case "status":
+            default: {
                 if (worker != null) {
                     majordodo.worker.WorkerStatusView status = worker.createWorkerStatusView();
                     resultMap.put("status", status.getStatus());
@@ -68,22 +84,6 @@ public class WorkerHttpAPIImplementation {
                 }
                 break;
             }
-            case "tasks":
-                if (worker != null) {
-                    majordodo.worker.WorkerStatusView status = worker.createWorkerStatusView();
-                    resultMap.put("status", status.getStatus());
-                    resultMap.put("processId", worker.getProcessId());
-                    resultMap.put("location", worker.getLocation());
-                    resultMap.put("workerId", worker.getWorkerId());
-                    resultMap.put("runningTasks", status.getRunningTasks());
-                    Map<Long, String> tasks = new HashMap<>(worker.getRunningTasks());
-                    resultMap.put("tasks", tasks);
-                    resultMap.put("pendingNotifications", worker.getPendingFinishedTaskNotifications());
-                } else {
-                    resultMap.put("status", "not_started");
-                }
-                break;
-
         }
 
         ObjectMapper mapper = new ObjectMapper();

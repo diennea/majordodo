@@ -519,7 +519,7 @@ public class HTTPClientConnection implements ClientConnection {
 
     @Override
     public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws ClientException {
-        Map<String, Object> res = request("POST", map("action", "createCodePool", "id", request.getCodePoolID(), "ttl", request.getTtl() + "",
+        request("POST", map("action", "createCodePool", "id", request.getCodePoolID(), "ttl", request.getTtl() + "",
                 "data", request.getCodePoolData()));
         CreateCodePoolResult result = new CreateCodePoolResult();
         result.setOk(true);

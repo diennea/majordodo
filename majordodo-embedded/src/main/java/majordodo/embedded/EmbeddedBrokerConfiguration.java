@@ -28,27 +28,27 @@ import java.io.File;
  */
 public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfiguration {
 
-    public static String KEY_LOGSDIRECTORY = "logsdirectory";
-    public static String KEY_LOGSMAXFILESIZE = "logsmaxfilesize";
-    public static String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
-    public static String KEY_HOST = "broker.host";
-    public static String KEY_PORT = "broker.port";
-    public static String KEY_SSL = "broker.ssl";
-    public static String KEY_CLIENTAPIURL = "broker.clientapiurl";
-    public static String KEY_BROKERID = "broker.id";
+    public static final String KEY_LOGSDIRECTORY = "logsdirectory";
+    public static final String KEY_LOGSMAXFILESIZE = "logsmaxfilesize";
+    public static final String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
+    public static final String KEY_HOST = "broker.host";
+    public static final String KEY_PORT = "broker.port";
+    public static final String KEY_SSL = "broker.ssl";
+    public static final String KEY_CLIENTAPIURL = "broker.clientapiurl";
+    public static final String KEY_BROKERID = "broker.id";
 
-    public static String SSL_CERTIFICATE_FILE = "broker.ssl.certificatefile";
-    public static String SSL_CERTIFICATE_CHAIN_FILE = "broker.ssl.certificatechainfile";
-    public static String SSL_CERTIFICATE_PASSWORD = "broker.ssl.certificatefilepassword";
-    public static String SSL_CIPHERS = "broker.ssl.ciphers";
+    public static final String SSL_CERTIFICATE_FILE = "broker.ssl.certificatefile";
+    public static final String SSL_CERTIFICATE_CHAIN_FILE = "broker.ssl.certificatechainfile";
+    public static final String SSL_CERTIFICATE_PASSWORD = "broker.ssl.certificatefilepassword";
+    public static final String SSL_CIPHERS = "broker.ssl.ciphers";
 
-    public static String KEY_BK_ENSEMBLE_SIZE = "bookkeeper.ensemblesize";
-    public static String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";
-    public static String KEY_BK_ACKQUORUMSIZE = "bookkeeper.ackquorumsize";
-    public static String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
+    public static final String KEY_BK_ENSEMBLE_SIZE = "bookkeeper.ensemblesize";
+    public static final String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";
+    public static final String KEY_BK_ACKQUORUMSIZE = "bookkeeper.ackquorumsize";
+    public static final String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
     
-    public static String KEY_BROKERWORKERTHREADS = "broker.worker.threads";
-    public static String KEY_REQUIREAUTHENTICATION = "broker.requireauthentication";
-    public static boolean KEY_REQUIREAUTHENTICATION_DEFAULT = true;
+    public static final String KEY_BROKERWORKERTHREADS = "broker.worker.threads";
+    public static final String KEY_REQUIREAUTHENTICATION = "broker.requireauthentication";
+    public static final boolean KEY_REQUIREAUTHENTICATION_DEFAULT = true;
 
 }

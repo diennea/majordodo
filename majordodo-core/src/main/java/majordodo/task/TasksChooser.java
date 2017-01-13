@@ -51,21 +51,7 @@ public final class TasksChooser {
     private final PriorityQueue<Entry> matchAllTypesQueue;
     private final Integer availableSpaceForAnyTask;
 
-    public static final class Entry implements Comparable<Entry> {
-
-        /**
-         * Natural ordering comparator
-         */
-        public static final Comparator<Entry> STANTARD_COMPARATOR = new Comparator<Entry>() {
-
-            @Override
-            public int compare(Entry o1, Entry o2) {
-
-                return o1.compareTo(o2);
-
-            }
-
-        };
+    static final class Entry implements Comparable<Entry> {
 
         /**
          * Inverse ordering comparator
@@ -74,9 +60,7 @@ public final class TasksChooser {
 
             @Override
             public int compare(Entry o1, Entry o2) {
-
                 return o2.compareTo(o1);
-
             }
 
         };
@@ -99,6 +83,7 @@ public final class TasksChooser {
         }
 
         @Override
+        @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS")
         public boolean equals(Object obj) {
             if (this == obj) {
                 return true;
@@ -121,8 +106,7 @@ public final class TasksChooser {
         /**
          * {@inheritDoc}
          *
-         * Entries with less priority are <i>smaller</i>. On ties newer entries
-         * (bigger position) are <i>smaller</i>
+         * Entries with less priority are <i>smaller</i>. On ties newer entries (bigger position) are <i>smaller</i>
          */
         @Override
         public int compareTo(Entry o) {
