@@ -418,9 +418,11 @@ public class HttpAPIImplementation {
     public static void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-            Map<String, Object> data = MAPPER.readValue(
-                new BufferedInputStream(req.getInputStream()),
-                Map.class);
+            ByteArrayOutputStream oo = new ByteArrayOutputStream();
+            try (InputStream in = req.getInputStream()) {
+                copyStreams(in, oo);
+            }
+            Map<String, Object> data = MAPPER.readValue(oo.toString("utf-8"), Map.class);
             AuthenticatedUser auth_user = login(req);
             LOGGER.log(Level.FINE, "POST {0} broker={1}, user: {2}", new Object[]{data, broker, auth_user});
             String action = data.get("action") + "";
