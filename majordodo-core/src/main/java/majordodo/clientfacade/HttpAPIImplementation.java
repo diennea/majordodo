@@ -19,6 +19,7 @@
  */
 package majordodo.clientfacade;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -417,11 +418,7 @@ public class HttpAPIImplementation {
     public static void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
-            ByteArrayOutputStream oo = new ByteArrayOutputStream();
-            try (InputStream in = req.getInputStream()) {
-                copyStreams(in, oo);
-            }
-            Map<String, Object> data = MAPPER.readValue(oo.toString("utf-8"), Map.class);
+            Map<String, Object> data = MAPPER.readValue(req.getInputStream(), Map.class);
             AuthenticatedUser auth_user = login(req);
             LOGGER.log(Level.FINE, "POST {0} broker={1}, user: {2}", new Object[]{data, broker, auth_user});
             String action = data.get("action") + "";
