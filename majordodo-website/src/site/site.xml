@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project>
+    <custom>
+        <pageTitle>Majordodo - Diennea</pageTitle>
+        <navigationBar>
+            <items>
+                <item>
+                    <text>Guide</text>
+                    <href>https://majordodo.readme.io/</href>
+                </item>
+                <item>
+                    <text>Community</text>
+                    <href>http://lists.majordodo.org/mailman/listinfo</href>
+                </item>
+                <item>
+                    <text>Bugs</text>
+                    <href>https://dev.majordodo.org/jira/</href>
+                </item>
+                <item>
+                    <text>GitHub</text>
+                    <href>https://github.com/diennea/majordodo</href>
+                </item>
+                <item>
+                    <text>Download</text>
+                    <href>https://github.com/diennea/majordodo/releases</href>
+                </item>
+            </items>
+        </navigationBar>
+        
+        <hero>
+            <title>Majordodo</title>
+            <subtitle>A distributed resource manager</subtitle>
+            <brand>Diennea engineering</brand>
+        </hero>
+        
+        <changelog>
+            <projectNameForChangelog>Majordodo</projectNameForChangelog>
+            <releases>
+                <release>
+                    <version>0.7.0</version>
+                    <date>November 2016</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10302</href>
+                    <text>Majordodo 0.7.0 introduces SASL/Kerberos authentication</text>
+                </release>
+                <release>
+                    <version>0.6.0</version>
+                    <date>September 2016</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10300</href>
+                    <text>Majordodo 0.6.0 introduces Custom Resources</text>
+                </release>
+                <release>
+                    <version>0.5.0</version>
+                    <date>July 2016</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10208</href>
+                    <text>Majordodo 0.5.0 is a bugfix release</text>
+                </release>
+                <release>
+                    <version>0.4.0</version>
+                    <date>June 2016</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10205</href>
+                    <text>Majordodo 0.4.0 update BookKeeper to 4.4.0</text>
+                </release>
+                <release>
+                    <version>0.3.0</version>
+                    <date>February 2016</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10204</href>
+                    <text>Majordodo 0.3.0 is a bugfix release</text>
+                </release>
+                <release>
+                    <version>0.2.0</version>
+                    <date>December 2015</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10004</href>
+                    <text>Majordodo 0.2.0 introduces new utility class TaskSubmitter to serialize executors code</text>
+                </release>s
+                <release>
+                    <version>0.1.0</version>
+                    <date>November 2015</date>
+                    <href>https://dev.majordodo.org/jira/secure/ReleaseNote.jspa?projectId=10000&amp;version=10200</href>
+                    <text>Majordodo 0.1.0 is first public release</text>
+                </release>
+            </releases>
+        </changelog>
+    </custom>
+    
+    <skin>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>majordodo-website-skin</artifactId>
+        <version>${project.version}</version>
+    </skin>
+</project>
