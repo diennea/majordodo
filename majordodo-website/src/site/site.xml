@@ -84,7 +84,7 @@
     
     <skin>
         <groupId>${project.groupId}</groupId>
-        <artifactId>majordodo-website-skin</artifactId>
+        <artifactId>majordodo-site-skin</artifactId>
         <version>${project.version}</version>
     </skin>
 </project>
