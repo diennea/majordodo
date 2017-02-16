@@ -241,5 +241,12 @@
                 </plugins>              
             </build>
         </profile>
+        <profile>
+            <id>website</id>            
+            <modules>
+                <module>./majordodo-site-skin</module>
+                <module>./majordodo-website</module>
+            </modules>
+        </profile>
     </profiles>
 </project>
