@@ -87,6 +87,8 @@
                 <module>./majordodo-services</module>                        
                 <module>./majordodo-web-ui</module>
                 <module>./majordodo-embedded</module>                        
+                <module>./majordodo-site-skin</module>                        
+                <module>./majordodo-website</module>                        
             </modules>
             <distributionManagement>        
                 <repository>            
@@ -239,5 +241,5 @@
                 </plugins>              
             </build>
         </profile>
-    </profiles>    
+    </profiles>
 </project>
