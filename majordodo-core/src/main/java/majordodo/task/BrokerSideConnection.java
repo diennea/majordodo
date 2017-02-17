@@ -238,11 +238,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
 
                 Set<Long> actualRunningTasks = (Set<Long>) message.parameters.getOrDefault("actualRunningTasks", Collections.emptySet());
-                Integer maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
+                int maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
                 Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
                 List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
                 Map<String, Integer> resourceLimits = (Map<String, Integer>) message.parameters.getOrDefault("resources", Collections.emptyMap());
+                int maxThreadPerUserPerTaskTypePercent = (Integer) message.parameters.getOrDefault("maxThreadPerUserPerTaskTypePercent", 0);
 
                 this.clientId = _clientId;
                 this.location = (String) message.parameters.get("location");
@@ -274,7 +275,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 broker.getAcceptor().connectionAccepted(this);
                 if (isWorker) {
                     this.manager = broker.getWorkers().getWorkerManager(clientId);
-                    manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
+                    manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits, maxThreadPerUserPerTaskTypePercent);
                     manager.activateConnection(this);
                 }
                 answerConnectionAccepted(message);
@@ -325,6 +326,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 }
                 String processId = (String) message.parameters.getOrDefault("processId", "");
                 Integer maxThreads = (Integer) message.parameters.getOrDefault("maxThreads", 0);
+                int maxThreadPerUserPerTaskTypePercent = (Integer) message.parameters.getOrDefault("maxThreadPerUserPerTaskTypePercent", 0);
                 Map<String, Integer> maxThreadsByTaskType = (Map<String, Integer>) message.parameters.getOrDefault("maxThreadsByTaskType", Collections.emptyMap());
                 List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
@@ -340,7 +342,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     return;
                 }
                 this.manager = broker.getWorkers().getWorkerManager(clientId);
-                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits);
+                manager.applyConfiguration(maxThreads, maxThreadsByTaskType, groups, excludedGroups, resourceLimits, maxThreadPerUserPerTaskTypePercent);
                 break;
             case Message.TYPE_WORKER_SHUTDOWN:
                 if (!authenticated && requireAuthentication) {

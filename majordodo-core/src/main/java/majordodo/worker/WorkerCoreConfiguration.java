@@ -46,11 +46,13 @@ public class WorkerCoreConfiguration {
     private String codePoolsDirectory;
     private boolean enableCodePools;
     private int networkTimeout = 1000 * 60 * 10;
+    private int maxThreadPerUserPerTaskTypePercent;
 
     public WorkerCoreConfiguration() {
         maxThreadsByTaskType = new HashMap<>();
         maxThreadsByTaskType.put(Task.TASKTYPE_ANY, 1);
         maxThreads = 20;
+        maxThreadPerUserPerTaskTypePercent = 0;
         location = "unknown";
         resourcesLimits = new HashMap<>();
         groups = new ArrayList<>();
@@ -115,8 +117,7 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * Description of the location, usually is something like
-     * InetAddress.getLocalhost()...
+     * Description of the location, usually is something like InetAddress.getLocalhost()...
      *
      * @return
      */
@@ -142,8 +143,7 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * User groups, in order of priority. Group = 0 measns "any group except
-     * from excludedGroups"
+     * User groups, in order of priority. Group = 0 measns "any group except from excludedGroups"
      *
      * @return
      */
@@ -169,10 +169,10 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * Define a maximum number of tasks for resources.
-     * Each task may be 'use' a set of resources, which are idendified by strings. 
-     * Using this configuration you can limit the number of tasks which use the given resource on the worker.
-     * An example of such a resource is a datasource, which a limited number of connections, and you don't want this worker to accept tasks which would lead to waits due due lack of available connections in the pool
+     * Define a maximum number of tasks for resources. Each task may be 'use' a set of resources, which are idendified
+     * by strings. Using this configuration you can limit the number of tasks which use the given resource on the
+     * worker. An example of such a resource is a datasource, which a limited number of connections, and you don't want
+     * this worker to accept tasks which would lead to waits due due lack of available connections in the pool
      *
      * @return
      */
@@ -200,8 +200,7 @@ public class WorkerCoreConfiguration {
     private long maxPendingFinishedTaskNotifications = 10;
 
     /**
-     * Maximum number of tasks for which a "finished" notification is waiting in
-     * queues
+     * Maximum number of tasks for which a "finished" notification is waiting in queues
      *
      * @return
      */
@@ -227,8 +226,7 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * Maximum time to wait before issuing a ping (anche configuration change)
-     * to the broker
+     * Maximum time to wait before issuing a ping (anche configuration change) to the broker
      */
     private long maxKeepAliveTime = 10000;
 
@@ -241,8 +239,7 @@ public class WorkerCoreConfiguration {
     }
 
     /**
-     * Shared secret among all the brokers and workers. Provides minimum
-     * security level
+     * Shared secret among all the brokers and workers. Provides minimum security level
      */
     private String sharedSecret = "dodo";
 
@@ -260,6 +257,22 @@ public class WorkerCoreConfiguration {
 
     public void setNetworkTimeout(int networkTimeout) {
         this.networkTimeout = networkTimeout;
+    }
+
+    /**
+     * Maximum percent of tasks of the same type assigned for a single group of users to the worker.
+     *
+     * @return
+     */
+    public int getMaxThreadPerUserPerTaskTypePercent() {
+        return maxThreadPerUserPerTaskTypePercent;
+    }
+
+    /**
+     * Maximum percent of tasks of the same type assigned for a single group of users to the worker.
+     */
+    public void setMaxThreadPerUserPerTaskTypePercent(int maxThreadPerUserPerTaskTypePercent) {
+        this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
     }
 
 }

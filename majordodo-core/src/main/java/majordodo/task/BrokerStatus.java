@@ -37,9 +37,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import majordodo.clientfacade.CodePoolView;
-import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.TransactionStatus;
 import majordodo.codepools.CodePool;
+import majordodo.utils.IntCounter;
+import org.w3c.dom.css.Counter;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a copy of this status. The status is
@@ -478,6 +479,49 @@ public class BrokerStatus {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    Map<TaskTypeUser, IntCounter> collectMaxAvailableSpacePerUserOnWorker(String workerId,
+        int maxThreadPerUserPerTaskTypePercent,
+        Map<String, Integer> startingAvailableSpace) {
+        Map<TaskTypeUser, IntCounter> res = new HashMap<>();
+        lock.readLock().lock();
+        try {
+            this.tasks
+                .values()
+                .stream()
+                .filter(t -> t.getStatus() == Task.STATUS_RUNNING
+                && workerId.equals(t.getWorkerId()))
+                .forEach(t -> {
+                    String type = t.getType();
+                    Integer startingMaxAvailableSpacePerUser = startingAvailableSpace.get(type);
+                    if (startingMaxAvailableSpacePerUser == null) {
+                        startingMaxAvailableSpacePerUser = startingAvailableSpace.get(Task.TASKTYPE_ANY);
+                    }
+                    if (startingMaxAvailableSpacePerUser != null && startingMaxAvailableSpacePerUser > 0) {
+                        TaskTypeUser key = new TaskTypeUser(type, t.getUserId());
+                        IntCounter count = res.get(key);
+                        if (count == null) {
+                            int effectiveBoundForUser
+                                = (startingMaxAvailableSpacePerUser * maxThreadPerUserPerTaskTypePercent) / 100;
+                            if (effectiveBoundForUser <= 0) {
+                                effectiveBoundForUser = 1;
+                            }
+                            LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> for user " + t.getUserId() + " we are starting from " + startingMaxAvailableSpacePerUser + " - bound is " + effectiveBoundForUser);
+                            count = new IntCounter(effectiveBoundForUser);
+                            res.put(key, count);
+
+                        }
+                        LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> for user " + t.getUserId() + " found task " + t.getType() + " - id " + t.getTaskId());
+                        count.count--;
+                    }
+                });
+        } finally {
+            lock.readLock().unlock();
+        }
+        LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> " + res);
+        return res;
+
     }
 
     static final class ModificationResult {

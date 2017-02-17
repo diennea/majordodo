@@ -33,10 +33,10 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.utils.IntCounter;
+import majordodo.utils.IntCounter;
 
 /**
- * Heap of tasks to be executed. Tasks are not arranged in a queue but in an
- * heap.<br>
+ * Heap of tasks to be executed. Tasks are not arranged in a queue but in an heap.<br>
  * Important cases:<br>
  * <ul>
  * <li>A worker needs a task to be executed
@@ -330,8 +330,9 @@ public class TasksHeap {
     }
 
     public List<AssignedTask> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace,
-            Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters, Map<String, Integer> globalResourceLimits, ResourceUsageCounters globalResourceUsageCounters
-    ) {
+        Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters,
+        Map<String, Integer> globalResourceLimits, ResourceUsageCounters globalResourceUsageCounters,
+        Map<TaskTypeUser, IntCounter> availableSpacePerUser) {
         Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
         Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
         if (forAny != null) {
@@ -361,7 +362,20 @@ public class TasksHeap {
                     availableSpaceByTaskTaskId.put(typeId, entry.getValue());
                 }
             }
-            TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, availableResourcesCounters, max);
+            Map<TasksChooser.IntTaskTypeUser, IntCounter> _availableSpacePerUser = null;
+            if (availableSpacePerUser != null) {
+                _availableSpacePerUser = new HashMap<>(availableSpacePerUser.size());
+                for (Map.Entry<TaskTypeUser, IntCounter> entry : availableSpacePerUser.entrySet()) {
+                    TaskTypeUser taskTypeUser = entry.getKey();
+                    Integer typeId = taskTypesIds.get(taskTypeUser.taskType);
+                    if (typeId != null) {
+                        _availableSpacePerUser.put(new TasksChooser.IntTaskTypeUser(typeId, taskTypeUser.userId), entry.getValue());
+                    }
+                }
+            }
+
+            TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, availableResourcesCounters, max,
+                _availableSpacePerUser);
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {
@@ -398,9 +412,9 @@ public class TasksHeap {
     }
 
     private void computeAvailableResources(
-            Map<String, Integer> limitsConfigurations,
-            Map<Integer, IntCounter> availableResourcesCounters,
-            ResourceUsageCounters actualUsages) {
+        Map<String, Integer> limitsConfigurations,
+        Map<Integer, IntCounter> availableResourcesCounters,
+        ResourceUsageCounters actualUsages) {
         for (Map.Entry<String, Integer> limitFromConfiguration : limitsConfigurations.entrySet()) {
             String resourceId = limitFromConfiguration.getKey();
             int limitOnResource = limitFromConfiguration.getValue();

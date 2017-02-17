@@ -173,7 +173,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         lastPingSent = now;
         Channel _channel = channel;
         if (_channel != null) {
-            _channel.sendOneWayMessage(Message.WORKER_PING(processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads(), config.getResourcesLimits()),
+            _channel.sendOneWayMessage(Message.WORKER_PING(
+                processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads(), config.getResourcesLimits(),
+                config.getMaxThreadPerUserPerTaskTypePercent()),
                 (Message originalMessage, Throwable error) -> {
                     if (error != null) {
                         if (!stopped) {
@@ -520,6 +522,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     @Override
     public int getMaxThreads() {
         return config.getMaxThreads();
+    }
+
+    @Override
+    public int getMaxThreadPerUserPerTaskTypePercent() {
+        return config.getMaxThreadPerUserPerTaskTypePercent();
     }
 
     @Override

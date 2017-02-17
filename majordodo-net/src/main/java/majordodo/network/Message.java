@@ -115,7 +115,8 @@ public final class Message {
         List<Integer> groups,
         Set<Integer> excludedGroups,
         Map<String, Integer> resources,
-        String clientType) {
+        String clientType,
+        int maxThreadPerUserPerTaskTypePercent) {
         Map<String, Object> params = new HashMap<>();
         params.put("workerId", workerId);
         params.put("clientType", clientType);
@@ -128,6 +129,7 @@ public final class Message {
         params.put("groups", groups);
         params.put("resources", resources);
         params.put("excludedGroups", excludedGroups);
+        params.put("maxThreadPerUserPerTaskTypePercent", maxThreadPerUserPerTaskTypePercent);
         return new Message(processId, TYPE_CONNECTION_REQUEST, params);
     }
 
@@ -139,7 +141,10 @@ public final class Message {
         return new Message(processId, TYPE_TASK_FINISHED, params);
     }
 
-    public static Message WORKER_PING(String processId, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> maxThreadsByTaskType, int max, Map<String, Integer> resources) {
+    public static Message WORKER_PING(String processId, List<Integer> groups, Set<Integer> excludedGroups,
+        Map<String, Integer> maxThreadsByTaskType, int max, Map<String, Integer> resources,
+        int maxThreadPerUserPerTaskTypePercent
+    ) {
         Map<String, Object> params = new HashMap<>();
 
         params.put("processId", processId);
@@ -148,6 +153,7 @@ public final class Message {
         params.put("maxThreads", max);
         params.put("excludedGroups", excludedGroups);
         params.put("resources", resources);
+        params.put("maxThreadPerUserPerTaskTypePercent", maxThreadPerUserPerTaskTypePercent);
         return new Message(processId, TYPE_WORKER_PING, params);
     }
 

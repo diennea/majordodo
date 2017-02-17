@@ -78,7 +78,7 @@ public class TasksHeapLimitsTest {
         workerLimitsConfiguration.put(RESOURCE1, 5);
         workerLimitsConfiguration.put(RESOURCE2, 10);
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(5, taskids.size());
     }
 
@@ -98,7 +98,7 @@ public class TasksHeapLimitsTest {
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
         globalLimitsConfiguration.put(RESOURCE1, 5);
         globalLimitsConfiguration.put(RESOURCE2, 10);
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(5, taskids.size());
     }
 
@@ -120,7 +120,7 @@ public class TasksHeapLimitsTest {
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
         globalLimitsConfiguration.put(RESOURCE1, 7);
         globalLimitsConfiguration.put(RESOURCE2, 10);
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(5, taskids.size());
     }
 
@@ -142,7 +142,7 @@ public class TasksHeapLimitsTest {
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
         globalLimitsConfiguration.put(RESOURCE1, 5);
         globalLimitsConfiguration.put(RESOURCE2, 10);
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(5, taskids.size());
     }
 
@@ -166,10 +166,10 @@ public class TasksHeapLimitsTest {
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
         globalLimitsConfiguration.put(RESOURCE1, 5);
         globalLimitsConfiguration.put(RESOURCE2, 10);
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(2, taskids.size());
     }
-    
+
     @Test
     public void test_used_resource_2() throws Exception {
         TasksHeap instance = new TasksHeap(10000, DEFAULT_FUNCTION);
@@ -190,8 +190,35 @@ public class TasksHeapLimitsTest {
         Map<String, Integer> globalLimitsConfiguration = new HashMap<>();
         globalLimitsConfiguration.put(RESOURCE1, 10);
         globalLimitsConfiguration.put(RESOURCE2, 10);
-        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters);
+        List<AssignedTask> taskids = instance.takeTasks(1000, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(),
+            availableSpace, workerLimitsConfiguration, workerCounters, globalLimitsConfiguration, globalCounters, null);
         assertEquals(0, taskids.size());
+    }
+
+    @Test
+    public void test_limit_on_user() throws Exception {
+        TasksHeap instance = new TasksHeap(10000, DEFAULT_FUNCTION);
+        Map< String, Integer> availableSpace = new HashMap<>();
+        availableSpace.put(TASKTYPE_MYTASK1, 10);
+        availableSpace.put(TASKTYPE_MYTASK2, 20);
+        AtomicLong newTaskId = new AtomicLong(987);
+        for (int i = 0; i < 1000; i++) {
+            instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
+            if (i % 2 == 0) {
+                instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK2, USERID1);
+            }
+        }
+
+        Map<TaskTypeUser, IntCounter> availableSpacePerUser = new HashMap<>();
+        availableSpacePerUser.put(new TaskTypeUser(TASKTYPE_MYTASK1, USERID1), new IntCounter(5));
+        availableSpacePerUser.put(new TaskTypeUser(TASKTYPE_MYTASK2, USERID1), new IntCounter(5));
+        List<AssignedTask> taskids = instance.takeTasks(1000,
+            Arrays.asList(Task.GROUP_ANY),
+            Collections.emptySet(), availableSpace, Collections.emptyMap(),
+            new ResourceUsageCounters(),
+            Collections.emptyMap(),
+            new ResourceUsageCounters(), availableSpacePerUser);
+        assertEquals(10, taskids.size());
     }
 
 }

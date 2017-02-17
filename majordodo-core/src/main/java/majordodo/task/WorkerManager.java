@@ -48,6 +48,7 @@ public class WorkerManager {
     private final ResourceUsageCounters resourceUsageCounters = new ResourceUsageCounters();
 
     private int maxThreads = 0;
+    private int maxThreadPerUserPerTaskTypePercent = 0;
     private Map<String, Integer> maxThreadsByTaskType = Collections.emptyMap();
     private List<Integer> groups = Collections.emptyList();
     private Set<Integer> excludedGroups = Collections.emptySet();
@@ -68,9 +69,11 @@ public class WorkerManager {
         Map<String, Integer> maxThreadsByTaskType,
         List<Integer> groups,
         Set<Integer> excludedGroups,
-        Map<String, Integer> resourceLimis) {
+        Map<String, Integer> resourceLimis,
+        int maxThreadPerUserPerTaskTypePercent) {
         LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
+        this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
         for (Iterator<Map.Entry<String, Integer>> it = maxThreadsByTaskTypeNoZero.entrySet().iterator(); it.hasNext();) {
             Map.Entry<String, Integer> entry = it.next();
@@ -90,12 +93,13 @@ public class WorkerManager {
         try {
             Map<String, Integer> availableSpace = new HashMap<>(this.maxThreadsByTaskType);
             int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
-            LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1} maxThreadsByTaskType {6} ",
-                new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType});
+            LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1}, maxThreadsByTaskType {6}, maxThreadPerUserPerTaskTypePercent {7} ",
+                new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType, maxThreadPerUserPerTaskTypePercent});
             max = max - actuallyRunning;
             List<AssignedTask> tasks;
             if (max > 0 && !availableSpace.isEmpty()) {
-                tasks = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId, resourceLimis, resourceUsageCounters);
+                tasks = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId,
+                    resourceLimis, resourceUsageCounters, maxThreadPerUserPerTaskTypePercent);
                 tasks.forEach(this::taskAssigned);
             } else {
                 tasks = Collections.emptyList();

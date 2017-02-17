@@ -48,6 +48,8 @@ import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
 import majordodo.clientfacade.TransactionsStatusView;
 import majordodo.clientfacade.TransactionStatus;
+import majordodo.task.TaskTypeUser;
+import majordodo.utils.IntCounter;
 
 /**
  * Global status of the broker
@@ -343,14 +345,24 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         return log.isWritable();
     }
 
-    public List<AssignedTask> assignTasksToWorker(int max, Map<String, Integer> availableSpace, List<Integer> groups, Set<Integer> excludedGroups, String workerId, Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters) throws LogNotAvailableException {
+    public List<AssignedTask> assignTasksToWorker(int max, Map<String, Integer> availableSpace,
+        List<Integer> groups, Set<Integer> excludedGroups, String workerId, Map<String, Integer> workerResourceLimits,
+        ResourceUsageCounters workerResourceUsageCounters, int maxThreadPerUserPerTaskTypePercent) throws LogNotAvailableException {
         if (!started) {
             return Collections.emptyList();
+        }
+        Map<TaskTypeUser, IntCounter> availableSpacePerUser;
+        if (maxThreadPerUserPerTaskTypePercent > 0) {
+            availableSpacePerUser = this.brokerStatus
+                .collectMaxAvailableSpacePerUserOnWorker(workerId, maxThreadPerUserPerTaskTypePercent, availableSpace);
+        } else {
+            availableSpacePerUser = null;
         }
         Map<String, Integer> globalResourceLimits = globalResourceLimitsConfiguration.getGlobalResourceLimits();
         long start = System.currentTimeMillis();
         List<AssignedTask> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace,
-            workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters
+            workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
+            availableSpacePerUser
         );
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();

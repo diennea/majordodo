@@ -348,6 +348,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         }
 
         @Override
+        public int getMaxThreadPerUserPerTaskTypePercent() {
+            return 0;
+        }
+
+        @Override
         public String getClientType() {
             return CLIENT_TYPE_BROKER;
         }
@@ -673,7 +678,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private void deleteOldSnapshots(Path snapshotfilename) throws LogNotAvailableException {
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String other_filename = path.getFileName()+"";
+                String other_filename = path.getFileName() + "";
                 if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
                     try {
@@ -809,7 +814,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         LogSequenceNumber latest = null;
         try (DirectoryStream<Path> allfiles = Files.newDirectoryStream(snapshotsDirectory)) {
             for (Path path : allfiles) {
-                String filename = path.getFileName()+"";
+                String filename = path.getFileName() + "";
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
                     LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
                     try {

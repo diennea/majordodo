@@ -67,7 +67,10 @@ public class JVMBrokerLocator implements BrokerLocator {
             throw new BrokerRejectedConnectionException("auth failed:" + err, err);
         }
 
-        Message acceptMessage = Message.CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(), workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(), workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits(), workerInfo.getClientType());
+        Message acceptMessage = Message.CONNECTION_REQUEST(workerInfo.getWorkerId(), workerInfo.getProcessId(),
+            workerInfo.getLocation(), workerInfo.getSharedSecret(), workerInfo.getRunningTaskIds(), workerInfo.getMaxThreads(),
+            workerInfo.getMaxThreadsByTaskType(), workerInfo.getGroups(), workerInfo.getExcludedGroups(), workerInfo.getResourceLimits(),
+            workerInfo.getClientType(), workerInfo.getMaxThreadPerUserPerTaskTypePercent());
         try {
             Message connectionResponse = workerSide.sendMessageWithReply(acceptMessage, 10000);
             if (connectionResponse.type == Message.TYPE_ACK) {

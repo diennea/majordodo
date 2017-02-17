@@ -64,7 +64,7 @@ public class TasksHeapTest {
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
         assertEquals(1, taskids.size());
         assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
@@ -76,7 +76,7 @@ public class TasksHeapTest {
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
         assertEquals(1, taskids.size());
         assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
@@ -88,7 +88,7 @@ public class TasksHeapTest {
         availableSpace.put(Task.TASKTYPE_ANY, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
         assertEquals(1, taskids.size());
         assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
@@ -100,7 +100,7 @@ public class TasksHeapTest {
         availableSpace.put(TASKTYPE_MYTASK1, 1);
         AtomicLong newTaskId = new AtomicLong(987);
         instance.insertTask(newTaskId.incrementAndGet(), TASKTYPE_MYTASK1, USERID1);
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
         assertEquals(1, taskids.size());
         assertEquals(newTaskId.get(), taskids.get(0).taskid);
     }
@@ -118,7 +118,7 @@ public class TasksHeapTest {
         instance.insertTask(task2, TASKTYPE_MYTASK2, USERID1);
 
         {
-            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
             assertEquals(2, taskids.size());
             assertEquals(task1, taskids.get(0).taskid);
             assertEquals(task2, taskids.get(1).taskid);
@@ -141,14 +141,14 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID1);
 
         {
-            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
             assertEquals(2, taskids.size());
             assertEquals(task1, taskids.get(0).taskid);
             assertEquals(task2, taskids.get(1).taskid);
         }
 
         {
-            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+            List<AssignedTask> taskids = instance.takeTasks(2, Arrays.asList(GROUPID1), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
             assertEquals(1, taskids.size());
             assertEquals(task3, taskids.get(0).taskid);
         }
@@ -170,7 +170,7 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID2);
 
         {
-            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
             assertEquals(1, taskids.size());
             assertEquals(task3, taskids.get(0).taskid);
         }
@@ -192,7 +192,7 @@ public class TasksHeapTest {
         instance.insertTask(task3, TASKTYPE_MYTASK2, USERID2);
 
         {
-            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters());
+            List<AssignedTask> taskids = instance.takeTasks(3, Arrays.asList(Task.GROUP_ANY), new HashSet<>(Arrays.asList(GROUPID1)), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
             assertEquals(1, taskids.size());
             assertEquals(task3, taskids.get(0).taskid);
         }

@@ -61,4 +61,6 @@ public interface ConnectionRequestInfo {
     public Map<String, Integer> getResourceLimits();
 
     public String getClientType();
+
+    public int getMaxThreadPerUserPerTaskTypePercent();
 }

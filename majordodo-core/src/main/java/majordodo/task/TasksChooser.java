@@ -25,9 +25,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import majordodo.utils.DiscardingBoundedPriorityQueue;
@@ -50,6 +52,53 @@ public final class TasksChooser {
     private final Map<Integer, PriorityQueue<Entry>> bestbyTasktype = new HashMap<>();
     private final PriorityQueue<Entry> matchAllTypesQueue;
     private final Integer availableSpaceForAnyTask;
+    private final Map<IntTaskTypeUser, IntCounter> availableSpacePerUser;
+
+    static final class IntTaskTypeUser {
+
+        final int tasktype;
+        final String userid;
+
+        public IntTaskTypeUser(int tasktype, String userid) {
+            this.tasktype = tasktype;
+            this.userid = userid;
+        }
+
+        @Override
+        public String toString() {
+            return "IntTaskTypeUser{" + "tasktype=" + tasktype + ", userid=" + userid + '}';
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 97 * hash + this.tasktype;
+            hash = 97 * hash + Objects.hashCode(this.userid);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final IntTaskTypeUser other = (IntTaskTypeUser) obj;
+            if (this.tasktype != other.tasktype) {
+                return false;
+            }
+            if (!Objects.equals(this.userid, other.userid)) {
+                return false;
+            }
+            return true;
+        }
+
+    }
 
     static final class Entry implements Comparable<Entry> {
 
@@ -124,7 +173,10 @@ public final class TasksChooser {
 
     }
 
-    TasksChooser(List<Integer> groups, Set<Integer> excludedGroups, Map<Integer, Integer> availableSpace, Map<Integer, IntCounter> availableResourcesCounters, int max) {
+    TasksChooser(List<Integer> groups, Set<Integer> excludedGroups, Map<Integer, Integer> availableSpace,
+        Map<Integer, IntCounter> availableResourcesCounters, int max,
+        Map<IntTaskTypeUser, IntCounter> availableSpacePerUser) {
+        this.availableSpacePerUser = availableSpacePerUser;
         this.availableSpace = new HashMap<>(availableSpace);
         this.groups = groups;
         this.availableResourcesCounters = availableResourcesCounters;
@@ -138,7 +190,7 @@ public final class TasksChooser {
          */
         availableSpace.entrySet().stream().forEach((entry) -> {
             if (entry.getKey() > 0) {
-                bestbyTasktype.put(entry.getKey(), new DiscardingBoundedPriorityQueue<Entry>(entry.getValue()));
+                bestbyTasktype.put(entry.getKey(), new DiscardingBoundedPriorityQueue<>(entry.getValue()));
             }
         });
 
@@ -149,14 +201,14 @@ public final class TasksChooser {
             this.priorityByGroup.put(idgroup, priority--);
         }
         if (availableSpaceForAnyTask != null) {
-            matchAllTypesQueue = new DiscardingBoundedPriorityQueue<Entry>(availableSpaceForAnyTask);
+            matchAllTypesQueue = new DiscardingBoundedPriorityQueue<>(availableSpaceForAnyTask);
         } else {
             matchAllTypesQueue = null;
         }
 
     }
 
-    public List<Entry> getChoosenTasks() {
+    List<Entry> getChoosenTasks() {
 
         final List<Entry> result = new ArrayList<>();
 
@@ -227,6 +279,16 @@ public final class TasksChooser {
             }
 
             if (availableSpaceForTaskType != null) {
+
+                if (availableSpacePerUser != null) {
+                    IntCounter counterForUser = availableSpacePerUser.get(new IntTaskTypeUser(tasktype, entry.userid));
+                    if (counterForUser != null) {
+                        if (--counterForUser.count < 0) {
+                            LOGGER.log(Level.SEVERE, "user " + entry.userid + " reached limit on tasktype " + tasktype);
+                            return;
+                        }
+                    }
+                }
 
                 Queue<Entry> queue;
                 Queue<Entry> bytasktype = bestbyTasktype.get(tasktype);
