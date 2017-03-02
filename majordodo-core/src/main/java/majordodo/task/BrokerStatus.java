@@ -519,7 +519,6 @@ public class BrokerStatus {
         } finally {
             lock.readLock().unlock();
         }
-        LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> " + res);
         return res;
 
     }
