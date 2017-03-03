@@ -507,12 +507,12 @@ public class BrokerStatus {
                             if (effectiveBoundForUser <= 0) {
                                 effectiveBoundForUser = 1;
                             }
-                            LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> for user " + t.getUserId() + " we are starting from " + startingMaxAvailableSpacePerUser + " - bound is " + effectiveBoundForUser);
+                            LOGGER.log(Level.FINEST, "collectMaxAvailableSpacePerUserOnWorker {0} -> for user {1} we are starting from {2} - bound is {3}", new Object[]{workerId, t.getUserId(), startingMaxAvailableSpacePerUser, effectiveBoundForUser});
                             count = new IntCounter(effectiveBoundForUser);
                             res.put(key, count);
 
                         }
-                        LOGGER.log(Level.SEVERE, "collectMaxAvailableSpacePerUserOnWorker " + workerId + " -> for user " + t.getUserId() + " found task " + t.getType() + " - id " + t.getTaskId());
+                        LOGGER.log(Level.FINEST, "collectMaxAvailableSpacePerUserOnWorker {0} -> for user {1} found task {2} - id {3}", new Object[]{workerId, t.getUserId(), t.getType(), t.getTaskId()});
                         count.count--;
                     }
                 });
