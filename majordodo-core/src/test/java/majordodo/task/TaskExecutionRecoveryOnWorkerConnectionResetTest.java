@@ -132,7 +132,7 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        System.out.println("SETUPWORKDIR:" + workDir);
+        
         long taskId;
         String workerId = "abc";
         String taskParams = "param";

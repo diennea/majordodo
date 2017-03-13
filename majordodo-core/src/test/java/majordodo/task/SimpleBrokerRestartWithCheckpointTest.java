@@ -134,7 +134,7 @@ public class SimpleBrokerRestartWithCheckpointTest {
         Broker.PERFORM_CHECKPOINT_AT_LEADERSHIP = false;
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        System.out.println("SETUPWORKDIR:" + workDir);
+        
         long taskId;
         String workerId = "abc";
         String taskParams = "param";

@@ -76,7 +76,8 @@ public class TasksHeapBenchTest {
             Map<String, Integer> availableSpace = new HashMap<>();
             availableSpace.put(TASKTYPE_MYTASK1, 1);
             for (int i = 0; i < 1000; i++) {
-                instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
+                instance.takeTasks(1,
+                    Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null, 0);
 //                instance.scan(entry -> {
 //                    System.out.println("entry:" + entry);
 //                });

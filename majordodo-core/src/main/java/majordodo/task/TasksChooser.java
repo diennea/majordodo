@@ -53,6 +53,7 @@ public final class TasksChooser {
     private final PriorityQueue<Entry> matchAllTypesQueue;
     private final Integer availableSpaceForAnyTask;
     private final Map<IntTaskTypeUser, IntCounter> availableSpacePerUser;
+    private final int maxThreadPerUserPerTaskTypePercent;
 
     static final class IntTaskTypeUser {
 
@@ -175,13 +176,15 @@ public final class TasksChooser {
 
     TasksChooser(List<Integer> groups, Set<Integer> excludedGroups, Map<Integer, Integer> availableSpace,
         Map<Integer, IntCounter> availableResourcesCounters, int max,
-        Map<IntTaskTypeUser, IntCounter> availableSpacePerUser) {
+        Map<IntTaskTypeUser, IntCounter> availableSpacePerUser,
+        int maxThreadPerUserPerTaskTypePercent) {
         this.availableSpacePerUser = availableSpacePerUser;
         this.availableSpace = new HashMap<>(availableSpace);
         this.groups = groups;
         this.availableResourcesCounters = availableResourcesCounters;
         this.excludedGroups = excludedGroups;
         this.max = max;
+        this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
 
         /*
 		 * Bonded priority queues will be used. each add will request log(n)
@@ -282,12 +285,15 @@ public final class TasksChooser {
 
                 if (availableSpacePerUser != null) {
                     IntCounter counterForUser = availableSpacePerUser.get(new IntTaskTypeUser(tasktype, entry.userid));
-                    if (counterForUser != null) {
-                        if (--counterForUser.count < 0) {
-                            LOGGER.log(Level.SEVERE, "user " + entry.userid + " reached limit on tasktype " + tasktype);
-                            return;
-                        }
+                    if (counterForUser == null) {
+                        int limitForUserWithoutAnyTaskRunning = (availableSpaceForTaskType * maxThreadPerUserPerTaskTypePercent) / 100;
+                        counterForUser = new IntCounter(limitForUserWithoutAnyTaskRunning);
+                        availableSpacePerUser.put(new IntTaskTypeUser(tasktype, entry.userid), counterForUser);
                     }
+                    if (--counterForUser.count < 0) {
+                        return;
+                    }
+
                 }
 
                 Queue<Entry> queue;

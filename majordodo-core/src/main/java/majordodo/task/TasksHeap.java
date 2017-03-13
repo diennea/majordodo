@@ -332,7 +332,7 @@ public class TasksHeap {
     public List<AssignedTask> takeTasks(int max, List<Integer> groups, Set<Integer> excludedGroups, Map<String, Integer> availableSpace,
         Map<String, Integer> workerResourceLimits, ResourceUsageCounters workerResourceUsageCounters,
         Map<String, Integer> globalResourceLimits, ResourceUsageCounters globalResourceUsageCounters,
-        Map<TaskTypeUser, IntCounter> availableSpacePerUser) {
+        Map<TaskTypeUser, IntCounter> availableSpacePerUser, int maxThreadPerUserPerTaskTypePercent) {
         Map<Integer, Integer> availableSpaceByTaskTaskId = new HashMap<>();
         Integer forAny = availableSpace.get(Task.TASKTYPE_ANY);
         if (forAny != null) {
@@ -363,6 +363,7 @@ public class TasksHeap {
                 }
             }
             Map<TasksChooser.IntTaskTypeUser, IntCounter> _availableSpacePerUser = null;
+
             if (availableSpacePerUser != null) {
                 _availableSpacePerUser = new HashMap<>(availableSpacePerUser.size());
                 for (Map.Entry<TaskTypeUser, IntCounter> entry : availableSpacePerUser.entrySet()) {
@@ -375,7 +376,7 @@ public class TasksHeap {
             }
 
             TasksChooser chooser = new TasksChooser(groups, excludedGroups, availableSpaceByTaskTaskId, availableResourcesCounters, max,
-                _availableSpacePerUser);
+                _availableSpacePerUser, maxThreadPerUserPerTaskTypePercent);
             for (int i = minValidPosition; i < actualsize; i++) {
                 TaskEntry entry = this.actuallist[i];
                 if (entry.taskid > 0) {

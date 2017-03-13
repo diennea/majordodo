@@ -58,7 +58,7 @@ public abstract class BasicBrokerEnv {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        System.out.println("SETUPWORKDIR:" + workDir);
+        
     }
 
 //    @After

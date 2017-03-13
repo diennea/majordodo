@@ -362,7 +362,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         long start = System.currentTimeMillis();
         List<AssignedTask> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace,
             workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
-            availableSpacePerUser
+            availableSpacePerUser, maxThreadPerUserPerTaskTypePercent
         );
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();

@@ -77,7 +77,8 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task2, entries.get(1).taskid);
 
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY),
+            Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null, 0);
         assertEquals(1, taskids.size());
         assertEquals(task1, taskids.get(0).taskid);
 
@@ -136,7 +137,8 @@ public class TasksHeapCompactionTest {
         assertEquals(task5, entries.get(4).taskid);
         assertEquals(task6, entries.get(5).taskid);
 
-        List<AssignedTask> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
+        List<AssignedTask> taskids = instance.takeTasks(20, Arrays.asList(Task.GROUP_ANY),
+            Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null, 0);
         assertEquals(3, taskids.size());
         assertEquals(task2, taskids.get(0).taskid);
         assertEquals(task4, taskids.get(1).taskid);
@@ -191,7 +193,8 @@ public class TasksHeapCompactionTest {
         assertEquals(task1, entries.get(0).taskid);
         assertEquals(task2, entries.get(1).taskid);
 
-        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(), availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null);
+        List<AssignedTask> taskids = instance.takeTasks(1, Arrays.asList(Task.GROUP_ANY), Collections.emptySet(),
+            availableSpace, Collections.emptyMap(), new ResourceUsageCounters(), Collections.emptyMap(), new ResourceUsageCounters(), null, 0);
         assertEquals(1, taskids.size());
         assertEquals(task1, taskids.get(0).taskid);
 

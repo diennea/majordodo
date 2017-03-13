@@ -129,7 +129,7 @@ public class BrokerRestartDuringTaskExecutionTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        System.out.println("SETUPWORKDIR:" + workDir);
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -156,12 +156,12 @@ public class BrokerRestartDuringTaskExecutionTest {
             try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
                 core.start();
                 core.setExecutorFactory(
-                        (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                    (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                     @Override
                     public String executeTask(Map<String, Object> parameters) throws Exception {
 //                                System.out.println("executeTask: " + parameters);
                         taskStartedLatch.countDown();
-                        newBrokerStartedLatch.await(10, TimeUnit.SECONDS);
+                        newBrokerStartedLatch.await(1, TimeUnit.MINUTES);
                         taskFinishedLatch.countDown();
                         return "theresult";
                     }
@@ -180,7 +180,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                         server.start();
 
                         // wait the worker to startAsWritable execution
-                        taskStartedLatch.await(10, TimeUnit.SECONDS);
+                        taskStartedLatch.await(1, TimeUnit.MINUTES);
                     }
                     // now the broker will die
                 }
@@ -202,6 +202,8 @@ public class BrokerRestartDuringTaskExecutionTest {
                             if (task.getStatus() == Task.STATUS_FINISHED) {
                                 ok = true;
                                 break;
+                            } else {
+                                System.out.println("task status: " + task.getStatus() + " result:" + task.getResult());
                             }
                             Thread.sleep(1000);
                         }

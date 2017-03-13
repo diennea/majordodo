@@ -71,7 +71,7 @@ public class WorkerManager {
         Set<Integer> excludedGroups,
         Map<String, Integer> resourceLimis,
         int maxThreadPerUserPerTaskTypePercent) {
-        LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} ", new Object[]{workerId, maxThreads});
+        LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} maxThreadPerUserPerTaskTypePercent {2} ", new Object[]{workerId, maxThreads});
         this.maxThreads = maxThreads;
         this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);

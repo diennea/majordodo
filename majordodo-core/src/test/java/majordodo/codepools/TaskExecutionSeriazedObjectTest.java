@@ -146,7 +146,7 @@ public class TaskExecutionSeriazedObjectTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        System.out.println("SETUPWORKDIR:" + workDir);
+        
         long taskId;
         String workerId = "abc";
         MyExecutorClass executorToBeSerialized = new MyExecutorClass();
