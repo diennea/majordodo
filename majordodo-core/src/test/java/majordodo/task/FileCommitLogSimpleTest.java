@@ -24,7 +24,6 @@ import majordodo.task.FileCommitLog;
 import majordodo.task.LogSequenceNumber;
 import majordodo.task.Task;
 import majordodo.task.StatusEdit;
-import com.sun.javafx.scene.control.skin.VirtualFlow;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
