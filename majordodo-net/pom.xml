@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.majordodo</groupId>
-        <version>0.9.0</version>
+        <version>0.10.0-SNAPSHOT</version>
         <relativePath>..</relativePath>
         <artifactId>majordodo-parent</artifactId>
     </parent>
@@ -39,14 +39,27 @@
             <version>${libs.netty4}</version>
         </dependency>
         <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <version>${libs.netty4}</version>
+            <scope>compile</scope>
+            <classifier>linux-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${libs.netty4.tcnative}</version>
+            <scope>compile</scope>            
+        </dependency>
+        <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>
-            <version>1.9.13</version>            
+            <version>${libs.jackson}</version>            
         </dependency>
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
-            <version>3.4.9</version>
+            <version>${libs.zookeeper}</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -74,6 +87,9 @@
     </dependencies>    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <libs.netty4>4.0.33.Final</libs.netty4>
+        <libs.netty4>4.1.9.Final</libs.netty4>
+        <libs.netty4.tcnative>2.0.0.Final</libs.netty4.tcnative>
+        <libs.jackson>1.9.13</libs.jackson>
+        <libs.zookeeper>3.4.9</libs.zookeeper>
     </properties>
 </project>

@@ -26,6 +26,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -33,6 +35,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,6 +57,7 @@ public class NettyConnector implements AutoCloseable {
     private SslContext sslCtx;
     private boolean ssl;
     private boolean sslUnsecure = true;
+    private final ChannelEventListener receiver;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
 
     public boolean isSslUnsecure() {
@@ -84,26 +88,37 @@ public class NettyConnector implements AutoCloseable {
         this.ssl = ssl;
     }
 
-    private ChannelEventListener receiver;
-
     public NettyConnector(ChannelEventListener receiver) {
         this.receiver = receiver;
     }
 
     public NettyChannel connect() throws Exception {
+        boolean useOpenSSL = NetworkUtils.isOpenSslAvailable();
         if (ssl) {
             if (sslUnsecure) {
-                this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                this.sslCtx = SslContextBuilder
+                    .forClient()
+                    .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                    .build();
             } else {
-                this.sslCtx = SslContextBuilder.forClient().build();
+                this.sslCtx = SslContextBuilder
+                    .forClient()
+                    .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                    .build();
             }
         }
-        group = new NioEventLoopGroup();
-        LOG.log(Level.SEVERE, "Trying to connect to broker at " + host + ":" + port + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure);
+        if (NetworkUtils.isEnableEpollNative()) {
+            group = new EpollEventLoopGroup();
+        } else {
+            group = new NioEventLoopGroup();
+        }
+        LOG.log(Level.INFO, "Trying to connect to broker at " + host + ":" + port
+            + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure + " openSsl:" + useOpenSSL);
 
         Bootstrap b = new Bootstrap();
         b.group(group)
-            .channel(NioSocketChannel.class)
+            .channel(NetworkUtils.isEnableEpollNative() ? EpollSocketChannel.class : NioSocketChannel.class)
             .option(ChannelOption.TCP_NODELAY, true)
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override

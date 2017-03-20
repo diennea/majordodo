@@ -33,7 +33,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static final String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
     public static final String KEY_HOST = "broker.host";
     public static final String KEY_PORT = "broker.port";
-    public static final String KEY_SSL = "broker.ssl";
+    public static final String KEY_SSL = "broker.ssl";    
     public static final String KEY_CLIENTAPIURL = "broker.clientapiurl";
     public static final String KEY_BROKERID = "broker.id";
 

@@ -26,14 +26,16 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import io.netty.handler.ssl.JdkSslServerContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.io.File;
 import java.util.List;
@@ -142,57 +144,71 @@ public class NettyChannelAcceptor implements AutoCloseable {
     }
 
     public void start() throws Exception {
+        boolean useOpenSSL = NetworkUtils.isOpenSslAvailable();
         if (ssl) {
 
             if (sslCertFile == null) {
-                LOGGER.log(Level.SEVERE, "start SSL with self-signed auto-generated certificate");
+                LOGGER.log(Level.SEVERE, "start SSL with self-signed auto-generated certificate, useOpenSSL:" + useOpenSSL);
                 if (sslCiphers != null) {
                     LOGGER.log(Level.SEVERE, "required sslCiphers " + sslCiphers);
                 }
                 SelfSignedCertificate ssc = new SelfSignedCertificate();
                 try {
-                    sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).ciphers(sslCiphers).build();
+                    sslCtx = SslContextBuilder
+                        .forServer(ssc.certificate(), ssc.privateKey())
+                        .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                        .ciphers(sslCiphers).build();
                 } finally {
                     ssc.delete();
                 }
             } else {
-                LOGGER.log(Level.SEVERE, "start SSL with certificate " + sslCertFile.getAbsolutePath() + " chain file " + sslCertChainFile.getAbsolutePath());
+                LOGGER.log(Level.SEVERE, "start SSL with certificate " + sslCertFile.getAbsolutePath() + " chain file " + sslCertChainFile.getAbsolutePath() + " , useOpenSSL:" + useOpenSSL);
                 if (sslCiphers != null) {
                     LOGGER.log(Level.SEVERE, "required sslCiphers " + sslCiphers);
                 }
-                sslCtx = SslContextBuilder.forServer(sslCertChainFile, sslCertFile, sslCertPassword).ciphers(sslCiphers).build();
+                sslCtx = SslContextBuilder
+                    .forServer(sslCertChainFile, sslCertFile, sslCertPassword)
+                    .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                    .ciphers(sslCiphers)
+                    .build();
             }
 
         }
-        bossGroup = new NioEventLoopGroup(workerThreads);
-        workerGroup = new NioEventLoopGroup(workerThreads);
+        if (NetworkUtils.isEnableEpollNative()) {
+            bossGroup = new EpollEventLoopGroup(workerThreads);
+            workerGroup = new EpollEventLoopGroup(workerThreads);
+            LOGGER.log(Level.INFO, "Using netty-native-epoll network type");
+        } else {
+            bossGroup = new NioEventLoopGroup(workerThreads);
+            workerGroup = new NioEventLoopGroup(workerThreads);
+        }
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup)
-                .channel(NioServerSocketChannel.class)
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        NettyChannel session = new NettyChannel("client", ch, callbackExecutor, null);
-                        if (acceptor != null) {
-                            acceptor.createConnection(session);
-                        }
+            .channel(NetworkUtils.isEnableEpollNative() ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
+            .childHandler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                public void initChannel(SocketChannel ch) throws Exception {
+                    NettyChannel session = new NettyChannel("client", ch, callbackExecutor, null);
+                    if (acceptor != null) {
+                        acceptor.createConnection(session);
+                    }
 
 //                        ch.pipeline().addLast(new LoggingHandler());
-                        // Add SSL handler first to encrypt and decrypt everything.
-                        if (ssl) {
-                            ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
-                        }
-
-                        ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
-                        ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-//
-                        ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
-                        ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
-                        ch.pipeline().addLast(new InboundMessageHandler(session));
+                    // Add SSL handler first to encrypt and decrypt everything.
+                    if (ssl) {
+                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
                     }
-                })
-                .option(ChannelOption.SO_BACKLOG, 128)
-                .childOption(ChannelOption.SO_KEEPALIVE, true);
+
+                    ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
+                    ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+//
+                    ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
+                    ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
+                    ch.pipeline().addLast(new InboundMessageHandler(session));
+                }
+            })
+            .option(ChannelOption.SO_BACKLOG, 128)
+            .childOption(ChannelOption.SO_KEEPALIVE, true);
 
         ChannelFuture f = b.bind(host, port).sync(); // (7)
         this.channel = f.channel();

@@ -89,7 +89,6 @@ public class EmbeddedWorker {
                 break;
             case EmbeddedWorkerConfiguration.MODE_SIGLESERVER:
                 brokerLocator = new NettyBrokerLocator(host, port, ssl);
-
                 ((NettyBrokerLocator) brokerLocator).setSslUnsecure(sslUnsecure);
                 break;
             case EmbeddedWorkerConfiguration.MODE_CLUSTERED:

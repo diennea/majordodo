@@ -167,6 +167,7 @@ public class BrokerMain implements AutoCloseable {
         String host = configuration.getProperty("broker.host", "127.0.0.1");
         int port = Integer.parseInt(configuration.getProperty("broker.port", "7363"));
         boolean ssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl", "true"));
+        boolean sslenableopenssl = Boolean.parseBoolean(configuration.getProperty("broker.ssl.enableopenssl", "true"));
         String certfile = configuration.getProperty("broker.ssl.certificatefile", "");
         String certchainfile = configuration.getProperty("broker.ssl.certificatechainfile", "");
         String certpassword = configuration.getProperty("broker.ssl.certificatefilepassword", null);
