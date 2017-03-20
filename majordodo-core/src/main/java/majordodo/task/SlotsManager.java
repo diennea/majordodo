@@ -45,8 +45,8 @@ class SlotsManager {
         return actualSlots.putIfAbsent(slot, taskId) == null;
     }
 
-    public void releaseSlot(String slot) {
-        actualSlots.remove(slot);
+    public void releaseSlot(String slot, Long taskId) {
+        actualSlots.remove(slot, taskId);
     }
 
     void loadBusySlots(Map<String, Long> busySlots) {

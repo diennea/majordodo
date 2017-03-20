@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
@@ -49,6 +50,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -137,7 +139,7 @@ public class SlotsReleaseTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -185,7 +187,7 @@ public class SlotsReleaseTest {
                         core.start();
                         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
                         core.setExecutorFactory(
-                                (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                            (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -226,7 +228,7 @@ public class SlotsReleaseTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -276,7 +278,7 @@ public class SlotsReleaseTest {
                         core.start();
                         assertTrue(connectedLatch.await(10, TimeUnit.SECONDS));
                         core.setExecutorFactory(
-                                (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                            (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
 
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
@@ -316,7 +318,7 @@ public class SlotsReleaseTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -345,7 +347,7 @@ public class SlotsReleaseTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -372,6 +374,129 @@ public class SlotsReleaseTest {
             long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
             assertTrue(taskId2 > 0);
             assertNull(broker.getClient().getTransaction(tx));
+
+        }
+
+    }
+
+    @Test
+    public void slotReleaseOnCommitLogErrorTest() throws Exception {
+
+        Path mavenTargetDir = Paths.get("target").toAbsolutePath();
+        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
+
+        long taskId;
+
+        String taskParams = "param";
+        final String SLOTID = "myslot";
+        final String SLOTID2 = "myslot2";
+        final String SLOTID3 = "myslot3";
+        final String SLOTID4 = "myslot4";
+
+        AtomicBoolean errorOnWriteOnLog = new AtomicBoolean(true);
+        // startAsWritable a broker and request a task, with slot
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog() {
+            @Override
+            public LogSequenceNumber logStatusEdit(StatusEdit action) throws LogNotAvailableException {
+                if (errorOnWriteOnLog.get()) {
+                    throw new LogNotAvailableException("error !");
+                }
+                return super.logStatusEdit(action);
+            }
+
+        }, new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+            broker.startAsWritable();
+
+            errorOnWriteOnLog.set(true);
+            {
+                try {
+                    broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+                    fail();
+                } catch (LogNotAvailableException ok) {
+                }
+                assertTrue(broker.getSlotsStatusView().getBusySlots().isEmpty());
+            }
+
+            errorOnWriteOnLog.set(false);
+
+            {
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+                taskId = res.getTaskId();
+                assertTrue(taskId > 0);
+                assertTrue(res.getOutcome() == null);
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID));
+            }
+
+            {
+                // now with transaction
+                long txId = broker.getClient().beginTransaction();
+                errorOnWriteOnLog.set(true);
+                try {
+                    SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID2, 0, null, null));
+                    fail();
+                } catch (LogNotAvailableException ok) {
+                }
+                assertNull(broker.getSlotsStatusView().getBusySlots().get(SLOTID2));
+                errorOnWriteOnLog.set(false);
+                broker.getClient().rollbackTransaction(txId);
+            }
+
+            {
+                errorOnWriteOnLog.set(false);
+                // now with error on commit transaction
+                long txId = broker.getClient().beginTransaction();
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID3, 0, null, null));
+                taskId = res.getTaskId();
+                assertTrue(taskId > 0);
+                assertTrue(res.getOutcome() == null);
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID3));
+                errorOnWriteOnLog.set(true);
+                try {
+                    broker.getClient().commitTransaction(txId);
+                    fail();
+                } catch (LogNotAvailableException ok) {
+                }
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID3));
+
+                try {
+                    // rollback fails, slot is still busy
+                    broker.getClient().rollbackTransaction(txId);
+                    fail();
+                } catch (LogNotAvailableException ok) {
+                }
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID3));
+
+                errorOnWriteOnLog.set(false);
+
+                // client tries to rollback, so the slow is free
+                broker.getClient().rollbackTransaction(txId);
+                assertNull(broker.getSlotsStatusView().getBusySlots().get(SLOTID3));
+
+            }
+
+            {
+                errorOnWriteOnLog.set(false);
+                // now with error on commit transaction
+                long txId = broker.getClient().beginTransaction();
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID4, 0, null, null));
+                taskId = res.getTaskId();
+                assertTrue(taskId > 0);
+                assertTrue(res.getOutcome() == null);
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID4));
+                errorOnWriteOnLog.set(true);
+                try {
+                    broker.getClient().commitTransaction(txId);
+                    fail();
+                } catch (LogNotAvailableException ok) {
+                }
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID4));
+                errorOnWriteOnLog.set(false);
+
+                // now the commit is performed with success and the slot is busy
+                broker.getClient().commitTransaction(txId);
+                assertEquals((Long) taskId, broker.getSlotsStatusView().getBusySlots().get(SLOTID4));
+
+            }
 
         }
 

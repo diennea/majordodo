@@ -40,7 +40,6 @@ import majordodo.clientfacade.CodePoolView;
 import majordodo.clientfacade.TransactionStatus;
 import majordodo.codepools.CodePool;
 import majordodo.utils.IntCounter;
-import org.w3c.dom.css.Counter;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a copy of this status. The status is
@@ -48,7 +47,7 @@ import org.w3c.dom.css.Counter;
  *
  * @author enrico.olivelli
  */
-public class BrokerStatus {
+public final class BrokerStatus {
 
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
@@ -523,7 +522,7 @@ public class BrokerStatus {
 
     }
 
-    static final class ModificationResult {
+    public static final class ModificationResult {
 
         public final LogSequenceNumber sequenceNumber;
         public final String error;
@@ -563,31 +562,46 @@ public class BrokerStatus {
             }
             index++;
         }
-        List<LogSequenceNumber> num = log.logStatusEditBatch(toLog);
-        int max = edits.size();
-        int numberSequence = 0;
-        for (int i = 0; i < max; i++) {
-            StatusEdit edit = edits.get(i);
-            if (skip.contains(i)) {
-                results.add(new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned"));
-            } else {
-                boolean ok = true;
-                if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
-                    if (edit.codepool == null || edit.codepool.isEmpty()) {
-                        results.add(new ModificationResult(null, edit.codepool, "codepoolid must not be empty"));
-                        ok = false;
-                    } else if (codePools.containsKey(edit.codepool)) {
-                        results.add(new ModificationResult(null, edit.codepool, "codepool " + edit.codepool + " already exists"));
-                        ok = false;
+        try {
+            List<LogSequenceNumber> num = log.logStatusEditBatch(toLog);
+            int max = edits.size();
+            int numberSequence = 0;
+            for (int i = 0; i < max; i++) {
+                StatusEdit edit = edits.get(i);
+                if (skip.contains(i)) {
+                    results.add(new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned"));
+                } else {
+                    boolean ok = true;
+                    if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
+                        if (edit.codepool == null || edit.codepool.isEmpty()) {
+                            results.add(new ModificationResult(null, edit.codepool, "codepoolid must not be empty"));
+                            ok = false;
+                        } else if (codePools.containsKey(edit.codepool)) {
+                            results.add(new ModificationResult(null, edit.codepool, "codepool " + edit.codepool + " already exists"));
+                            ok = false;
+                        }
+                    }
+                    if (ok) {
+                        LogSequenceNumber n = num.get(numberSequence++);
+                        results.add(applyEdit(n, edit));
                     }
                 }
-                if (ok) {
-                    LogSequenceNumber n = num.get(numberSequence++);
-                    results.add(applyEdit(n, edit));
-                }
             }
+            return results;
+        } catch (LogNotAvailableException err) {
+            for (StatusEdit edit : edits) {
+                if ((edit.editType == StatusEdit.TYPE_ADD_TASK
+                    || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
+                    && edit.slot != null) {
+                    slotsManager.releaseSlot(edit.slot, edit.taskId);
+
+                } else {
+                    toLog.add(edit);
+                }
+                index++;
+            }
+            throw err;
         }
-        return results;
     }
 
     public ModificationResult applyModification(StatusEdit edit) throws LogNotAvailableException {
@@ -602,7 +616,7 @@ public class BrokerStatus {
                     LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
                     return applyEdit(num, edit);
                 } catch (LogNotAvailableException releaseSlot) {
-                    slotsManager.releaseSlot(edit.slot);
+                    slotsManager.releaseSlot(edit.slot, edit.taskId);
                     throw releaseSlot;
                 }
             } else {
@@ -670,7 +684,7 @@ public class BrokerStatus {
                         switch (edit.taskStatus) {
                             case Task.STATUS_FINISHED:
                             case Task.STATUS_ERROR: {
-                                slotsManager.releaseSlot(task.getSlot());
+                                slotsManager.releaseSlot(task.getSlot(), task.getTaskId());
                                 break;
                             }
                             default:
@@ -714,7 +728,7 @@ public class BrokerStatus {
                     for (Task task : transaction.getPreparedTasks()) {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                             LOGGER.log(Level.SEVERE, "Rollback transaction {0}, released slot {1}", new Object[]{edit.transactionId, task.getSlot()});
-                            slotsManager.releaseSlot(task.getSlot());
+                            slotsManager.releaseSlot(task.getSlot(), task.getTaskId());
                         }
                     }
                     // then discard the transaction
