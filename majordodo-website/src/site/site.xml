@@ -37,10 +37,10 @@
             <projectNameForChangelog>Majordodo</projectNameForChangelog>
             <releases>
                 <release>
-                    <version>0.10.0-SNAPSHOT</version>
+                    <version>0.9.0</version>
                     <date>March 2017</date>
                     <href>https://dev.majordodo.org/jira/projects/MAJ/versions/10303</href>
-                    <text>Majordodo 0.10.0-SNAPSHOT introduces a per-user JVM hard limit of resource allocation</text>
+                    <text>Majordodo 0.9.0 introduces a per-user JVM hard limit of resource allocation</text>
                 </release>
                 <release>
                     <version>0.8.0</version>
