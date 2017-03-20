@@ -159,9 +159,13 @@ public class BrokerRestartDuringTaskExecutionTest {
                     (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                     @Override
                     public String executeTask(Map<String, Object> parameters) throws Exception {
-//                                System.out.println("executeTask: " + parameters);
+                        System.out.println("executeTask: " + parameters);
                         taskStartedLatch.countDown();
-                        newBrokerStartedLatch.await(1, TimeUnit.MINUTES);
+                        System.out.println("worker...waiting for broker to start...");
+                        boolean okAwait = newBrokerStartedLatch.await(2, TimeUnit.MINUTES);
+                        if (!okAwait) {
+                            System.out.println("executeTask: " + parameters + " newBrokerStartedLatch await failed! " + okAwait);
+                        }
                         taskFinishedLatch.countDown();
                         return "theresult";
                     }
@@ -180,7 +184,8 @@ public class BrokerRestartDuringTaskExecutionTest {
                         server.start();
 
                         // wait the worker to startAsWritable execution
-                        taskStartedLatch.await(1, TimeUnit.MINUTES);
+                        assertTrue(taskStartedLatch.await(2, TimeUnit.MINUTES));
+
                     }
                     // now the broker will die
                 }
@@ -194,7 +199,7 @@ public class BrokerRestartDuringTaskExecutionTest {
                         server.start();
                         newBrokerStartedLatch.countDown();
                         // wait the worker to finish execution
-                        taskFinishedLatch.await(10, TimeUnit.SECONDS);
+                        assertTrue(taskFinishedLatch.await(2, TimeUnit.MINUTES));
 
                         boolean ok = false;
                         for (int i = 0; i < 100; i++) {
