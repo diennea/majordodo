@@ -239,11 +239,11 @@ public class BrokerConfiguration {
         this.requireAuthentication = requireAuthentication;
     }
 
-
     private boolean apiCorsEnabled = true;
 
     /**
      * Put Access-Control-Allow-Origin: * HTTP Header in order to access the API and the UI from every hostname
+     *
      * @return
      */
     public boolean isApiCorsEnabled() {
@@ -253,5 +253,19 @@ public class BrokerConfiguration {
     public void setApiCorsEnabled(boolean apiCorsEnabled) {
         this.apiCorsEnabled = apiCorsEnabled;
     }
-   
+
+    private boolean sslUnsecure = true;
+
+    /**
+     * Allow access to other brokers using self-signed certificates
+     * @return
+     */
+    public boolean isSslUnsecure() {
+        return sslUnsecure;
+    }
+
+    public void setSslUnsecure(boolean sslUnsecure) {
+        this.sslUnsecure = sslUnsecure;
+    }
+
 }

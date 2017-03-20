@@ -102,6 +102,17 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long ledgersRetentionPeriod = 1000 * 60 * 60 * 24;
     private long maxLogicalLogFileSize = 1024 * 1024 * 256;
     private long writtenBytes = 0;
+    private boolean sslUnsecure = true;
+
+    @Override
+    public boolean isSslUnsecure() {
+        return sslUnsecure;
+    }
+
+    @Override
+    public void setSslUnsecure(boolean sslUnsecure) {
+        this.sslUnsecure = sslUnsecure;
+    }
 
     @Override
     public String getSharedSecret() {
@@ -133,9 +144,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         if (host == null) {
             host = addre.getAddress().getHostAddress();
         }
-        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + addre + " ssl=" + ssl + ", using hostname " + host);
+        LOGGER.log(Level.SEVERE, "Downloading snapshot from " + addre + " ssl=" + ssl
+            + ", using hostname " + host + ", sslUnsecure:" + sslUnsecure);
         try (NettyBrokerLocator connector = new NettyBrokerLocator(host, addre.getPort(), broker.isSsl())) {
-
+            connector.setSslUnsecure(sslUnsecure);
             try (Channel channel = connector.connect(new ChannelEventListener() {
                 @Override
                 public void messageReceived(Message message) {

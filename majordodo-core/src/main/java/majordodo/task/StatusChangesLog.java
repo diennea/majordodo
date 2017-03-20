@@ -36,6 +36,13 @@ public abstract class StatusChangesLog implements AutoCloseable {
         return null;
     }
 
+    public boolean isSslUnsecure() {
+        return true;
+    }
+
+    public void setSslUnsecure(boolean sslUnsecure) {
+    }
+
     public void setSharedSecret(String secret) {
     }
 

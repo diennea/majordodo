@@ -172,6 +172,8 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerLifeThread = new Thread(brokerLife, "broker-life");
         this.brokerLifeThread.setDaemon(true);
         this.log.setSharedSecret(configuration.getSharedSecret());
+        this.log.setSslUnsecure(configuration.isSslUnsecure());
+        
         LOGGER.log(Level.SEVERE, "requireAuthentication is set to " + configuration.isRequireAuthentication());
     }
 
