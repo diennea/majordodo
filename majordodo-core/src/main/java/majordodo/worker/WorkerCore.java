@@ -296,6 +296,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     };
 
     private void notifyTasksFinished(List<FinishedTaskNotification> notifications) {
+        listener.beforeNotifyTasksFinished(notifications, this);
         LOGGER.log(Level.FINEST, "notifyTasksFinished {0}", notifications);
         Channel _channel = channel;
         if (_channel != null) {

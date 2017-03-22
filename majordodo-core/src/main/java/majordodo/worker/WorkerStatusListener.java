@@ -19,8 +19,10 @@
  */
 package majordodo.worker;
 
+import java.util.List;
+
 /**
- * Receives notifications about the status of the worker
+ * Receives notifications about the status of the worker.
  *
  * @author enrico.olivelli
  */
@@ -31,4 +33,8 @@ public interface WorkerStatusListener {
 
     public default void connectionEvent(String event, WorkerCore core) {
     }
+
+    public default void beforeNotifyTasksFinished(List<FinishedTaskNotification> notifications, WorkerCore core) {
+    }
+
 }
