@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
+import java.util.stream.Collectors;
 import majordodo.clientfacade.AddTaskRequest;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -111,13 +112,14 @@ public class TaskExecutionRecoveryOnWorkerRestartUsingResourcesTest {
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
-            return new TaskProperties(group1, new String[]{"resource1", "resource2"});
+            return new TaskProperties(group1, RESOURCES);
         };
     }
 
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
     private static final String TASKTYPE_MYTYPE = "mytype";
+    private static final String[] RESOURCES = new String[]{"resource1", "resource2"};
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -168,7 +170,8 @@ public class TaskExecutionRecoveryOnWorkerRestartUsingResourcesTest {
                             @Override
                             public String executeTask(Map<String, Object> parameters) throws Exception {
                                 System.out.println("executeTask: " + parameters);
-                                resourcesPresentAtFirstRun.set("resource1,resource2".equals(parameters.get("resources")));
+                                String resources = Arrays.asList(RESOURCES).stream().collect(Collectors.joining(","));
+                                resourcesPresentAtFirstRun.set(resources.equals(parameters.get("resources")));
                                 taskStartedLatch.countDown();
                                 Integer attempt = (Integer) parameters.get("attempt");
                                 if (attempt == null || attempt == 1) {
@@ -240,12 +243,26 @@ public class TaskExecutionRecoveryOnWorkerRestartUsingResourcesTest {
                             Thread.sleep(1000);
                         }
                         assertTrue(ok);
+                        
+                        Map<String,Integer> counters = broker.getWorkers().getWorkerManager(workerId)
+                            .getResourceUsageCounters().getCountersView();
+                    
+                        for (String resource: Arrays.asList(RESOURCES)) {
+                            System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                            assertEquals(0, counters.get(resource).intValue());
+                        }
                     }
                 }
 
             }
             assertTrue(resourcesPresentAtFirstRun.get());
             assertTrue(resourcesPresentAtSecondRun.get());
+            
+            Map<String,Integer> counters = broker.getGlobalResourceUsageCounters().getCountersView();
+            for (String resource: Arrays.asList(RESOURCES)) {
+                System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                assertEquals(0, counters.get(resource).intValue());
+            }
         }
 
     }

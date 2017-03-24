@@ -276,8 +276,11 @@ public class WorkerManager {
         }
     }
 
-    void taskFinished(long taskId, String[] resourceIds) {
+    void taskFinished(long taskId) {
         tasksRunningOnRemoteWorker.remove(taskId);
+    }
+    
+    void releaseResources(String[] resourceIds) {
         resourceUsageCounters.releaseResources(resourceIds);
     }
 
