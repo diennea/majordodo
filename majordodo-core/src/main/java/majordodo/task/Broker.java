@@ -366,19 +366,33 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
             availableSpacePerUser, maxThreadPerUserPerTaskTypePercent
         );
+        
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();
+        Map<Long,String[]> resourcesByTaskId = new HashMap<>();
+        
         for (AssignedTask entry : tasks) {
             long taskId = entry.taskid;
             Task task = this.brokerStatus.getTask(taskId);
             if (task != null) {
                 StatusEdit edit = StatusEdit.ASSIGN_TASK_TO_WORKER(taskId, workerId, task.getAttempts() + 1, entry.resources);
                 edits.add(edit);
+                resourcesByTaskId.put(taskId, entry.resourceIds);
             }
-            globalResourceUsageCounters.useResources(entry.resourceIds);
         }
-        this.brokerStatus.applyModifications(edits);
-
+        
+        List<BrokerStatus.ModificationResult> modifications = brokerStatus.applyModifications(edits);
+        
+        for (int i = 0; i < edits.size(); i++) {
+            if (modifications.get(i).sequenceNumber != null) {
+                StatusEdit edit = edits.get(i);
+                String[] resourceIds = resourcesByTaskId.get(edit.taskId);
+                if (resourceIds != null) {
+                    globalResourceUsageCounters.useResources(resourceIds);
+                }
+            }
+        }
+        
         long end = System.currentTimeMillis();
         LOGGER.log(Level.FINER, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
         return tasks;
@@ -672,12 +686,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         );
         tasksFinished(workerId, data);
     }
-
+    
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
         assertBrokerAvailableForClients();
         LOGGER.log(Level.FINE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
+        Map<Long,String[]> resourcesByTaskId = new HashMap<>();
+        
         for (TaskFinishedData taskData : tasks) {
             long taskId = taskData.taskid;
             int finalstatus = taskData.finalStatus;
@@ -692,9 +708,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             if (resources != null) {
                 resourceIds = resources.split(",");
             }
-            workers.getWorkerManager(workerId).taskFinished(taskId, resourceIds);
-            globalResourceUsageCounters.releaseResources(resourceIds);
-
+            resourcesByTaskId.put(taskId, resourceIds);
+            
+            workers.getWorkerManager(workerId).taskFinished(taskId);
+            
             if (task.getStatus() != Task.STATUS_RUNNING) {
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
                 continue;
@@ -735,7 +752,20 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                     throw new IllegalStateException("bad finalstatus:" + finalstatus);
             }
         }
-        brokerStatus.applyModifications(edits);
+        
+        List<BrokerStatus.ModificationResult> modifications = brokerStatus.applyModifications(edits);
+        
+        for (int i = 0; i < edits.size(); i++) {
+            if (modifications.get(i).sequenceNumber != null) {
+                StatusEdit edit = edits.get(i);
+                String[] resourceIds = resourcesByTaskId.get(edit.taskId);
+                if (resourceIds != null) {
+                    workers.getWorkerManager(workerId).releaseResources(resourceIds);
+                    globalResourceUsageCounters.releaseResources(resourceIds);
+                }
+            }
+        }
+        
         for (Task task : toSchedule) {
             LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + ""});
             this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());

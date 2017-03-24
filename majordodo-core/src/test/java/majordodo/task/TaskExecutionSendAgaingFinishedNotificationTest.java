@@ -26,13 +26,6 @@ import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.worker.WorkerCore;
 import majordodo.worker.WorkerCoreConfiguration;
 import majordodo.worker.WorkerStatusListener;
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.worker.FinishedTaskNotification;
-import org.junit.After;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -80,13 +73,14 @@ public class TaskExecutionSendAgaingFinishedNotificationTest {
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
-            return new TaskProperties(group1, null);
+            return new TaskProperties(group1, RESOURCES);
         };
     }
 
     protected Map<String, Integer> groupsMap = new HashMap<>();
 
     private static final String TASKTYPE_MYTYPE = "mytype";
+    private static final String[] RESOURCES = new String[]{"db1","db2"};
     private static final String userId = "queue1";
     private static final int group = 12345;
 
@@ -174,8 +168,21 @@ public class TaskExecutionSendAgaingFinishedNotificationTest {
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
                     assertTrue(sendNotificationsErrorDone.get());
-
+                    
+                    Map<String,Integer> counters = broker.getWorkers().getWorkerManager(workerId)
+                            .getResourceUsageCounters().getCountersView();
+                    
+                    for (String resource: Arrays.asList(RESOURCES)) {
+                        System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                        assertEquals(0, counters.get(resource).intValue());
+                    }
                 }
+            }
+            
+            Map<String,Integer> counters = broker.getGlobalResourceUsageCounters().getCountersView();
+            for (String resource: Arrays.asList(RESOURCES)) {
+                System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                assertEquals(0, counters.get(resource).intValue());
             }
         }
 
@@ -262,11 +269,24 @@ public class TaskExecutionSendAgaingFinishedNotificationTest {
                             Thread.sleep(1000);
                         }
                         assertTrue(okFinishedForBroker);
+                        
+                        Map<String,Integer> counters = broker.getWorkers().getWorkerManager(workerId)
+                            .getResourceUsageCounters().getCountersView();
+                        for (String resource: Arrays.asList(RESOURCES)) {
+                            System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                            assertEquals(0, counters.get(resource).intValue());
+                        }
                     }
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
                     assertTrue(sendNotificationsErrorDone.get());
 
                 }
+            }
+            
+            Map<String,Integer> counters = broker.getGlobalResourceUsageCounters().getCountersView();
+            for (String resource: Arrays.asList(RESOURCES)) {
+                System.out.println("Counter resource="+resource+"; counter="+counters.get(resource));
+                assertEquals(0, counters.get(resource).intValue());
             }
         }
 

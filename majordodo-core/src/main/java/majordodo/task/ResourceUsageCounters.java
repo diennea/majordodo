@@ -23,8 +23,12 @@ import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import majordodo.utils.IntCounter;
 
 /**
@@ -34,11 +38,15 @@ import majordodo.utils.IntCounter;
  */
 public class ResourceUsageCounters {
 
-    Map<String, IntCounter> counters = new HashMap<>();
-    ConcurrentLinkedQueue<String> releasedResources = new ConcurrentLinkedQueue<>();
-    ConcurrentLinkedQueue<String> usedResources = new ConcurrentLinkedQueue<>();
-    AtomicBoolean clearRequested = new AtomicBoolean();
+    public static final boolean CORRECT_NEGATIVE_COUNTERS = majordodo.utils.SystemProperties.getBooleanSystemProperty("broker.counters.correctnegative", false);
+    
+    final Map<String, IntCounter> counters = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<String> releasedResources = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<String> usedResources = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean clearRequested = new AtomicBoolean();
 
+    private static final Logger LOGGER = Logger.getLogger(ResourceUsageCounters.class.getName());
+    
     public Map<String, Integer> getCountersView() {
         while (true) {
             try {
@@ -53,7 +61,7 @@ public class ResourceUsageCounters {
     }
 
     void updateResourceCounters() {
-        // write access to "counters" is done only here, inside the writeLock of "TasksHeap"        
+        // write access to "counters" is done only here, inside the writeLock of "TasksHeap"
         if (clearRequested.compareAndSet(true, false)) {
             for (IntCounter c : counters.values()) {
                 c.count = 0;
@@ -76,6 +84,15 @@ public class ResourceUsageCounters {
                 counters.put(id, count);
             }
             count.count++;
+        }
+        
+        if (CORRECT_NEGATIVE_COUNTERS) {
+            for (Entry<String,IntCounter> e: counters.entrySet()) {
+                if (e.getValue().count < 0) {
+                    LOGGER.log(Level.SEVERE, "Counter \"{0}\" is negative! Value={1}", new Object[]{e.getKey(), e.getValue()});
+                    e.getValue().count = 0;
+                }
+            }
         }
     }
 
