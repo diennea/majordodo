@@ -48,7 +48,7 @@ import org.junit.Test;
  *
  * @author enrico.olivelli
  */
-public class TaskExecutionSendAgaingFinishedNotificationTest {
+public class TaskExecutionSendAgainFinishedNotificationTest {
 
     @Before
     public void setupLogger() throws Exception {

@@ -233,7 +233,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
                 }
                 if (!broker.isWritable()) {
-                    answerConnectionNotAcceptedAndClose(message, new Exception("this broker is not yet writable/leader"));
+                    answerConnectionNotAcceptedAndClose(message, new Exception("this broker "+broker.getBrokerId()+" is not yet writable/leader"));
                     return;
                 }
 

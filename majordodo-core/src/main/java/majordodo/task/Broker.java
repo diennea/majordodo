@@ -225,7 +225,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 if (stopped || failed) {
                     return;
                 }
-                LOGGER.log(Level.SEVERE, "Starting as leader");
+                LOGGER.log(Level.SEVERE, "Starting as leader, brokerId:{0}", brokerId);
                 brokerStatus.recoverForLeadership();
 
                 Map<String, Long> busySlots = new HashMap<>();

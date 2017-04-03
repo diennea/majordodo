@@ -215,6 +215,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
 
     }
 
+    @Override
     public void close() {
         if (channel != null) {
             channel.close();
