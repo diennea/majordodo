@@ -19,7 +19,6 @@
  */
 package majordodo.clientfacade;
 
-import java.util.Map;
 import majordodo.task.Task;
 
 /**
@@ -68,7 +67,7 @@ public class TaskStatusView {
 
     @Override
     public String toString() {
-        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", resources=" + resources + ", executionDeadline=" + executionDeadline + '}';
+        return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + " " + convertTaskStatusForClient(status) + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", resources=" + resources + ", executionDeadline=" + executionDeadline + '}';
     }
 
     public String getSlot() {

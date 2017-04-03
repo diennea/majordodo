@@ -22,6 +22,7 @@ package majordodo.task;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,12 +41,22 @@ public class ResourceUsageCounters {
 
     public static final boolean CORRECT_NEGATIVE_COUNTERS = majordodo.utils.SystemProperties.getBooleanSystemProperty("broker.counters.correctnegative", false);
     
+    private static final Logger LOGGER = Logger.getLogger(ResourceUsageCounters.class.getName());
+    
+    private final String name;
+    
     final Map<String, IntCounter> counters = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<String> releasedResources = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<String> usedResources = new ConcurrentLinkedQueue<>();
     private final AtomicBoolean clearRequested = new AtomicBoolean();
-
-    private static final Logger LOGGER = Logger.getLogger(ResourceUsageCounters.class.getName());
+    
+    public ResourceUsageCounters() {
+        this.name = "anonymous";
+    }
+    
+    public ResourceUsageCounters(String name) {
+        this.name = name;
+    }
     
     public Map<String, Integer> getCountersView() {
         while (true) {
@@ -103,14 +114,18 @@ public class ResourceUsageCounters {
     void useResources(String[] resourceIds) {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
-            usedResources.addAll(Arrays.asList(resourceIds));
+            List<String> res = Arrays.asList(resourceIds);
+            LOGGER.log(Level.FINEST, "{0} useResources={1}", new Object[]{name, res});
+            usedResources.addAll(res);
         }
     }
 
     void releaseResources(String[] resourceIds) {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
-            releasedResources.addAll(Arrays.asList(resourceIds));
+            List<String> res = Arrays.asList(resourceIds);
+            LOGGER.log(Level.FINEST, "{0} releaseResources={1}", new Object[]{name, res});
+            releasedResources.addAll(res);
         }
     }
 
