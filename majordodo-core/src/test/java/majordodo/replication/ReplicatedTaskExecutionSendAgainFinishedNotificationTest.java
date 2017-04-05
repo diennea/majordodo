@@ -31,8 +31,9 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
+import java.util.logging.LogRecord;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import majordodo.task.Broker;
@@ -70,8 +71,16 @@ public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
         java.util.logging.LogManager.getLogManager().reset();
         ConsoleHandler ch = new ConsoleHandler();
         ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
+        ch.setFormatter(new Formatter() {
+            @Override
+            public String format(LogRecord record) {
+                if (record.getLevel().intValue() >= level.intValue()) {
+                    return "" + new java.sql.Timestamp(record.getMillis()) + " " + record.getLevel() + " " + record.getLoggerName() + ": " + formatMessage(record) + "\n";
+                } else {
+                    return null;
+                }
+            }
+        });
         java.util.logging.Logger.getLogger("").setLevel(level);
         java.util.logging.Logger.getLogger("").addHandler(ch);
     }
@@ -206,7 +215,7 @@ public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
                                     for (String resource : Arrays.asList(RESOURCES)) {
                                         System.out.println("Counter resource=" + resource + "; counter=" + countersGlobal.get(resource));
                                         assertNotNull(countersGlobal.get(resource));
-                                        assertEquals(0, countersGlobal.get(resource).intValue());
+                                        assertEquals(1, countersGlobal.get(resource).intValue());
                                     }
 
                                     secondBrokerIsLeader.countDown();

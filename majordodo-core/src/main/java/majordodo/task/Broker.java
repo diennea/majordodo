@@ -121,7 +121,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
     private final StatusChangesLog log;
-    private final ResourceUsageCounters globalResourceUsageCounters = new ResourceUsageCounters();
+    private final ResourceUsageCounters globalResourceUsageCounters = new ResourceUsageCounters("global");
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
@@ -207,6 +207,13 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         while (!log.isWritable() && !log.isClosed()) {
             Thread.sleep(500);
         }
+    }
+    
+    public void die() throws LogNotAvailableException {
+        LOGGER.log(Level.SEVERE, "Die!");
+        this.log.close(); // This should prevent any other communication with other brokers
+        this.brokerLifeThread.interrupt();
+        this.stop();
     }
 
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "MS_SHOULD_BE_FINAL")

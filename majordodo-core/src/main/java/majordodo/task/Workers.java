@@ -78,25 +78,30 @@ public class Workers {
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId())) {
                     if (task.getStatus() == Task.STATUS_RUNNING) {
+                        String resources = task.getResources();
+                        String[] resourceIds = null;
+                        if (resources != null) {
+                            resourceIds = resources.split(",");
+                        }
+                        globalResourceUsageCounters.useResources(resourceIds);
+                        
                         if (workerStatus.getStatus() == WorkerStatus.STATUS_DEAD) {
-                            LOGGER.log(Level.FINE, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
+                            LOGGER.log(Level.INFO, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
                             toRecoverForWorker.add(task.getTaskId());
+                            // Even if worker is dead with its tasks, at boot time these resources are busy (they will be freed at toRecoverForWorker tasks termination)
+                            manager.getResourceUsageCounters().useResources(resourceIds);
                         } else {
-                            String resources = task.getResources();
-                            LOGGER.log(Level.FINE, "Booting workerId:" + workerStatus.getWorkerId() + " should be running task " + task.getTaskId() + ", resources " + resources);
-                            String[] resourceIds = null;
-                            if (resources != null) {
-                                resourceIds = resources.split(",");
-                            }
+                            LOGGER.log(Level.INFO, "Booting workerId:{0} should be running task {1}, resources {2}", new Object[]{workerStatus.getWorkerId(), task.getTaskId(), resources});
                             manager.taskRunningDuringBrokerBoot(new AssignedTask(task.getTaskId(), resourceIds, resources));
-                            globalResourceUsageCounters.useResources(resourceIds);
                         }
                     } else {
-                        LOGGER.log(Level.SEVERE, "workerId:" + workerStatus.getWorkerId() + " task " + task.getTaskId() + " is assigned to worker, but in status " + Task.statusToString(task.getStatus()));
+                        LOGGER.log(Level.SEVERE, "workerId:{0} task {1} is assigned to worker, but in status {2}", new Object[]{workerStatus.getWorkerId(), task.getTaskId(), Task.statusToString(task.getStatus())});
                     }
                 }
             }
+            manager.getResourceUsageCounters().updateResourceCounters();
         }
+        globalResourceUsageCounters.updateResourceCounters();
         workersActivityThread.start();
     }
 

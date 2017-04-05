@@ -45,7 +45,7 @@ public class WorkerManager {
     private final Broker broker;
     private BrokerSideConnection connection;
     private final int maxWorkerIdleTime;
-    private final ResourceUsageCounters resourceUsageCounters = new ResourceUsageCounters();
+    private final ResourceUsageCounters resourceUsageCounters;
 
     private int maxThreads = 0;
     private int maxThreadPerUserPerTaskTypePercent = 0;
@@ -63,6 +63,7 @@ public class WorkerManager {
         this.workerId = workerId;
         this.broker = broker;
         this.maxWorkerIdleTime = broker.getConfiguration().getMaxWorkerIdleTime();
+        this.resourceUsageCounters = new ResourceUsageCounters("worker-"+workerId);
     }
 
     public void applyConfiguration(int maxThreads,
