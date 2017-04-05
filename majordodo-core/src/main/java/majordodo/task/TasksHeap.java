@@ -341,7 +341,7 @@ public class TasksHeap {
 
         Map<Integer, IntCounter> availableResourcesCounters = new HashMap<>();
 
-        // takeTasks for a single worker is guaranteed to be executed not concurrenly, we can run this code out of the lock
+        // takeTasks for a single worker is guaranteed to be executed not concurrently, we can run this code out of the lock
         workerResourceUsageCounters.updateResourceCounters();
         if (workerResourceLimits != null && !workerResourceLimits.isEmpty()) {
             computeAvailableResources(workerResourceLimits, availableResourcesCounters, workerResourceUsageCounters);
@@ -350,7 +350,7 @@ public class TasksHeap {
         lock.writeLock().lock();
         try {
 
-            // global counters but be modified only inside the "global" lock
+            // global counters but be modified only inside this "global" lock
             globalResourceUsageCounters.updateResourceCounters();
             if (globalResourceLimits != null && !globalResourceLimits.isEmpty()) {
                 computeAvailableResources(globalResourceLimits, availableResourcesCounters, globalResourceUsageCounters);

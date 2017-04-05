@@ -63,7 +63,7 @@ public class WorkerManager {
         this.workerId = workerId;
         this.broker = broker;
         this.maxWorkerIdleTime = broker.getConfiguration().getMaxWorkerIdleTime();
-        this.resourceUsageCounters = new ResourceUsageCounters("worker-"+workerId);
+        this.resourceUsageCounters = new ResourceUsageCounters("worker-" + workerId + "-" + broker.getBrokerId());
     }
 
     public void applyConfiguration(int maxThreads,
@@ -180,7 +180,6 @@ public class WorkerManager {
                             LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
                             broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker, workerId);
                             tasksRunningOnRemoteWorker.clear();
-                            resourceUsageCounters.clear();
                         }
                     }
                 } catch (LogNotAvailableException err) {
@@ -280,7 +279,7 @@ public class WorkerManager {
     void taskFinished(long taskId) {
         tasksRunningOnRemoteWorker.remove(taskId);
     }
-    
+
     void releaseResources(String[] resourceIds) {
         resourceUsageCounters.releaseResources(resourceIds);
     }

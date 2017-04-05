@@ -121,7 +121,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     public final TasksHeap tasksHeap;
     private final BrokerStatus brokerStatus;
     private final StatusChangesLog log;
-    private final ResourceUsageCounters globalResourceUsageCounters = new ResourceUsageCounters("global");
+    private final ResourceUsageCounters globalResourceUsageCounters;
     private final BrokerServerEndpoint acceptor;
     private final ClientFacade client;
     private volatile boolean started;
@@ -173,8 +173,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerLifeThread.setDaemon(true);
         this.log.setSharedSecret(configuration.getSharedSecret());
         this.log.setSslUnsecure(configuration.isSslUnsecure());
-        
+
         LOGGER.log(Level.SEVERE, "requireAuthentication is set to " + configuration.isRequireAuthentication());
+        this.globalResourceUsageCounters = new ResourceUsageCounters("global-"+brokerId);
     }
 
     private boolean recoveryInProgress = false;
@@ -208,7 +209,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             Thread.sleep(500);
         }
     }
-    
+
     public void die() throws LogNotAvailableException {
         LOGGER.log(Level.SEVERE, "Die!");
         this.log.close(); // This should prevent any other communication with other brokers
@@ -373,11 +374,11 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
             availableSpacePerUser, maxThreadPerUserPerTaskTypePercent
         );
-        
+
         long now = System.currentTimeMillis();
         List<StatusEdit> edits = new ArrayList<>();
-        Map<Long,String[]> resourcesByTaskId = new HashMap<>();
-        
+        Map<Long, String[]> resourcesByTaskId = new HashMap<>();
+
         for (AssignedTask entry : tasks) {
             long taskId = entry.taskid;
             Task task = this.brokerStatus.getTask(taskId);
@@ -387,9 +388,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 resourcesByTaskId.put(taskId, entry.resourceIds);
             }
         }
-        
+
         List<BrokerStatus.ModificationResult> modifications = brokerStatus.applyModifications(edits);
-        
+
         for (int i = 0; i < edits.size(); i++) {
             if (modifications.get(i).sequenceNumber != null) {
                 StatusEdit edit = edits.get(i);
@@ -399,7 +400,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 }
             }
         }
-        
+
         long end = System.currentTimeMillis();
         LOGGER.log(Level.FINER, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
         return tasks;
@@ -684,6 +685,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 Task task = brokerStatus.getTask(taskId);
                 if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
                     data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
+                    LOGGER.log(Level.SEVERE, "task {0} is in {1} status. and the worker {2} died", new Object[]{task, Task.statusToString(task.getStatus()), workerId});
                 } else if (task != null) {
                     LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
                 } else {
@@ -693,14 +695,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         );
         tasksFinished(workerId, data);
     }
-    
+
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
         assertBrokerAvailableForClients();
         LOGGER.log(Level.FINE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
-        Map<Long,String[]> resourcesByTaskId = new HashMap<>();
-        
+        Map<Long, String[]> resourcesByTaskId = new HashMap<>();
+
         for (TaskFinishedData taskData : tasks) {
             long taskId = taskData.taskid;
             int finalstatus = taskData.finalStatus;
@@ -716,9 +718,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 resourceIds = resources.split(",");
             }
             resourcesByTaskId.put(taskId, resourceIds);
-            
+
             workers.getWorkerManager(workerId).taskFinished(taskId);
-            
+
             if (task.getStatus() != Task.STATUS_RUNNING) {
                 LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
                 continue;
@@ -759,9 +761,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                     throw new IllegalStateException("bad finalstatus:" + finalstatus);
             }
         }
-        
+
         List<BrokerStatus.ModificationResult> modifications = brokerStatus.applyModifications(edits);
-        
+
         for (int i = 0; i < edits.size(); i++) {
             if (modifications.get(i).sequenceNumber != null) {
                 StatusEdit edit = edits.get(i);
@@ -772,7 +774,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 }
             }
         }
-        
+
         for (Task task : toSchedule) {
             LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + ""});
             this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());

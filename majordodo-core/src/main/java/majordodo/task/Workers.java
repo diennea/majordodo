@@ -84,7 +84,7 @@ public class Workers {
                             resourceIds = resources.split(",");
                         }
                         globalResourceUsageCounters.useResources(resourceIds);
-                        
+
                         if (workerStatus.getStatus() == WorkerStatus.STATUS_DEAD) {
                             LOGGER.log(Level.INFO, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
                             toRecoverForWorker.add(task.getTaskId());
@@ -99,9 +99,7 @@ public class Workers {
                     }
                 }
             }
-            manager.getResourceUsageCounters().updateResourceCounters();
         }
-        globalResourceUsageCounters.updateResourceCounters();
         workersActivityThread.start();
     }
 

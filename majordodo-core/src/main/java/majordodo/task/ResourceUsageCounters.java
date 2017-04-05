@@ -40,24 +40,24 @@ import majordodo.utils.IntCounter;
 public class ResourceUsageCounters {
 
     public static final boolean CORRECT_NEGATIVE_COUNTERS = majordodo.utils.SystemProperties.getBooleanSystemProperty("broker.counters.correctnegative", false);
-    
+
     private static final Logger LOGGER = Logger.getLogger(ResourceUsageCounters.class.getName());
-    
+
     private final String name;
-    
+
     final Map<String, IntCounter> counters = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<String> releasedResources = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<String> usedResources = new ConcurrentLinkedQueue<>();
     private final AtomicBoolean clearRequested = new AtomicBoolean();
-    
+
     public ResourceUsageCounters() {
         this.name = "anonymous";
     }
-    
+
     public ResourceUsageCounters(String name) {
         this.name = name;
     }
-    
+
     public Map<String, Integer> getCountersView() {
         while (true) {
             try {
@@ -96,19 +96,15 @@ public class ResourceUsageCounters {
             }
             count.count++;
         }
-        
+
         if (CORRECT_NEGATIVE_COUNTERS) {
-            for (Entry<String,IntCounter> e: counters.entrySet()) {
+            for (Entry<String, IntCounter> e : counters.entrySet()) {
                 if (e.getValue().count < 0) {
                     LOGGER.log(Level.SEVERE, "Counter \"{0}\" is negative! Value={1}", new Object[]{e.getKey(), e.getValue()});
                     e.getValue().count = 0;
                 }
             }
         }
-    }
-
-    void clear() {
-        clearRequested.set(true);
     }
 
     void useResources(String[] resourceIds) {
@@ -124,7 +120,9 @@ public class ResourceUsageCounters {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
             List<String> res = Arrays.asList(resourceIds);
-            LOGGER.log(Level.FINEST, "{0} releaseResources={1}", new Object[]{name, res});
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.log(Level.FINEST, "'{0}' releaseResources={1}", new Object[]{name, res});
+            }
             releasedResources.addAll(res);
         }
     }

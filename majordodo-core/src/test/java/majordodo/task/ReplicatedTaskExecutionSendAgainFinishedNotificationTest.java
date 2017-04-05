@@ -17,7 +17,7 @@
  under the License.
 
  */
-package majordodo.replication;
+package majordodo.task;
 
 import majordodo.clientfacade.TaskStatusView;
 import majordodo.executors.TaskExecutor;
@@ -36,6 +36,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
+import majordodo.replication.ReplicatedCommitLog;
+import majordodo.replication.ZKBrokerLocator;
+import majordodo.replication.ZKTestEnv;
 import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
 import majordodo.task.Task;
@@ -203,6 +206,7 @@ public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
                                         Thread.sleep(1000);
                                     }
 
+                                    broker2.getWorkers().getWorkerManager(workerId).getResourceUsageCounters().updateResourceCounters();
                                     Map<String, Integer> countersWorker = broker2.getWorkers().getWorkerManager(workerId)
                                         .getResourceUsageCounters().getCountersView();
                                     for (String resource : Arrays.asList(RESOURCES)) {
@@ -211,6 +215,7 @@ public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
                                         assertEquals(1, countersWorker.get(resource).intValue());
                                     }
 
+                                    broker2.getGlobalResourceUsageCounters().updateResourceCounters();
                                     Map<String, Integer> countersGlobal = broker2.getGlobalResourceUsageCounters().getCountersView();
                                     for (String resource : Arrays.asList(RESOURCES)) {
                                         System.out.println("Counter resource=" + resource + "; counter=" + countersGlobal.get(resource));

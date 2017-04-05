@@ -64,7 +64,7 @@ public class SimpleTestUtils {
             Map<String, Integer> countersWorker = broker.getWorkers().getWorkerManager(workerId)
                 .getResourceUsageCounters().getCountersView();
             for (String resource : Arrays.asList(resources)) {
-                System.out.println("Worker counter resource=" + resource + "; counter=" + countersWorker.get(resource));
+                System.out.println("Worker "+workerId+" counter resource=" + resource + "; counter=" + countersWorker.get(resource));
                 if (expectedVal > 0) {
                     assertNotNull(countersWorker.get(resource));
                 }
