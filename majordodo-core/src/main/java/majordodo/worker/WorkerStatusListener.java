@@ -29,6 +29,7 @@ import java.util.List;
 public interface WorkerStatusListener {
 
     public static final String EVENT_CONNECTED = "connected";
+    public static final String EVENT_CONNECTION_ERROR = "connection_error";
     public static final String EVENT_DISCONNECTED = "disconnected";
 
     public default void connectionEvent(String event, WorkerCore core) {

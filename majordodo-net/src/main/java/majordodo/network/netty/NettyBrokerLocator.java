@@ -16,7 +16,6 @@ public class NettyBrokerLocator extends GenericNettyBrokerLocator {
 
     private final List<BrokerHostData> servers = new ArrayList<>();
     private final AtomicInteger index = new AtomicInteger();
-    private boolean sslUnsecure = true;
 
     public NettyBrokerLocator(String host, int port, boolean ssl) {
         this.servers.add(new BrokerHostData(host, port, "", ssl, new HashMap<String, String>()));
@@ -41,14 +40,6 @@ public class NettyBrokerLocator extends GenericNettyBrokerLocator {
     @Override
     public void brokerDisconnected() {
         index.incrementAndGet();
-    }
-
-    public boolean isSslUnsecure() {
-        return sslUnsecure;
-    }
-
-    public void setSslUnsecure(boolean sslUnsecure) {
-        this.sslUnsecure = sslUnsecure;
     }
 
 }

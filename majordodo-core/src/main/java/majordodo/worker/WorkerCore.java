@@ -476,9 +476,14 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         }
         LOGGER.log(Level.SEVERE, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
         disconnect();
-        channel = brokerLocator.connect(this, this);
-        LOGGER.log(Level.SEVERE, "connected, channel:" + channel);
-        listener.connectionEvent("connected", this);
+        try {
+            channel = brokerLocator.connect(this, this);
+            LOGGER.log(Level.SEVERE, "connected, channel:" + channel);
+            listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTED, this);
+        } catch (BrokerRejectedConnectionException | BrokerNotAvailableException error) {
+            listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTION_ERROR, this);
+            throw error;
+        }
     }
 
     public void disconnect() {
@@ -487,7 +492,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             if (c != null) {
                 channel = null;
                 c.close();
-                listener.connectionEvent("disconnected", this);
+                listener.connectionEvent(WorkerStatusListener.EVENT_DISCONNECTED, this);
             }
         } finally {
             channel = null;
