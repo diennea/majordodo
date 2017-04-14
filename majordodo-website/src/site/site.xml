@@ -37,6 +37,12 @@
             <projectNameForChangelog>Majordodo</projectNameForChangelog>
             <releases>
                 <release>
+                    <version>0.10.0</version>
+                    <date>April 2017</date>
+                    <href>https://dev.majordodo.org/jira/projects/MAJ/versions/10400</href>
+                    <text>Majordodo 0.10.0 introduces Netty 4.1, OpenSsl and Native Epool on linux</text>
+                </release>
+                <release>
                     <version>0.9.0</version>
                     <date>March 2017</date>
                     <href>https://dev.majordodo.org/jira/projects/MAJ/versions/10303</href>
