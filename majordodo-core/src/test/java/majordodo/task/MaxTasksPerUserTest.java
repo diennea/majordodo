@@ -144,7 +144,7 @@ public class MaxTasksPerUserTest {
             broker.startAsWritable();
             List<Long> taskIds = new ArrayList<>();
             for (int i = 0; i < numTasks; i++) {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null));
                 long taskId = res.getTaskId();
                 assertTrue(taskId > 0);
                 taskIds.add(taskId);

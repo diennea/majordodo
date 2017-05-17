@@ -27,10 +27,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import majordodo.clientfacade.BrokerStatusView;
+import majordodo.clientfacade.DelayedTasksQueueView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
-import majordodo.clientfacade.TransactionStatus;
 import majordodo.clientfacade.TransactionsStatusView;
 import majordodo.clientfacade.TransactionStatus;
 
@@ -69,6 +69,7 @@ public class BrokerStatusMonitor {
         @Override
         public void run() {
             HeapStatusView heap = broker.getHeapStatusView();
+            DelayedTasksQueueView delayedQueue = broker.getDelayedTasksQueueView();
             TransactionsStatusView transactions = broker.getTransactionsStatusView();
             SlotsStatusView slots = broker.getSlotsStatusView();
             BrokerStatusView brokerStatusView = broker.createBrokerStatusView();
@@ -87,6 +88,16 @@ public class BrokerStatusMonitor {
                 first = heap.getTasks().get(0);
                 last = heap.getTasks().get(countHeap - 1);
             }
+            
+            long delaysSum = 0;
+            for (DelayedTasksQueueView.TaskStatus task: delayedQueue.getTasks()) {
+                delaysSum += task.getDelay();
+            }
+            double averageDelayInSeconds = 0;
+            if (delayedQueue.getTasks().size() > 0){
+                averageDelayInSeconds = (double) delaysSum / delayedQueue.getTasks().size() / 1000;
+            }
+            
             LOGGER.log(Level.SEVERE, "Broker status: " + brokerStatusView.getClusterMode()
                     + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",Tasks:" + brokerStatusView.getTasks()
                     + ", waiting:" + brokerStatusView.getWaitingTasks()
@@ -95,6 +106,7 @@ public class BrokerStatusMonitor {
                     + ", finished:" + brokerStatusView.getFinishedTasks() + ","
                     + "Transactions: count " + transactions.getTransactions().size() + ", oldest " + oldestTransaction + ", "
                     + "TasksHeap: size " + heap.getTasks().size() + ", first " + first + ", last " + last + ", "
+                    + "DelayedTasksQueue: size " + delayedQueue.getTasks().size() + ", average delay " + averageDelayInSeconds + ", "
                     + "Slots: " + slots.getBusySlots().size());
         }
 

@@ -28,6 +28,7 @@ public class TaskStatus {
 
     private String taskId;
     private String userId;
+    private long requestedStartTime;
     private long deadline;
     private long createdTimestamp;
     private int maxattempts;
@@ -40,6 +41,14 @@ public class TaskStatus {
     private String status;
     private String codePoolId;
     private String mode;
+
+    public long getRequestedStartTime() {
+        return requestedStartTime;
+    }
+
+    public void setRequestedStartTime(long requestedStartTime) {
+        this.requestedStartTime = requestedStartTime;
+    }
 
     public String getCodePoolId() {
         return codePoolId;

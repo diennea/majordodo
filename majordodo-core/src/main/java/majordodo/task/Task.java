@@ -20,7 +20,9 @@
  */
 package majordodo.task;
 
-import java.util.List;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.TimeUnit;
 import majordodo.worker.TaskExecutorStatus;
 
 /**
@@ -28,12 +30,14 @@ import majordodo.worker.TaskExecutorStatus;
  *
  * @author enrico.olivelli
  */
-public class Task {
+@SuppressFBWarnings(value = "EQ_COMPARETO_USE_OBJECT_EQUALS")
+public class Task implements Delayed {
 
     public static final int STATUS_WAITING = 0;
     public static final int STATUS_RUNNING = 1;
     public static final int STATUS_FINISHED = 2;
     public static final int STATUS_ERROR = 4;
+    public static final int STATUS_DELAYED = 5;
 
     public static final int GROUP_ANY = 0;
     public static final String TASKTYPE_ANY = "any";
@@ -76,6 +80,8 @@ public class Task {
                 return "RUNNING";
             case STATUS_WAITING:
                 return "WAITING";
+            case STATUS_DELAYED:
+                return "DELAYED";
             default:
                 return "?" + status;
         }
@@ -83,7 +89,7 @@ public class Task {
 
     @Override
     public String toString() {
-        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", status=" + status + " " + statusToString(status) + ", taskId=" + taskId + ", userId=" + userId + ", workerId=" + workerId + '}';
+        return "Task{" + "type=" + type + ", parameter=" + parameter + ", result=" + result + ", createdTimestamp=" + createdTimestamp + ", delay=" + getDelay(TimeUnit.SECONDS) + "s, status=" + status + " " + statusToString(status) + ", taskId=" + taskId + ", userId=" + userId + ", workerId=" + workerId + '}';
     }
 
     private String type;
@@ -96,11 +102,20 @@ public class Task {
     private String workerId;
     private int maxattempts;
     private int attempts;
+    private long requestedStartTime;
     private long executionDeadline;
     private String slot;
     private String codepool;
     private String mode;
     private String resources;
+
+    public long getRequestedStartTime() {
+        return requestedStartTime;
+    }
+
+    public void setRequestedStartTime(long requestedStartTime) {
+        this.requestedStartTime = requestedStartTime;
+    }
 
     public String getResources() {
         return resources;
@@ -234,10 +249,21 @@ public class Task {
         copy.type = this.type;
         copy.attempts = this.attempts;
         copy.maxattempts = this.maxattempts;
+        copy.requestedStartTime = this.requestedStartTime;
         copy.executionDeadline = this.executionDeadline;
         copy.slot = this.slot;
         copy.resources = this.resources;
         return copy;
     }
 
+    @Override
+    public long getDelay(TimeUnit unit) {
+        return unit.convert(requestedStartTime - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public int compareTo(Delayed o) {
+        return Long.compare(getDelay(TimeUnit.MILLISECONDS), o.getDelay(TimeUnit.MILLISECONDS));
+    }
+    
 }

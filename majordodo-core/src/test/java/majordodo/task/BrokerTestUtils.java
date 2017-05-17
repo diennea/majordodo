@@ -48,7 +48,9 @@ import majordodo.replication.ZKBrokerLocator;
 import majordodo.replication.ZKTestEnv;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -83,6 +85,7 @@ public abstract class BrokerTestUtils {
     protected static boolean startBroker = false;
     protected static BrokerConfiguration brokerConfig = null;
     protected Broker broker = null;
+    private StatusChangesLog brokerLog = null;
     protected NettyChannelAcceptor server = null;
     
     // Replicated brokers
@@ -330,6 +333,29 @@ public abstract class BrokerTestUtils {
         }
     }
     
+    protected void restartSingleBroker(boolean badly) throws Exception {
+        if (!startBroker) {
+            throw new IllegalStateException("Not in single broker mode");
+        }
+        
+        if (badly) {
+            broker.die();
+        }
+        
+        server.close();
+        broker.close();
+        
+        broker = new Broker(
+                brokerConfig, 
+                new FileCommitLog(workDir, workDir, 1024 * 1024), 
+                new TasksHeap(1000, createTaskPropertiesMapperFunction())
+        );
+        broker.startAsWritable();
+
+        server = new NettyChannelAcceptor(broker.getAcceptor());
+        server.start();
+    }
+    
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return new TaskPropertiesMapperFunction() {
             @Override
@@ -380,5 +406,42 @@ public abstract class BrokerTestUtils {
             }
         }
     }
-
+    
+    public static void checkTaskStatus(Broker broker, long taskId, int status, Object expectedResult, long waitTime, boolean checkTaskExistence) throws Exception {
+        long waitForCycle = 1000;
+        long cycles = waitTime / waitForCycle;
+        
+        boolean ok = false;
+        for (int i = 0; i < cycles; i++) {
+            Task task = broker.getBrokerStatus().getTask(taskId);
+            System.out.println("task:" + task);
+            if (checkTaskExistence) {
+                assertNotEquals(null, task);
+            }
+            if (task != null && (status == -1 || task.getStatus() == status)) {
+                ok = true;
+                if (expectedResult != null) {
+                    assertEquals(expectedResult, task.getResult());
+                }
+                break;
+            }
+            Thread.sleep(waitForCycle);
+        }
+        assertTrue(ok);
+    }
+    
+    public static void waitForBrokerToBecomeLeader(Broker broker, long waitTime) throws InterruptedException {
+        long waitForCycle = 1000;
+        long cycles = waitTime / waitForCycle;
+        
+        boolean ok = false;
+        for (int i = 0; i < cycles; i++) {
+            if (broker.isWritable()) {
+                ok = true;
+                break;
+            }
+            Thread.sleep(waitForCycle);
+        }
+        assertTrue(ok);
+    }
 }

@@ -32,9 +32,18 @@ public class BrokerStatusView {
     private long tasks;
     private long pendingTasks;
     private long waitingTasks;
+    private long delayedTasks;
     private long errorTasks;
     private long finishedTasks;
     private long runningTasks;
+
+    public long getDelayedTasks() {
+        return delayedTasks;
+    }
+
+    public void setDelayedTasks(long delayedTasks) {
+        this.delayedTasks = delayedTasks;
+    }
 
     public long getWaitingTasks() {
         return waitingTasks;

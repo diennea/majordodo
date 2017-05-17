@@ -31,6 +31,7 @@ public class BrokerStatusStats {
 
     private long runningTasks;
     private long waitingTasks;
+    private long delayedTasks;
     private long errorTasks;
     private long finishedTasks;
 
@@ -62,6 +63,9 @@ public class BrokerStatusStats {
             case Task.STATUS_WAITING:
                 waitingTasks--;
                 break;
+            case Task.STATUS_DELAYED:
+                delayedTasks--;
+                break;
             case Task.STATUS_RUNNING:
                 runningTasks--;
                 break;
@@ -82,6 +86,9 @@ public class BrokerStatusStats {
                 break;
             case Task.STATUS_WAITING:
                 waitingTasks++;
+                break;
+            case Task.STATUS_DELAYED:
+                delayedTasks++;
                 break;
             case Task.STATUS_RUNNING:
                 runningTasks++;
@@ -125,6 +132,14 @@ public class BrokerStatusStats {
 
     public void setFinishedTasks(long finishedTasks) {
         this.finishedTasks = finishedTasks;
+    }
+
+    public long getDelayedTasks() {
+        return delayedTasks;
+    }
+
+    public void setDelayedTasks(long delayedTasks) {
+        this.delayedTasks = delayedTasks;
     }
 
 }

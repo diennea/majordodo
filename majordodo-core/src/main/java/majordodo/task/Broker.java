@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.DelayQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -42,13 +43,13 @@ import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.CodePoolView;
 import majordodo.clientfacade.CreateCodePoolRequest;
 import majordodo.clientfacade.CreateCodePoolResult;
+import majordodo.clientfacade.DelayedTasksQueueView;
 import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
 import majordodo.clientfacade.SlotsStatusView;
 import majordodo.clientfacade.TransactionsStatusView;
 import majordodo.clientfacade.TransactionStatus;
-import majordodo.task.TaskTypeUser;
 import majordodo.utils.IntCounter;
 
 /**
@@ -58,6 +59,8 @@ import majordodo.utils.IntCounter;
  */
 public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerFailureListener {
 
+    public static final int MAX_SIMULTANEOUS_RESUMED_TASKS = 1000;
+    
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
@@ -119,6 +122,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     private final Workers workers;
     public final TasksHeap tasksHeap;
+    private final DelayQueue<Task> delayedTasksQueue = new DelayQueue<>();
     private final BrokerStatus brokerStatus;
     private final StatusChangesLog log;
     private final ResourceUsageCounters globalResourceUsageCounters;
@@ -134,7 +138,13 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
     private final BrokerStatusMonitor brokerStatusMonitor;
     private final Thread brokerLifeThread;
-
+    
+    private int cycleAwaitSeconds = 10;
+    
+    protected void setCycleAwaitSeconds(int cycleAwaitSeconds) {
+        this.cycleAwaitSeconds = cycleAwaitSeconds;
+    }
+    
     public ResourceUsageCounters getGlobalResourceUsageCounters() {
         return globalResourceUsageCounters;
     }
@@ -246,6 +256,13 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
                             break;
+                        case Task.STATUS_DELAYED:
+                            LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=delayed)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
+                            delayedTasksQueue.add(task);
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.put(task.getSlot(), task.getTaskId());
+                            }
+                            break;
                         case Task.STATUS_RUNNING:
                             LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is in running status", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
@@ -283,6 +300,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 try {
                     while (!stopped && !failed) {
                         noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
+                        resumeDelayedTasks();
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
                         }
@@ -300,6 +318,28 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     };
 
+    public void resumeDelayedTasks() throws LogNotAvailableException {
+        List<Task> tasksToResume = new ArrayList<>();
+        List<StatusEdit> edits = new ArrayList<>();
+        delayedTasksQueue.drainTo(tasksToResume, MAX_SIMULTANEOUS_RESUMED_TASKS);
+        for (Task task: tasksToResume) {
+            edits.add(StatusEdit.TASK_STATUS_CHANGE(task.getTaskId(), null, Task.STATUS_WAITING, null));
+        }
+        List<BrokerStatus.ModificationResult> results = brokerStatus.applyModifications(edits);
+        int i = 0;
+        for (BrokerStatus.ModificationResult mod: results) {
+            Task task = tasksToResume.get(i++);
+            if (mod.error == null) {
+                LOGGER.log(Level.FINER, "task {0} resumed", task.getTaskId());
+            } else {
+                //LOGGER.log(Level.SEVERE, String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
+                throw new IllegalStateException(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
+            }
+            tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+            
+        }
+    }
+    
     private void shutdown() {
         if (stopped) {
             return;
@@ -476,7 +516,16 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
         List<Task> preparedtasks = (List<Task>) result.data;
         for (Task task : preparedtasks) {
-            this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+            switch (task.getStatus()) {
+                case Task.STATUS_WAITING:
+                    this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                    break;
+                case Task.STATUS_DELAYED:
+                    this.delayedTasksQueue.add(task);
+                    break;
+                default:
+                    throw new IllegalStateException("Impossibile");
+            }
         }
 
     }
@@ -517,6 +566,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         res.setPendingTasks(brokerStatus.getStats().getPendingTasks());
         res.setRunningTasks(brokerStatus.getStats().getRunningTasks());
         res.setWaitingTasks(brokerStatus.getStats().getWaitingTasks());
+        res.setDelayedTasks(brokerStatus.getStats().getDelayedTasks());
         res.setErrorTasks(brokerStatus.getStats().getErrorTasks());
         res.setFinishedTasks(brokerStatus.getStats().getFinishedTasks());
         return res;
@@ -529,6 +579,17 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             status.setGroup(task.groupid);
             status.setTaskId(task.taskid);
             status.setTaskType(tasksHeap.resolveTaskType(task.tasktype));
+            res.getTasks().add(status);
+        });
+        return res;
+    }
+    
+    public DelayedTasksQueueView getDelayedTasksQueueView() {
+        DelayedTasksQueueView res = new DelayedTasksQueueView();
+        delayedTasksQueue.forEach(task -> {
+            DelayedTasksQueueView.TaskStatus status = new DelayedTasksQueueView.TaskStatus();
+            status.setTaskId(task.getTaskId());
+            status.setDelay(task.getDelay(TimeUnit.MILLISECONDS));
             res.getTasks().add(status);
         });
         return res;
@@ -624,18 +685,31 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     public AddTaskResult addTask(AddTaskRequest request) throws LogNotAvailableException {
         assertBrokerAvailableForClients();
         Long taskId = brokerStatus.nextTaskId();
+        Task newTask;
         if (request.transaction > 0) {
-            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
+            StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.requestedStartTime, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
-            return new AddTaskResult((Long) result.data, result.error);
+            newTask = (Task) result.data;
+            taskId = newTask != null ? newTask.getTaskId() : 0;
+            return new AddTaskResult(taskId, result.error);
         } else {
-            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
+            StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.requestedStartTime, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
             BrokerStatus.ModificationResult result = this.brokerStatus.applyModification(addTask);
-            taskId = (Long) result.data;
-            if (taskId > 0 && result.error == null) {
-                this.tasksHeap.insertTask(taskId, request.taskType, request.userId);
+            newTask = (Task) result.data;
+            taskId = newTask != null ? newTask.getTaskId() : 0;
+            if (taskId > 0 && result.error == null && newTask != null) {
+                switch (newTask.getStatus()) { 
+                    case Task.STATUS_WAITING:
+                        this.tasksHeap.insertTask(taskId, request.taskType, request.userId);
+                        break;
+                    case Task.STATUS_DELAYED:
+                        this.delayedTasksQueue.add(newTask);
+                        break;
+                    default:
+                        throw new IllegalStateException("Impossibile");
+                }
             }
-            return new AddTaskResult((Long) result.data, result.error);
+            return new AddTaskResult(taskId, result.error);
         }
     }
 
@@ -647,10 +721,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         for (AddTaskRequest request : requests) {
             Long taskId = brokerStatus.nextTaskId();
             if (request.transaction > 0) {
-                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
+                StatusEdit addTask = StatusEdit.PREPARE_ADD_TASK(request.transaction, taskId, request.taskType, request.data, request.userId, request.maxattempts, request.requestedStartTime, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
                 edits.add(addTask);
             } else {
-                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
+                StatusEdit addTask = StatusEdit.ADD_TASK(taskId, request.taskType, request.data, request.userId, request.maxattempts, request.requestedStartTime, request.deadline, request.slot, request.attempt, request.codepool, request.mode);
                 edits.add(addTask);
             }
         }
@@ -662,14 +736,24 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         for (int i = 0; i < size; i++) {
             StatusEdit addTask = edits.get(i);
             BrokerStatus.ModificationResult result = batch.get(i);
-            Long taskId = (Long) result.data;
+            Task newTask = (Task) result.data;
+            Long taskId = newTask != null ? newTask.getTaskId() : 0;
             if (addTask.editType == StatusEdit.TYPE_PREPARE_ADD_TASK) {
-                res.add(new AddTaskResult(taskId != null ? taskId : 0, result.error));
+                res.add(new AddTaskResult(taskId, result.error));
             } else {
-                if (taskId != null && taskId > 0 && result.error == null) {
-                    this.tasksHeap.insertTask(taskId, addTask.taskType, addTask.userid);
+                if (taskId > 0 && result.error == null && newTask != null) {
+                    switch (newTask.getStatus()) { 
+                        case Task.STATUS_WAITING:
+                            this.tasksHeap.insertTask(taskId, addTask.taskType, addTask.userid);
+                            break;
+                        case Task.STATUS_DELAYED:
+                            this.delayedTasksQueue.add(newTask);
+                            break;
+                        default:
+                            throw new IllegalStateException("Impossibile");
+                    }
                 }
-                res.add(new AddTaskResult(taskId != null ? taskId : 0, result.error));
+                res.add(new AddTaskResult(taskId, result.error));
             }
         }
         return res;

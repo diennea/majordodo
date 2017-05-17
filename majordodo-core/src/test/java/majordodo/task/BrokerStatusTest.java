@@ -48,7 +48,7 @@ public class BrokerStatusTest {
 
             // 5 tasks to user
             for (int i = 0; i < 5; i++) {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, null, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, 0, null, 0, null, null));
                 assertTrue(res.getTaskId() > 0);
             }
 
@@ -64,7 +64,7 @@ public class BrokerStatusTest {
 
             // add other 10 tasks for the same user
             for (int i = 0; i < 10; i++) {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, null, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, 0, null, 0, null, null));
                 assertTrue(res.getTaskId() > 0);
             }
 
@@ -87,7 +87,7 @@ public class BrokerStatusTest {
 
             // 5 tasks to user
             for (int i = 0; i < 5; i++) {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, null, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, 0, null, 0, null, null));
                 assertTrue(res.getTaskId() > 0);
             }
 
@@ -103,7 +103,7 @@ public class BrokerStatusTest {
 
             // add other 10 tasks for the same user
             for (int i = 0; i < 10; i++) {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, null, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, 0, null, 0, null, null));
                 assertTrue(res.getTaskId() > 0);
             }
 

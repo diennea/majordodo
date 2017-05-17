@@ -104,7 +104,7 @@ public class DeadWorkerResourceCountersAtFollowerPromotionTest extends BrokerTes
                 }
             );
 
-            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null)).getTaskId();
+            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null)).getTaskId();
 
             assertTrue(startExecutingTask.await(30, TimeUnit.SECONDS));
 
@@ -207,7 +207,7 @@ public class DeadWorkerResourceCountersAtFollowerPromotionTest extends BrokerTes
                 }
             );
 
-            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null)).getTaskId();
+            taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null)).getTaskId();
 
             assertTrue(startExecutingTask.await(30, TimeUnit.SECONDS));
 

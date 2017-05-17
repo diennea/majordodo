@@ -22,8 +22,6 @@ package majordodo.embedded;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.client.BrokerStatus;
 import majordodo.clientfacade.BrokerStatusView;
@@ -182,8 +180,9 @@ public class EmbeddedClient implements AutoCloseable {
                 if (request.getAttempt() > 0 && request.getMaxattempts() > 0 && request.getAttempt() >= request.getMaxattempts()) {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
-                SubmitTaskResult submitTask = broker.getClient().submitTask(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(), null, null));
+                SubmitTaskResult submitTask = broker.getClient().submitTask(
+                    new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
+                        request.getMaxattempts(), request.getRequestedStartTime(), deadline, request.getSlot(), request.getAttempt(), null, null));
                 SubmitTaskResponse resp = new SubmitTaskResponse();
                 resp.setTaskId(submitTask.getTaskId() + "");
                 if (submitTask.getOutcome() != null) {
@@ -216,7 +215,7 @@ public class EmbeddedClient implements AutoCloseable {
                     throw new ClientException("invalid Maxattempts " + request.getMaxattempts() + " with attempt " + request.getAttempt());
                 }
                 requests.add(new AddTaskRequest(transactionId, request.getTasktype(), request.getUserid(), request.getData(),
-                        request.getMaxattempts(), deadline, request.getSlot(), request.getAttempt(), null, null));
+                        request.getMaxattempts(), request.getRequestedStartTime(), deadline, request.getSlot(), request.getAttempt(), null, null));
             }
             try {
                 List<SubmitTaskResult> submitTasks = broker.getClient().submitTasks(requests);
