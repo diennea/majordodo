@@ -25,7 +25,6 @@ import majordodo.task.LogSequenceNumber;
 import majordodo.task.Task;
 import majordodo.task.StatusEdit;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -59,7 +58,7 @@ public class FileCommitLogSimpleTest {
             assertEquals(snapshot.getActualLogSequenceNumber().ledgerId, -1);
             assertEquals(snapshot.getActualLogSequenceNumber().sequenceNumber, -1);
             assertTrue(snapshot.getTasks().isEmpty());
-            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0, null, 0, null, null);
+            StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytype", "param1", "myuser", 0, 0, 0, null, 0, null, null);
             StatusEdit edit2 = StatusEdit.WORKER_CONNECTED("node1", "psasa", "localhost", new HashSet<>(), System.currentTimeMillis());
             StatusEdit edit3 = StatusEdit.ASSIGN_TASK_TO_WORKER(1, "worker1", 1, "db1,db2");
             StatusEdit edit4 = StatusEdit.TASK_STATUS_CHANGE(1, "node1", Task.STATUS_FINISHED, "theresult");

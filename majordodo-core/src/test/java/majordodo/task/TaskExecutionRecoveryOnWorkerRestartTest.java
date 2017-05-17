@@ -47,7 +47,7 @@ public class TaskExecutionRecoveryOnWorkerRestartTest extends BrokerTestUtils {
         String workerId = "abc";
         String taskParams = "param";
 
-        long taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+        long taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
 
         // startAsWritable a worker, it will die
         try (NettyBrokerLocator locator = new NettyBrokerLocator(server.getHost(), server.getPort(), server.isSsl())) {

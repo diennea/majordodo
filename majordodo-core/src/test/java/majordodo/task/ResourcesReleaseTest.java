@@ -146,7 +146,7 @@ public class ResourcesReleaseTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
@@ -238,7 +238,7 @@ public class ResourcesReleaseTest {
         bc.setMaxWorkerIdleTime(1000);
         try (Broker broker = new Broker(bc, new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);

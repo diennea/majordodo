@@ -19,7 +19,6 @@
  */
 package majordodo.clientfacade;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -150,6 +149,14 @@ public class HttpAPIImplementation {
                     resultMap.put("status", "not_started");
                 }
                 break;
+            case "delayedqueue":
+                if (broker != null) {
+                    resultMap.put("delayedqueue", broker.getClient().getDelayedTasksQueueView());
+                    resultMap.put("status", broker.getClient().getBrokerStatus());
+                } else {
+                    resultMap.put("status", "not_started");
+                }
+                break;
             case "slots":
                 if (broker != null) {
                     resultMap.put("slots", broker.getClient().getSlotsStatusView());
@@ -238,6 +245,9 @@ public class HttpAPIImplementation {
                         case "waiting":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_WAITING;
                             break;
+                        case "delayed":
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_DELAYED;
+                            break;
                         case "running":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_RUNNING;
                             break;
@@ -314,6 +324,9 @@ public class HttpAPIImplementation {
                             break;
                         case "waiting":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_WAITING;
+                            break;
+                        case "delayed":
+                            filterPred = (t) -> t.getStatus() == Task.STATUS_DELAYED;
                             break;
                         case "running":
                             filterPred = (t)
@@ -392,6 +405,7 @@ public class HttpAPIImplementation {
         map.put("taskId", t.getTaskId());
         map.put("userId", t.getUser());
         map.put("deadline", t.getExecutionDeadline());
+        map.put("requestedStartTime", t.getRequestedStartTime());
         map.put("createdTimestamp", t.getCreatedTimestamp());
         map.put("maxattempts", t.getMaxattempts());
         map.put("attempts", t.getAttempts());
@@ -462,6 +476,11 @@ public class HttpAPIImplementation {
                         if (_maxattempts != null) {
                             maxattempts = Integer.parseInt(_maxattempts);
                         }
+                        String _requestedStartTime = (String) data.get("requestedStartTime");
+                        long requestedStartTime = 0;
+                        if (_requestedStartTime != null) {
+                            requestedStartTime = Long.parseLong(_requestedStartTime);
+                        }
                         String _deadline = (String) data.get("deadline");
                         long deadline = 0;
                         if (_deadline != null) {
@@ -488,7 +507,7 @@ public class HttpAPIImplementation {
 
                         SubmitTaskResult result;
                         try {
-                            result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
+                            result = broker.getClient().submitTask(new AddTaskRequest(transaction, type, user, parameters, maxattempts, requestedStartTime, deadline, slot, attempt, codepool, mode));
                             long taskId = result.getTaskId();
                             resultMap.put("taskId", taskId);
                             resultMap.put("result", result.getOutcome());
@@ -531,6 +550,11 @@ public class HttpAPIImplementation {
                                 if (_attempt != null) {
                                     attempt = Integer.parseInt(_attempt);
                                 }
+                                String _requestedStartTime = (String) data.get("requestedStartTime");
+                                long requestedStartTime = 0;
+                                if (_requestedStartTime != null) {
+                                    requestedStartTime = Long.parseLong(_requestedStartTime);
+                                }
                                 String _deadline = (String) task.get("deadline");
                                 long deadline = 0;
                                 if (_deadline != null) {
@@ -549,7 +573,7 @@ public class HttpAPIImplementation {
                                     mode = null;
                                 }
 
-                                requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, deadline, slot, attempt, codepool, mode));
+                                requests.add(new AddTaskRequest(transaction, type, user, parameters, maxattempts, requestedStartTime, deadline, slot, attempt, codepool, mode));
                             }
                             try {
                                 List<SubmitTaskResult> addresults = broker.getClient().submitTasks(requests);

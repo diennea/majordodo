@@ -48,7 +48,7 @@ import majordodo.utils.IntCounter;
  * @author enrico.olivelli
  */
 public final class BrokerStatus {
-
+    
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
     private final Map<Long, Task> tasks = new HashMap<>();
@@ -134,6 +134,7 @@ public final class BrokerStatus {
         s.setAttempts(task.getAttempts());
         s.setMaxattempts(task.getMaxattempts());
         s.setSlot(task.getSlot());
+        s.setRequestedStartTime(task.getRequestedStartTime());
         s.setExecutionDeadline(task.getExecutionDeadline());
         if (task.getMode() != null && !Task.MODE_EXECUTE_FACTORY.equals(task.getMode())) {
             s.setMode(task.getMode());
@@ -208,6 +209,7 @@ public final class BrokerStatus {
                                 switch (t.getStatus()) {
                                     case Task.STATUS_RUNNING:
                                     case Task.STATUS_WAITING:
+                                    case Task.STATUS_DELAYED:
                                         hasTasks = true;
                                         break;
                                     default:
@@ -313,6 +315,7 @@ public final class BrokerStatus {
                 Task t = taskEntry.getValue();
                 switch (t.getStatus()) {
                     case Task.STATUS_WAITING:
+                    case Task.STATUS_DELAYED:
                         if (expiredcount < maxExpiredPerCycle && allowExpire) {
                             long taskdeadline = t.getExecutionDeadline();
                             if (taskdeadline > 0 && taskdeadline < now) {
@@ -569,7 +572,7 @@ public final class BrokerStatus {
             for (int i = 0; i < max; i++) {
                 StatusEdit edit = edits.get(i);
                 if (skip.contains(i)) {
-                    results.add(new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned"));
+                    results.add(new ModificationResult(null, null, "slot " + edit.slot + " already assigned"));
                 } else {
                     boolean ok = true;
                     if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
@@ -622,7 +625,7 @@ public final class BrokerStatus {
             } else {
                 // slot already assigned
                 LOGGER.log(Level.FINEST, "slot {0} already assigned", edit.slot);
-                return new ModificationResult(null, 0L, "slot " + edit.slot + " already assigned");
+                return new ModificationResult(null, null, "slot " + edit.slot + " already assigned");
             }
         } else {
             if (edit.editType == StatusEdit.TYPE_CREATECODEPOOL) {
@@ -751,25 +754,30 @@ public final class BrokerStatus {
                     if (edit.mode != null) {
                         task.setMode(edit.mode.intern());
                     }
-                    task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
+                    task.setRequestedStartTime(edit.requestedStartTime);
                     task.setExecutionDeadline(edit.executionDeadline);
                     task.setSlot(edit.slot);
+                    if (task.getRequestedStartTime() > 0 && task.getCreatedTimestamp() < task.getRequestedStartTime()) {
+                        task.setStatus(Task.STATUS_DELAYED);
+                    } else {
+                        task.setStatus(Task.STATUS_WAITING);
+                    }
                     tasks.put(edit.taskId, task);
                     stats.taskStatusChange(-1, task.getStatus());
-
+                    
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
                         slotsManager.assignSlot(edit.slot, edit.taskId);
                     }
-                    return new ModificationResult(num, edit.taskId, null);
+                    return new ModificationResult(num, task, null);
                 }
                 case StatusEdit.TYPE_PREPARE_ADD_TASK: {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
                         LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
-                        return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
+                        return new ModificationResult(num, null, "no transaction " + edit.transactionId);
                     }
                     Task task = new Task();
                     task.setTaskId(edit.taskId);
@@ -786,11 +794,16 @@ public final class BrokerStatus {
                     if (edit.mode != null) {
                         task.setMode(edit.mode.intern());
                     }
-                    task.setStatus(Task.STATUS_WAITING);
                     task.setMaxattempts(edit.maxattempts);
                     task.setAttempts(edit.attempt);
+                    task.setRequestedStartTime(edit.requestedStartTime);
                     task.setExecutionDeadline(edit.executionDeadline);
                     task.setSlot(edit.slot);
+                    if (task.getRequestedStartTime() > 0 && task.getCreatedTimestamp() < task.getRequestedStartTime()) {
+                        task.setStatus(Task.STATUS_DELAYED);
+                    } else {
+                        task.setStatus(Task.STATUS_WAITING);
+                    }
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
                         slotsManager.assignSlot(edit.slot, edit.taskId);
@@ -798,8 +811,8 @@ public final class BrokerStatus {
                     // the slot it acquired on prepare (and eventually released on rollback)
                     // task is not really submitted not, it will be submitted on commit
                     transaction.getPreparedTasks().add(task);
-
-                    return new ModificationResult(num, edit.taskId, null);
+                    
+                    return new ModificationResult(num, task, null);
                 }
                 case StatusEdit.TYPE_WORKER_CONNECTED: {
                     WorkerStatus node = workers.get(edit.workerId);
@@ -882,7 +895,8 @@ public final class BrokerStatus {
                 stats.taskStatusChange(-1, task.getStatus());
                 switch (task.getStatus()) {
                     case Task.STATUS_RUNNING:
-                    case Task.STATUS_WAITING: {
+                    case Task.STATUS_WAITING:
+                    case Task.STATUS_DELAYED: {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                             busySlots.put(task.getSlot(), taskId);
                         }

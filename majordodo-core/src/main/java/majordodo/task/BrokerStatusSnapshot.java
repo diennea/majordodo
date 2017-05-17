@@ -24,9 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import majordodo.codepools.CodePool;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
@@ -415,6 +413,10 @@ public class BrokerStatusSnapshot {
                     nextToken(jParser);
                     task.setCreatedTimestamp(Long.parseLong(readValue(jParser)));
                     break;
+                case "requestedStartTime":
+                    nextToken(jParser);
+                    task.setRequestedStartTime(Long.parseLong(readValue(jParser)));
+                    break;
                 case "executionDeadline":
                     nextToken(jParser);
                     task.setExecutionDeadline(Long.parseLong(readValue(jParser)));
@@ -495,6 +497,7 @@ public class BrokerStatusSnapshot {
         writeSimpleProperty(g, "maxattempts", task.getMaxattempts());
         writeSimpleProperty(g, "slot", task.getSlot());
         writeSimpleProperty(g, "attempts", task.getAttempts());
+        writeSimpleProperty(g, "requestedStartTime", task.getRequestedStartTime());
         writeSimpleProperty(g, "executionDeadline", task.getExecutionDeadline());
         writeSimpleProperty(g, "parameter", task.getParameter());
         writeSimpleProperty(g, "result", task.getResult());

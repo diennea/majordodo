@@ -183,10 +183,10 @@ public class ExpireMultipleTasksTest {
                         }
                         );
 
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
-                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
+                        taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis() - 1000 * 60 * 60, null, 0, null, null)).getTaskId();
                         broker.purgeTasks();
 
                         boolean okFinishedForBroker = false;

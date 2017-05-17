@@ -110,7 +110,11 @@ public class ClientFacade {
     public HeapStatusView getHeapStatus() {
         return broker.getHeapStatusView();
     }
-
+    
+    public DelayedTasksQueueView getDelayedTasksQueueView() {
+        return broker.getDelayedTasksQueueView();
+    }
+    
     public TransactionsStatusView getTransactionsStatusView() {
         return broker.getTransactionsStatusView();
     }
