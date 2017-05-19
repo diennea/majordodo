@@ -59,6 +59,11 @@ public class ZKTestEnv implements AutoCloseable {
         this.bookie = new BookieServer(conf);
         this.bookie.start();
     }
+    
+    public void stopBookie() throws InterruptedException {
+        this.bookie.shutdown();
+        this.bookie.join();
+    }
 
     public String getAddress() {
         return "localhost:1282";

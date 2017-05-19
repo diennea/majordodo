@@ -175,6 +175,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         }
     }
+    
+    protected long getCurrentLedgerId() {
+        return currentLedgerId;
+    }
 
     private class CommitFileWriter implements AutoCloseable {
 
@@ -544,6 +548,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     public ZKClusterManager getClusterManager() {
         return zKClusterManager;
+    }
+    
+    public BookKeeper getBookKeeper() {
+        return bookKeeper;
     }
 
     @Override
