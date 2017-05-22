@@ -42,4 +42,9 @@ public class SubmitTaskResult {
         return outcome;
     }
 
+    @Override
+    public String toString() {
+        return "SubmitTaskResult{" + "taskId=" + taskId + ", outcome=" + outcome + '}';
+    }
+
 }

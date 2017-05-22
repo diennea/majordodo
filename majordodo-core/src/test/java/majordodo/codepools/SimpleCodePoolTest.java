@@ -151,7 +151,7 @@ public class SimpleCodePoolTest {
             CreateCodePoolResult res5 = broker.getClient().createCodePool(new CreateCodePoolRequest(CODEPOOL, System.currentTimeMillis(), 0, mockCodePoolData));
             assertTrue(res5.ok);
 
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, null, 0, CODEPOOL, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, CODEPOOL, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);

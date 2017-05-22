@@ -39,6 +39,7 @@ public class TaskStatusView {
     private String slot;
     private int attempts;
     private int maxattempts;
+    private long requestedStartTime;
     private long executionDeadline;
     private String mode;
     private String codePoolId;
@@ -59,6 +60,9 @@ public class TaskStatusView {
             case Task.STATUS_WAITING:
                 status = "waiting";
                 break;
+            case Task.STATUS_DELAYED:
+                status = "delayed";
+                break;
             default:
                 status = "?" + taskStatus;
         }
@@ -68,6 +72,14 @@ public class TaskStatusView {
     @Override
     public String toString() {
         return "TaskStatusView{" + "taskId=" + taskId + ", status=" + status + " " + convertTaskStatusForClient(status) + ", user=" + user + ", workerId=" + workerId + ", createdTimestamp=" + createdTimestamp + ", data=" + data + ", result=" + result + ", type=" + type + ", slot=" + slot + ", attempts=" + attempts + ", maxattempts=" + maxattempts + ", resources=" + resources + ", executionDeadline=" + executionDeadline + '}';
+    }
+
+    public long getRequestedStartTime() {
+        return requestedStartTime;
+    }
+
+    public void setRequestedStartTime(long requestedStartTime) {
+        this.requestedStartTime = requestedStartTime;
     }
 
     public String getSlot() {

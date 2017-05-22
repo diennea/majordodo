@@ -148,12 +148,12 @@ public class SlotsReleaseTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
             // slot is busy
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null)).getTaskId());
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -214,7 +214,7 @@ public class SlotsReleaseTest {
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
                     // now the slot is free
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
+                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId();
                     assertTrue(taskId > 0);
                 }
 
@@ -239,12 +239,12 @@ public class SlotsReleaseTest {
         bc.setMaxWorkerIdleTime(1000);
         try (Broker broker = new Broker(bc, new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
             // slot is busy
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null)).getTaskId());
 
             try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker.getAcceptor());) {
                 server.start();
@@ -305,7 +305,7 @@ public class SlotsReleaseTest {
                 }
                 assertTrue(okFinishedForBroker);
                 // now the slot is free
-                taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
+                taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId();
                 assertTrue(taskId > 0);
 
             }
@@ -327,16 +327,16 @@ public class SlotsReleaseTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis(), SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis(), SLOTID, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
             // slot is busy
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId());
             Thread.sleep(1000);
             broker.purgeTasks();
             // slot is free
-            long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
+            long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId();
             assertTrue(taskId2 > 0);
         }
 
@@ -360,18 +360,18 @@ public class SlotsReleaseTest {
             broker.startAsWritable();
             long tx = broker.getClient().beginTransaction();
             assertNotNull(broker.getClient().getTransaction(tx));
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(tx, TASKTYPE_MYTYPE, userId, taskParams, 0, System.currentTimeMillis(), SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(tx, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, System.currentTimeMillis(), SLOTID, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
             // slot is busy
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId());
             Thread.sleep(5000);
             // on checkpoint the transaction will be rolled back
             assertNotNull(broker.getClient().getTransaction(tx));
             broker.checkpoint();
             // slot is free
-            long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
+            long taskId2 = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId();
             assertTrue(taskId2 > 0);
             assertNull(broker.getClient().getTransaction(tx));
 
@@ -410,7 +410,7 @@ public class SlotsReleaseTest {
             errorOnWriteOnLog.set(true);
             {
                 try {
-                    broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+                    broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null));
                     fail();
                 } catch (LogNotAvailableException ok) {
                 }
@@ -420,7 +420,7 @@ public class SlotsReleaseTest {
             errorOnWriteOnLog.set(false);
 
             {
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID, 0, null, null));
                 taskId = res.getTaskId();
                 assertTrue(taskId > 0);
                 assertTrue(res.getOutcome() == null);
@@ -432,7 +432,7 @@ public class SlotsReleaseTest {
                 long txId = broker.getClient().beginTransaction();
                 errorOnWriteOnLog.set(true);
                 try {
-                    SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID2, 0, null, null));
+                    SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID2, 0, null, null));
                     fail();
                 } catch (LogNotAvailableException ok) {
                 }
@@ -445,7 +445,7 @@ public class SlotsReleaseTest {
                 errorOnWriteOnLog.set(false);
                 // now with error on commit transaction
                 long txId = broker.getClient().beginTransaction();
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID3, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID3, 0, null, null));
                 taskId = res.getTaskId();
                 assertTrue(taskId > 0);
                 assertTrue(res.getOutcome() == null);
@@ -478,7 +478,7 @@ public class SlotsReleaseTest {
                 errorOnWriteOnLog.set(false);
                 // now with error on commit transaction
                 long txId = broker.getClient().beginTransaction();
-                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, SLOTID4, 0, null, null));
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(txId, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, SLOTID4, 0, null, null));
                 taskId = res.getTaskId();
                 assertTrue(taskId > 0);
                 assertTrue(res.getOutcome() == null);

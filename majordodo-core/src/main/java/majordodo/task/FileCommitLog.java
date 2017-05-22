@@ -134,6 +134,10 @@ public class FileCommitLog extends StatusChangesLog {
         }
     }
 
+    protected Path getCurrentLedgerFilePath() {
+        return writer.filename;
+    }
+    
     private static final class StatusEditWithSequenceNumber {
 
         LogSequenceNumber logSequenceNumber;

@@ -32,6 +32,7 @@ public class SubmitTaskRequest {
     private int maxattempts;
     private int attempt;
     private String slot;
+    private long requestedStartTime;
     private long timeToLive;
     private String codePoolId;
     private String mode;
@@ -120,6 +121,14 @@ public class SubmitTaskRequest {
 
     public void setTimeToLive(long timeToLive) {
         this.timeToLive = timeToLive;
+    }
+
+    public long getRequestedStartTime() {
+        return requestedStartTime;
+    }
+
+    public void setRequestedStartTime(long requestedStartTime) {
+        this.requestedStartTime = requestedStartTime;
     }
 
 }

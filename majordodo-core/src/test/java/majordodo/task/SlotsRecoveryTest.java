@@ -143,17 +143,17 @@ public class SlotsRecoveryTest {
         // startAsWritable a broker and request a task, with slot
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null));
+            SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null));
             taskId = res.getTaskId();
             assertTrue(taskId > 0);
             assertTrue(res.getOutcome() == null);
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId());
         }
 
         // restart a broker and request a task, with slot, slot is already busy
         try (Broker broker = new Broker(new BrokerConfiguration(), new FileCommitLog(workDir, workDir, 1024 * 1024), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
             broker.startAsWritable();
-            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId());
+            assertEquals(0, broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId());
         }
 
         // startAsWritable a broker and do some work
@@ -218,19 +218,19 @@ public class SlotsRecoveryTest {
                     assertTrue(disconnectedLatch.await(10, TimeUnit.SECONDS));
 
                     // now the slot is free
-                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTID, 0, null, null)).getTaskId();
+                    taskId = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTID, 0, null, null)).getTaskId();
                     assertTrue(taskId > 0);
                 }
                 // transactions
                 long transaction_1 = broker.getClient().beginTransaction();
                 String SLOTTRANSACTION_1 = "sltr1";
-                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
+                long slotTransactionTaskId = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
                 assertTrue(slotTransactionTaskId > 0);
-                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
+                long slotTransactionTaskId2 = broker.getClient().submitTask(new AddTaskRequest(transaction_1, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
                 assertEquals(0, slotTransactionTaskId2);
                 broker.getClient().rollbackTransaction(transaction_1);
                 long transaction_2 = broker.getClient().beginTransaction();
-                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
+                long slotTransactionTaskId3 = broker.getClient().submitTask(new AddTaskRequest(transaction_2, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, SLOTTRANSACTION_1, 0, null, null)).getTaskId();
                 assertTrue(slotTransactionTaskId3 > 0);
                 broker.getClient().commitTransaction(transaction_2);
 

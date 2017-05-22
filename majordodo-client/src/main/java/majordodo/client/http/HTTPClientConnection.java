@@ -269,6 +269,9 @@ public class HTTPClientConnection implements ClientConnection {
         if (request.getTimeToLive() > 0) {
             reqdata.put("deadline", (System.currentTimeMillis() + request.getTimeToLive()) + "");
         }
+        if (request.getRequestedStartTime() > 0) {
+            reqdata.put("requestedStartTime", request.getRequestedStartTime());
+        }
         if (transactionId != null) {
             reqdata.put("transaction", transactionId);
         }
@@ -331,6 +334,9 @@ public class HTTPClientConnection implements ClientConnection {
             }
             if (request.getTimeToLive() > 0) {
                 reqdata.put("deadline", (System.currentTimeMillis() + request.getTimeToLive()) + "");
+            }
+            if (request.getRequestedStartTime() > 0) {
+                reqdata.put("requestedStartTime", request.getRequestedStartTime());
             }
             if (transactionId != null) {
                 reqdata.put("transaction", transactionId);
@@ -498,6 +504,7 @@ public class HTTPClientConnection implements ClientConnection {
         t.setCreatedTimestamp(Long.parseLong(task.get("createdTimestamp") + ""));
         t.setData(task.get("data") + "");
         t.setDeadline(Long.parseLong(task.get("deadline") + ""));
+        t.setRequestedStartTime(Long.parseLong(task.get("requestedStartTime") + ""));
         t.setMaxattempts(Integer.parseInt(task.get("maxattempts") + ""));
         t.setResult(task.get("result") + "");
         t.setSlot(task.get("slot") + "");

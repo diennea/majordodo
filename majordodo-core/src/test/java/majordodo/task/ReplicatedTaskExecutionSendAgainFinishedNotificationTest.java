@@ -193,7 +193,7 @@ public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
                                     }
                                     );
 
-                                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, null, 0, null, null)).getTaskId();
+                                    taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
 
                                     assertTrue(startExecutingTask.await(30, TimeUnit.SECONDS));
                                     broker1.close();
