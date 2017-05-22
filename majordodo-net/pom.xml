@@ -24,6 +24,12 @@
             <version>${libs.netty4}</version>
         </dependency>
         <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${libs.netty4.tcnative}</version>
+            <scope>compile</scope>            
+        </dependency>
+        <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>
             <version>${libs.jackson}</version>            
@@ -60,6 +66,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <libs.netty4>4.1.10.Final</libs.netty4>
+        <libs.netty4.tcnative>2.0.1.Final</libs.netty4.tcnative>
         <libs.jackson>1.9.13</libs.jackson>
         <libs.zookeeper>3.4.9</libs.zookeeper>
     </properties>
