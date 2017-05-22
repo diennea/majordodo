@@ -134,7 +134,21 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
     private final BrokerStatusMonitor brokerStatusMonitor;
     private final Thread brokerLifeThread;
+    
+    private boolean suspendLogFlush = false;
 
+    public boolean isSuspendLogFlush() {
+        return suspendLogFlush;
+    }
+
+    public void setSuspendLogFlush(boolean suspendLogFlush) {
+        this.suspendLogFlush = suspendLogFlush;
+    }
+
+    public StatusChangesLog getStatusChangesLog() {
+        return log;
+    }
+    
     public ResourceUsageCounters getGlobalResourceUsageCounters() {
         return globalResourceUsageCounters;
     }
@@ -282,7 +296,11 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 }
                 try {
                     while (!stopped && !failed) {
-                        noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
+                        if (!suspendLogFlush) {
+                            // write something to log, this simple action detects fencing and forces flushes 
+                            // to other follower brokers
+                            noop();
+                        }
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
                         }
