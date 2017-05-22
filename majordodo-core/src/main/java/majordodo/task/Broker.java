@@ -140,9 +140,22 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private final Thread brokerLifeThread;
     
     private int cycleAwaitSeconds = 10;
+    private boolean suspendLogFlush = false;
     
     protected void setCycleAwaitSeconds(int cycleAwaitSeconds) {
         this.cycleAwaitSeconds = cycleAwaitSeconds;
+    }
+
+    public boolean isSuspendLogFlush() {
+        return suspendLogFlush;
+    }
+
+    public void setSuspendLogFlush(boolean suspendLogFlush) {
+        this.suspendLogFlush = suspendLogFlush;
+    }
+
+    public StatusChangesLog getStatusChangesLog() {
+        return log;
     }
     
     public ResourceUsageCounters getGlobalResourceUsageCounters() {
@@ -299,7 +312,11 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 }
                 try {
                     while (!stopped && !failed) {
-                        noop(); // write something to log, this simple action detects fencing and forces flushes to other follower brokers
+                        if (!suspendLogFlush) {
+                            // write something to log, this simple action detects fencing and forces flushes 
+                            // to other follower brokers
+                            noop();
+                        }
                         resumeDelayedTasks();
                         if (externalProcessChecker != null) {
                             externalProcessChecker.call();
