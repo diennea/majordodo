@@ -68,9 +68,31 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>3.1.0-RC6</version>
+            </plugin>
         </plugins>
     </build>
-    <dependencies>                     
+    <dependencies>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
+            <version>1.0</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>3.1.0</version>
+            <optional>true</optional>
+        </dependency>                     
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -175,11 +197,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>findbugs-maven-plugin</artifactId>
-                        <version>3.0.4</version>                
                     </plugin>
                 </plugins>              
             </build>
