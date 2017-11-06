@@ -19,8 +19,6 @@
  */
 package majordodo.embedded;
 
-import java.io.File;
-
 /**
  * Configuration for the embedded broker
  *
@@ -33,7 +31,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static final String KEY_SNAPSHOTSDIRECTORY = "snapshotsdirectory";
     public static final String KEY_HOST = "broker.host";
     public static final String KEY_PORT = "broker.port";
-    public static final String KEY_SSL = "broker.ssl";    
+    public static final String KEY_SSL = "broker.ssl";
     public static final String KEY_SSL_UNSECURE = "broker.ssl.unsecure";
     public static final String KEY_CLIENTAPIURL = "broker.clientapiurl";
     public static final String KEY_BROKERID = "broker.id";
@@ -47,7 +45,7 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static final String KEY_BK_WRITEQUORUMSIZE = "bookkeeper.writequorumsize";
     public static final String KEY_BK_ACKQUORUMSIZE = "bookkeeper.ackquorumsize";
     public static final String KEY_BK_LEDGERSRETENTIONPERIOD = "bookkeeper.ledgersretentionperiod";
-    
+
     public static final String KEY_BROKERWORKERTHREADS = "broker.worker.threads";
     public static final String KEY_REQUIREAUTHENTICATION = "broker.requireauthentication";
     public static final boolean KEY_REQUIREAUTHENTICATION_DEFAULT = true;

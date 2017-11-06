@@ -19,6 +19,8 @@
  */
 package majordodo.replication;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import majordodo.task.LogNotAvailableException;
 import java.util.concurrent.CountDownLatch;
@@ -64,6 +66,25 @@ public class ZKClusterManager implements AutoCloseable {
         firstConnectionLatch.await(this.connectionTimeout, TimeUnit.MILLISECONDS);
     }
 
+    void ensureLeaderRole() throws LogNotAvailableException {
+        if (zk == null) {
+            throw new LogNotAvailableException("no valid zookeeper handle");
+        }
+        try {
+            byte[] data = zk.getData(leaderpath, masterExistsWatcher, null);
+            LOGGER.log(Level.INFO, "data on ZK at {0}: {1}", new Object[]{leaderpath, new String(data, StandardCharsets.UTF_8)});
+            if (!Arrays.equals(data, localhostdata)) {
+                LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from actual {2}", new Object[]{leaderpath,
+                    new String(localhostdata, StandardCharsets.UTF_8),
+                    new String(data, StandardCharsets.UTF_8)});
+                throw new LogNotAvailableException("it seems that a new broker become leader");
+            }
+        } catch (KeeperException | InterruptedException err) {
+            LOGGER.log(Level.SEVERE, "zookeeper client error", err);
+            throw new LogNotAvailableException(err);
+        }
+    }
+
     private class SystemWatcher implements Watcher {
 
         @Override
@@ -76,7 +97,7 @@ public class ZKClusterManager implements AutoCloseable {
                 case SyncConnected:
                     firstConnectionLatch.countDown();
                     break;
-                default:                    
+                default:
                     break;
             }
         }
@@ -209,7 +230,7 @@ public class ZKClusterManager implements AutoCloseable {
     final AsyncCallback.DataCallback masterCheckBallback = new AsyncCallback.DataCallback() {
 
         @Override
-        public void processResult(int rc, String path, Object o, byte[] bytes, Stat stat) {
+        public void processResult(int rc, String path, Object o, byte[] data, Stat stat) {
             switch (Code.get(rc)) {
                 case CONNECTIONLOSS:
                     checkMaster();
@@ -217,6 +238,18 @@ public class ZKClusterManager implements AutoCloseable {
                 case NONODE:
                     requestLeadership();
                     break;
+                case OK: {
+                    LOGGER.log(Level.INFO, "data on ZK at {0}: {1}", new Object[]{leaderpath, new String(data, StandardCharsets.UTF_8)});
+                    if (state == MasterStates.ELECTED
+                        && !Arrays.equals(data, localhostdata)) {
+                        LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from actual {2}", new Object[]{leaderpath,
+                            new String(localhostdata, StandardCharsets.UTF_8),
+                            new String(data, StandardCharsets.UTF_8)});
+                        leadershipLost();
+                    }
+                    zk.getData(leaderpath, masterExistsWatcher, masterCheckBallback, null);
+                    break;
+                }
                 default:
                     LOGGER.log(Level.INFO, "masterCheckBallback - Unhandle code " + rc + " at " + path);
                     break;
@@ -225,15 +258,18 @@ public class ZKClusterManager implements AutoCloseable {
     };
 
     private void checkMaster() {
-        zk.getData(leaderpath, false, masterCheckBallback, null);
+        zk.getData(leaderpath, masterExistsWatcher, masterCheckBallback, null);
     }
 
     private final Watcher masterExistsWatcher = new Watcher() {
 
         @Override
         public void process(WatchedEvent we) {
+            LOGGER.log(Level.SEVERE, "process event {0}, at {1}, state {2}", new Object[]{we.getType(), we.getPath(), we.getState()});
             if (we.getType() == EventType.NodeDeleted) {
                 requestLeadership();
+            } else if (we.getType() == EventType.NodeDataChanged) {
+                checkMaster();
             }
         }
     };
@@ -258,10 +294,12 @@ public class ZKClusterManager implements AutoCloseable {
     };
 
     private void masterExists() {
+        LOGGER.log(Level.SEVERE, "setting watch at " + leaderpath);
         zk.exists(leaderpath, masterExistsWatcher, masterExistsCallback, null);
     }
 
     private void takeLeaderShip() {
+        masterExists();
         listener.leadershipAcquired();
     }
 
@@ -294,17 +332,21 @@ public class ZKClusterManager implements AutoCloseable {
                     break;
                 default:
                     LOGGER.log(Level.SEVERE, "bad ZK state " + KeeperException.create(Code.get(code), path));
-
             }
         }
 
     };
 
-    private void onSessionExpired() {
+    private void leadershipLost() {
         listener.leadershipLost();
     }
 
+    private void onSessionExpired() {
+        leadershipLost();
+    }
+
     public void requestLeadership() {
+        LOGGER.log(Level.SEVERE, "requestLeadership", new Exception().fillInStackTrace());
         zk.create(leaderpath, localhostdata, acls, CreateMode.EPHEMERAL, masterCreateCallback, null);
     }
 

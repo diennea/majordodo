@@ -175,7 +175,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         }
     }
-    
+
     protected long getCurrentLedgerId() {
         return currentLedgerId;
     }
@@ -391,12 +391,22 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     };
 
-    public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata, boolean writeacls) throws Exception {
+    public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata,
+        boolean writeacls) throws Exception {
+        this(zkAddress, zkTimeout, zkPath, snapshotsDirectory, localhostdata, writeacls, Collections.emptyMap());
+    }
+
+    public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata,
+        boolean writeacls, Map<String, String> bookkeeperConfiguration) throws Exception {
         if (localhostdata == null) {
             localhostdata = new byte[0];
         }
         ClientConfiguration config = new ClientConfiguration();
         config.setThrottleValue(0);
+        bookkeeperConfiguration.forEach((k, v) -> {
+            LOGGER.log(Level.INFO, "extra bookkeeper property " + k + "=" + v);
+            config.setProperty(k, v);
+        });
         try {
             this.zKClusterManager = new ZKClusterManager(zkAddress, zkTimeout, zkPath, leaderShiplistener, localhostdata, writeacls);
             this.zKClusterManager.waitForConnection();
@@ -530,6 +540,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     private void openNewLedger() throws LogNotAvailableException {
+        zKClusterManager.ensureLeaderRole();
         writeLock.lock();
         try {
             closeCurrentWriter();
@@ -549,7 +560,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     public ZKClusterManager getClusterManager() {
         return zKClusterManager;
     }
-    
+
     public BookKeeper getBookKeeper() {
         return bookKeeper;
     }

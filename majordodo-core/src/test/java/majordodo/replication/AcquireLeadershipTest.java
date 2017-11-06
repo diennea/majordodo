@@ -24,6 +24,8 @@ import majordodo.task.Broker;
 import majordodo.task.BrokerConfiguration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
@@ -34,6 +36,7 @@ import majordodo.task.TaskProperties;
 import majordodo.task.TaskPropertiesMapperFunction;
 import majordodo.utils.TestUtils;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -193,5 +196,81 @@ public class AcquireLeadershipTest {
             }
         }
 
+    }
+
+    @Test
+    public void dataChangedOnZooKeeper() throws Exception {
+
+        try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());) {
+            zkServer.startBookie();
+
+            String taskParams = "param";
+            String host = "localhost";
+            int port = 7000;
+
+            BrokerConfiguration brokerConfig = new BrokerConfiguration();
+            brokerConfig.setMaxWorkerIdleTime(5000);
+
+            ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
+
+            try (Broker broker1 = new Broker(brokerConfig, log, new TasksHeap(1000, createTaskPropertiesMapperFunction()))) {
+                broker1.startAsWritable();
+                CountDownLatch latch = new CountDownLatch(1);
+                broker1.setBrokerDiedCallback(new Runnable() {
+                    @Override
+                    public void run() {
+                        latch.countDown();
+                    }
+                });
+                System.out.println("SETTING DATA AT " + zkServer.getPath() + "/leader");
+                log.getClusterManager().getZooKeeper().setData(
+                    zkServer.getPath() + "/leader", "changed".getBytes("ASCII"), -1);
+//                log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
+                System.out.println("SET DATA AT " + zkServer.getPath() + "/leader");
+
+                broker1.getClient()
+                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+
+                try {
+                    broker1.getClient()
+                        .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+                } catch (Exception maybe) {
+                }
+
+                assertTrue(latch.await(1, TimeUnit.MINUTES));
+
+            }
+        }
+
+    }
+
+    @Test
+    public void dataDeleteFromZooKeeper() throws Exception {
+
+        try (ZKTestEnv zkServer = new ZKTestEnv(folderZk.getRoot().toPath());) {
+            zkServer.startBookie();
+
+            String taskParams = "param";
+            String host = "localhost";
+            int port = 7000;
+
+            BrokerConfiguration brokerConfig = new BrokerConfiguration();
+            brokerConfig.setMaxWorkerIdleTime(5000);
+
+            ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
+
+            try (Broker broker1 = new Broker(brokerConfig, log, new TasksHeap(1000, createTaskPropertiesMapperFunction()))) {
+                broker1.startAsWritable();
+
+                // delete the 'leader' node, as there is only one broker it will check to be the only leader again
+                // and all will continue to work as expected
+                log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
+
+                broker1.getClient()
+                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+                broker1.getClient()
+                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+            }
+        }
     }
 }

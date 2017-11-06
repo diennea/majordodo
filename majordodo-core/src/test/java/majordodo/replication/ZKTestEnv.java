@@ -27,6 +27,10 @@ import org.apache.bookkeeper.proto.BookieServer;
 
 public class ZKTestEnv implements AutoCloseable {
 
+    static {
+        System.setProperty("zookeeper.admin.enableServer", "false");
+    }
+
     TestingZookeeperServerEmbedded zkServer;
     BookieServer bookie;
     Path path;
@@ -59,7 +63,7 @@ public class ZKTestEnv implements AutoCloseable {
         this.bookie = new BookieServer(conf);
         this.bookie.start();
     }
-    
+
     public void stopBookie() throws InterruptedException {
         this.bookie.shutdown();
         this.bookie.join();
