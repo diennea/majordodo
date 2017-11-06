@@ -130,16 +130,16 @@ public class SaslNettyClient {
         String clientSection = "MajordodoClient";
         AppConfigurationEntry[] entries = Configuration.getConfiguration().getAppConfigurationEntry(clientSection);
         if (entries == null) {
-            LOG.log(Level.SEVERE, "No JAAS Configuration found with section MajordodoClient");
+            LOG.log(Level.FINE, "No JAAS Configuration found with section MajordodoClient");
             return null;
         }
         try {
             LoginContext loginContext = new LoginContext(clientSection, new ClientCallbackHandler(null));
             loginContext.login();
-            LOG.log(Level.SEVERE, "Using JAAS Configuration subject: " + loginContext.getSubject());
+            LOG.log(Level.FINE, "Using JAAS Configuration subject: " + loginContext.getSubject());
             return loginContext.getSubject();
         } catch (LoginException error) {
-            LOG.log(Level.SEVERE, "Error JAAS Configuration subject: " + error, error);
+            LOG.log(Level.FINE, "Error JAAS Configuration subject: " + error, error);
             return null;
         }
     }

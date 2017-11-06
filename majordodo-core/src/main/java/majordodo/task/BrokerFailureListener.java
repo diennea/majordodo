@@ -26,7 +26,7 @@ package majordodo.task;
  */
 public interface BrokerFailureListener {
 
-    public default void brokerFailed() {
+    public default void brokerFailed(Throwable error) {
     }
 ;
 }

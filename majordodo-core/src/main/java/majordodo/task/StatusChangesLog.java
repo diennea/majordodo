@@ -54,9 +54,9 @@ public abstract class StatusChangesLog implements AutoCloseable {
         this.failureListener = failureListener;
     }
 
-    public final void signalBrokerFailed() {
+    public final void signalBrokerFailed(Throwable error) {
         if (failureListener != null) {
-            failureListener.brokerFailed();
+            failureListener.brokerFailed(error);
         }
     }
 

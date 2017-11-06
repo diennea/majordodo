@@ -380,7 +380,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         @Override
         public void leadershipLost() {
             LOGGER.log(Level.SEVERE, "leadershipLost");
-            signalBrokerFailed();
+            signalBrokerFailed(new Exception("leadership lost"));
 
         }
 
@@ -471,13 +471,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
                     zKClusterManager.close();
                     close();
-                    signalBrokerFailed();
+                    signalBrokerFailed(fenced);
                     throw new LogNotAvailableException(fenced);
                 } catch (BKException.BKNotEnoughBookiesException missingBk) {
                     LOGGER.log(Level.SEVERE, "bookkeeper failure", missingBk);
                     zKClusterManager.close();
                     close();
-                    signalBrokerFailed();
+                    signalBrokerFailed(missingBk);
                     throw new LogNotAvailableException(missingBk);
                 }
             } catch (InterruptedException err) {
@@ -511,13 +511,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
                     zKClusterManager.close();
                     close();
-                    signalBrokerFailed();
+                    signalBrokerFailed(fenced);
                     throw new LogNotAvailableException(fenced);
                 } catch (BKException.BKNotEnoughBookiesException missingBk) {
                     LOGGER.log(Level.SEVERE, "bookkeeper failure", missingBk);
                     zKClusterManager.close();
                     close();
-                    signalBrokerFailed();
+                    signalBrokerFailed(missingBk);
                     throw new LogNotAvailableException(missingBk);
                 }
             } catch (InterruptedException err) {
@@ -637,11 +637,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
         } catch (InterruptedException | BKException err) {
             LOGGER.log(Level.SEVERE, "Fatal error during recovery", err);
-            signalBrokerFailed();
+            signalBrokerFailed(err);
             throw new LogNotAvailableException(err);
         } catch (Exception err) {
             LOGGER.log(Level.SEVERE, "Unknown fatal error during recovery", err);
-            signalBrokerFailed();
+            signalBrokerFailed(err);
             throw new LogNotAvailableException(err);
         }
     }

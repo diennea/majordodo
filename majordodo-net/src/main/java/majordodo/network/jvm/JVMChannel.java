@@ -43,7 +43,7 @@ import majordodo.network.netty.DodoMessageUtils;
  */
 public class JVMChannel extends Channel {
 
-     private static final Logger LOGGER = Logger.getLogger(JVMChannel.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(JVMChannel.class.getName());
     private volatile boolean active = false;
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
     private final Map<String, Message> pendingReplyMessagesSource = new ConcurrentHashMap<>();
@@ -75,7 +75,9 @@ public class JVMChannel extends Channel {
                 try {
                     messagesReceiver.messageReceived(_message);
                 } catch (Throwable t) {
-                    LOGGER.log(Level.SEVERE, this + ": error " + t, t);
+                    if (!closed) {
+                        LOGGER.log(Level.SEVERE, this + ": error " + t, t);
+                    }
                     close();
                 }
             });
@@ -124,13 +126,13 @@ public class JVMChannel extends Channel {
         message.setMessageId(UUID.randomUUID().toString());
         Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
-            LOGGER.log(Level.SEVERE,"channel shutdown, discarding reply message " + _message);
+            LOGGER.log(Level.FINER, "channel shutdown, discarding reply message " + _message);
             return;
         }
         executionserializer.submit(() -> {
 //        System.out.println("[JVM] sendReplyMessage inAnswerTo=" + inAnswerTo.getMessageId() + " newmessage=" + message);
             if (!active) {
-                LOGGER.log(Level.SEVERE,"channel not active, discarding reply message " + _message);
+                LOGGER.log(Level.FINE, "channel not active, discarding reply message " + _message);
                 return;
             }
             _message.setReplyMessageId(inAnswerTo.messageId);
@@ -150,7 +152,7 @@ public class JVMChannel extends Channel {
         message.setMessageId(UUID.randomUUID().toString());
         Message _message = cloneMessage(message);
         if (executionserializer.isShutdown()) {
-            LOGGER.log(Level.SEVERE,"[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
+            LOGGER.log(Level.FINE, "[JVM] channel shutdown, discarding sendMessageWithAsyncReply");
             return;
         }
         executionserializer.submit(() -> {
@@ -179,7 +181,7 @@ public class JVMChannel extends Channel {
             return;
         }
         closed = true;
-        LOGGER.log(Level.SEVERE, this + ": closing");
+        LOGGER.log(Level.FINEST, this + ": closing");
         active = false;
         pendingReplyMessages.forEach((key, callback) -> {
             submitCallback(() -> {

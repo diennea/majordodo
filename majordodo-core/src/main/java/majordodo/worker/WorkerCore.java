@@ -221,7 +221,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             } else {
                 codePoolsDirectory = Paths.get(config.getCodePoolsDirectory()).toAbsolutePath();
             }
-            LOGGER.log(Level.SEVERE, "CodePools Working directory {0}", codePoolsDirectory);
+            LOGGER.log(Level.INFO, "CodePools Working directory {0}", codePoolsDirectory);
             try {
                 this.classloadersManager = new CodePoolClassloadersManager(codePoolsDirectory, this);
             } catch (IOException err) {
@@ -264,7 +264,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.SEVERE, "channel closed");
+        LOGGER.log(Level.FINE, "channel closed");
         disconnect();
         brokerLocator.brokerDisconnected();
     }
@@ -327,7 +327,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 }
             });
         } else {
-            LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker connection failure");
+            LOGGER.log(Level.INFO, "re-enqueing notification of task finish, due to broker connection failure");
             pendingFinishedTaskNotifications.addAll(notifications);
         }
     }
@@ -416,7 +416,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     LOGGER.log(Level.SEVERE, "error on main WorkerCore loop:" + error, error);
                 }
             }
-            LOGGER.log(Level.SEVERE, "shutting down " + processId);
+            LOGGER.log(Level.FINE, "shutting down " + processId);
 
             Channel _channel = channel;
             if (_channel != null) {
@@ -474,11 +474,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.SEVERE, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
+        LOGGER.log(Level.INFO, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
         disconnect();
         try {
             channel = brokerLocator.connect(this, this);
-            LOGGER.log(Level.SEVERE, "connected, channel:" + channel);
+            LOGGER.log(Level.FINE, "connected, channel:" + channel);
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTED, this);
         } catch (BrokerRejectedConnectionException | BrokerNotAvailableException error) {
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTION_ERROR, this);

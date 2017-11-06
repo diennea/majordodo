@@ -98,7 +98,7 @@ public class BrokerStatusMonitor {
                 averageDelayInSeconds = (double) delaysSum / delayedQueue.getTasks().size() / 1000;
             }
             
-            LOGGER.log(Level.SEVERE, "Broker status: " + brokerStatusView.getClusterMode()
+            LOGGER.log(Level.INFO, "Broker status: " + brokerStatusView.getClusterMode()
                     + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",Tasks:" + brokerStatusView.getTasks()
                     + ", waiting:" + brokerStatusView.getWaitingTasks()
                     + ", running:" + brokerStatusView.getRunningTasks()

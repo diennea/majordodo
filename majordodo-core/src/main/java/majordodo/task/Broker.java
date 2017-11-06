@@ -60,7 +60,7 @@ import majordodo.utils.IntCounter;
 public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, BrokerFailureListener {
 
     public static final int MAX_SIMULTANEOUS_RESUMED_TASKS = 1000;
-    
+
     private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
     private String brokerId = UUID.randomUUID().toString();
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
@@ -138,10 +138,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private final FinishedTaskCollectorScheduler finishedTaskCollectorScheduler;
     private final BrokerStatusMonitor brokerStatusMonitor;
     private final Thread brokerLifeThread;
-    
+
     private int cycleAwaitSeconds = 10;
     private boolean suspendLogFlush = false;
-    
+
     protected void setCycleAwaitSeconds(int cycleAwaitSeconds) {
         this.cycleAwaitSeconds = cycleAwaitSeconds;
     }
@@ -157,7 +157,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     public StatusChangesLog getStatusChangesLog() {
         return log;
     }
-    
+
     public ResourceUsageCounters getGlobalResourceUsageCounters() {
         return globalResourceUsageCounters;
     }
@@ -198,7 +198,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.log.setSslUnsecure(configuration.isSslUnsecure());
 
         LOGGER.log(Level.SEVERE, "requireAuthentication is set to " + configuration.isRequireAuthentication());
-        this.globalResourceUsageCounters = new ResourceUsageCounters("global-"+brokerId);
+        this.globalResourceUsageCounters = new ResourceUsageCounters("global-" + brokerId);
     }
 
     private boolean recoveryInProgress = false;
@@ -339,12 +339,12 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         List<Task> tasksToResume = new ArrayList<>();
         List<StatusEdit> edits = new ArrayList<>();
         delayedTasksQueue.drainTo(tasksToResume, MAX_SIMULTANEOUS_RESUMED_TASKS);
-        for (Task task: tasksToResume) {
+        for (Task task : tasksToResume) {
             edits.add(StatusEdit.TASK_STATUS_CHANGE(task.getTaskId(), null, Task.STATUS_WAITING, null));
         }
         List<BrokerStatus.ModificationResult> results = brokerStatus.applyModifications(edits);
         int i = 0;
-        for (BrokerStatus.ModificationResult mod: results) {
+        for (BrokerStatus.ModificationResult mod : results) {
             Task task = tasksToResume.get(i++);
             if (mod.error == null) {
                 LOGGER.log(Level.FINER, "task {0} resumed", task.getTaskId());
@@ -353,10 +353,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 throw new IllegalStateException(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
             }
             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
-            
+
         }
     }
-    
+
     private void shutdown() {
         if (stopped) {
             return;
@@ -600,7 +600,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         });
         return res;
     }
-    
+
     public DelayedTasksQueueView getDelayedTasksQueueView() {
         DelayedTasksQueueView res = new DelayedTasksQueueView();
         delayedTasksQueue.forEach(task -> {
@@ -715,7 +715,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             newTask = (Task) result.data;
             taskId = newTask != null ? newTask.getTaskId() : 0;
             if (taskId > 0 && result.error == null && newTask != null) {
-                switch (newTask.getStatus()) { 
+                switch (newTask.getStatus()) {
                     case Task.STATUS_WAITING:
                         this.tasksHeap.insertTask(taskId, request.taskType, request.userId);
                         break;
@@ -759,7 +759,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 res.add(new AddTaskResult(taskId, result.error));
             } else {
                 if (taskId > 0 && result.error == null && newTask != null) {
-                    switch (newTask.getStatus()) { 
+                    switch (newTask.getStatus()) {
                         case Task.STATUS_WAITING:
                             this.tasksHeap.insertTask(taskId, addTask.taskType, addTask.userid);
                             break;
@@ -888,7 +888,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.brokerStatus.applyModification(edit);
 
         List<Long> tasksActuallyAssigned = brokerStatus.getRunningTasksAssignedToWorker(workerId);
-        LOGGER.log(Level.SEVERE, "tasks assigned to worker {0}, actuallyRunning {1} ", new Object[]{tasksActuallyAssigned, edit.actualRunningTasks});
+        if (!tasksActuallyAssigned.isEmpty() || !edit.actualRunningTasks.isEmpty()) {
+            LOGGER.log(Level.INFO, "tasks assigned to worker {0}, actuallyRunning {1} ", new Object[]{tasksActuallyAssigned, edit.actualRunningTasks});
+        }
         tasksActuallyAssigned.removeAll(edit.actualRunningTasks);
         tasksNeedsRecoveryDueToWorkerDeath(tasksActuallyAssigned, workerId);
     }
@@ -910,8 +912,8 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     private volatile boolean failed;
 
     @Override
-    public void brokerFailed() {
-        LOGGER.log(Level.SEVERE, "brokerFailed!");
+    public void brokerFailed(Throwable error) {
+        LOGGER.log(Level.SEVERE, "brokerFailed!", error);
         failed = true;
         if (brokerStatus != null) {
             brokerStatus.brokerFailed();
