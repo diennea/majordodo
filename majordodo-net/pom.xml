@@ -68,6 +68,6 @@
         <libs.netty4>4.1.10.Final</libs.netty4>
         <libs.netty4.tcnative>2.0.1.Final</libs.netty4.tcnative>
         <libs.jackson>1.9.13</libs.jackson>
-        <libs.zookeeper>3.4.9</libs.zookeeper>
+        <libs.zookeeper>3.5.3-beta</libs.zookeeper>
     </properties>
 </project>
