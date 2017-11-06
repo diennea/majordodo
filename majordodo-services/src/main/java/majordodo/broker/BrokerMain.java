@@ -62,6 +62,7 @@ public class BrokerMain implements AutoCloseable {
     private final PidFileLocker pidFileLocker;
 
     private static BrokerMain runningInstance;
+    private static final String BOOKKEEPER_ADDITIONAL_PREFIX = "bookkeeper.additional.";
 
     public Broker getBroker() {
         return broker;
@@ -213,10 +214,17 @@ public class BrokerMain implements AutoCloseable {
                 String zkPath = configuration.getProperty("zk.path", "/majordodo");
                 String snapdir = configuration.getProperty("data.dir", "data");
                 boolean zkSecure = Boolean.parseBoolean(configuration.getProperty("zk.secure", "false"));
-
+                Map<String, String> additionalBookKeeperConfig = new HashMap<>();
+                for (Object _key : configuration.keySet()) {
+                    String key = _key + "";
+                    if (key.startsWith(BOOKKEEPER_ADDITIONAL_PREFIX)) {
+                        additionalBookKeeperConfig
+                            .put(key.substring(BOOKKEEPER_ADDITIONAL_PREFIX.length()), configuration.getProperty(key, null));
+                    }
+                }
                 ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
                     BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
-                    zkSecure
+                    zkSecure, additionalBookKeeperConfig
                 );
                 log = _log;
                 int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));

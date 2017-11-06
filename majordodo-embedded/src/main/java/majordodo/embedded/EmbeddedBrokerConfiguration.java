@@ -50,4 +50,10 @@ public class EmbeddedBrokerConfiguration extends AbstractEmbeddedServiceConfigur
     public static final String KEY_REQUIREAUTHENTICATION = "broker.requireauthentication";
     public static final boolean KEY_REQUIREAUTHENTICATION_DEFAULT = true;
 
+    static final String BOOKKEEPER_ADDITIONAL_PREFIX = "broker.bookkeeper.";
+
+    public static final String KEY_BOOKKEEPER_ADDITIONAL(String key) {
+        return BOOKKEEPER_ADDITIONAL_PREFIX + key;
+    }
+
 }

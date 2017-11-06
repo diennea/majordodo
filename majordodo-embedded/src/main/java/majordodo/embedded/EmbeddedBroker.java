@@ -39,6 +39,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.clientfacade.AuthenticationManager;
+import static majordodo.embedded.EmbeddedBrokerConfiguration.BOOKKEEPER_ADDITIONAL_PREFIX;
 import majordodo.network.BrokerHostData;
 import majordodo.task.GlobalResourceLimitsConfiguration;
 import majordodo.task.NoLimitsGlobalResourceLimitsConfiguration;
@@ -148,6 +149,15 @@ public class EmbeddedBroker implements AutoCloseable {
         int zkSessionTimeout = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_ZKSESSIONTIMEOUT, 40000);
         long maxFileSize = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_LOGSMAXFILESIZE, 1024 * 1024);
         boolean zkSecure = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_ZKSECURE, EmbeddedBrokerConfiguration.KEY_ZKSECURE_DEFAULT);
+
+        Map<String, String> additionalBookKeeperConfig = new HashMap<>();
+        for (String key : configuration.getProperties().keySet()) {
+            if (key.startsWith(BOOKKEEPER_ADDITIONAL_PREFIX)) {
+                additionalBookKeeperConfig
+                    .put(key.substring(BOOKKEEPER_ADDITIONAL_PREFIX.length()), configuration.getStringProperty(key, null));
+            }
+        }
+
         Map<String, String> additionalInfo = new HashMap<>();
         additionalInfo.put("client.api.url", clientapiurl);
         additionalInfo.put("broker.id", id);
@@ -175,7 +185,7 @@ public class EmbeddedBroker implements AutoCloseable {
                 }
                 ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
                     BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
-                    zkSecure
+                    zkSecure, additionalBookKeeperConfig
                 );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
