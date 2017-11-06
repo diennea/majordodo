@@ -62,7 +62,7 @@
         </developer>
     </developers>
     <issueManagement>
-        <url>https://dev.majordodo.org/jira</url>		
+        <url>https://github.com/diennea/majordodo/issues</url>		
     </issueManagement> 
     <properties>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
