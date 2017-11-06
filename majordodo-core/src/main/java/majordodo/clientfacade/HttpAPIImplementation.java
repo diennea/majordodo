@@ -81,8 +81,11 @@ public class HttpAPIImplementation {
     }
 
     public static void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+        doGet(req, resp, broker);
+    }
+
+    public static void doGet(HttpServletRequest req, HttpServletResponse resp, Broker broker) throws ServletException, IOException {
 
         String view = req.getParameter("view");
         if (view == null) {
@@ -430,8 +433,13 @@ public class HttpAPIImplementation {
     }
 
     public static void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+        doPost(req, resp, broker);
+    }
+
+    public static void doPost(HttpServletRequest req, HttpServletResponse resp, Broker broker) throws ServletException, IOException {
         try {
-            Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
+
             ByteArrayOutputStream oo = new ByteArrayOutputStream();
             try (InputStream in = req.getInputStream()) {
                 copyStreams(in, oo);

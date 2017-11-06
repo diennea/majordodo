@@ -36,12 +36,12 @@ public class BrokerHTTPClientTest {
         try (BrokerMain main = new BrokerMain(pp);) {
             main.start();
             ClientConfiguration configuration = ClientConfiguration
-                    .defaultConfiguration()
-                    .setUsername("admin")
-                    .setPassword("password")
-                    .setBrokerDiscoveryService(new StaticBrokerDiscoveryService(BrokerAddress.http("127.0.0.1", 7364)));
+                .defaultConfiguration()
+                .setUsername("admin")
+                .setPassword("password")
+                .setBrokerDiscoveryService(new StaticBrokerDiscoveryService(BrokerAddress.http("127.0.0.1", 7364)));
             try (Client client = new Client(configuration);
-                    ClientConnection con = client.openConnection()) {
+                ClientConnection con = client.openConnection()) {
                 {
                     SubmitTaskRequest req = new SubmitTaskRequest();
                     req.setTasktype("mytype");

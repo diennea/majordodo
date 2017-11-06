@@ -350,7 +350,7 @@ public final class BrokerStatus {
             while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
                 log.followTheLeader(this.lastLogSequenceNumber,
                     (logSeqNumber, edit) -> {
-                        LOGGER.log(Level.INFO, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
+                        LOGGER.log(Level.FINEST, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
                         applyEdit(logSeqNumber, edit);
                     });
                 Thread.sleep(1000);

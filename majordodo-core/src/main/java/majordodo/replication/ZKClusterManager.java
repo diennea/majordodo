@@ -194,19 +194,19 @@ public class ZKClusterManager implements AutoCloseable {
         }
     }
 
-    private static enum MasterStates {
+    public static enum MasterStates {
 
         ELECTED,
         NOTELECTED,
         RUNNING
     }
-    private MasterStates state = MasterStates.NOTELECTED;
+    private volatile MasterStates state = MasterStates.NOTELECTED;
 
     public MasterStates getState() {
         return state;
     }
 
-    AsyncCallback.DataCallback masterCheckBallback = new AsyncCallback.DataCallback() {
+    final AsyncCallback.DataCallback masterCheckBallback = new AsyncCallback.DataCallback() {
 
         @Override
         public void processResult(int rc, String path, Object o, byte[] bytes, Stat stat) {

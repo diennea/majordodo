@@ -62,7 +62,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class HTTPClientConnection implements ClientConnection {
 
     private static final Logger LOGGER = Logger.getLogger(HTTPClientConnection.class.getName());
-
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private String transactionId;
     private boolean transacted;
 
@@ -94,7 +94,7 @@ public class HTTPClientConnection implements ClientConnection {
     private void brokerFailed() {
         if (_broker != null) {
             discoveryService.brokerFailed(_broker);
-            _broker=null;
+            _broker = null;
         }
         context = null;
     }
@@ -110,8 +110,8 @@ public class HTTPClientConnection implements ClientConnection {
                 UsernamePasswordCredentials creds = new UsernamePasswordCredentials(configuration.getUsername(), configuration.getPassword());
                 CredentialsProvider credsProvider = new BasicCredentialsProvider();
                 credsProvider.setCredentials(
-                        new AuthScope(targetHost.getHostName(), targetHost.getPort(), AuthScope.ANY_REALM, AuthScope.ANY_SCHEME),
-                        creds);
+                    new AuthScope(targetHost.getHostName(), targetHost.getPort(), AuthScope.ANY_REALM, AuthScope.ANY_SCHEME),
+                    creds);
                 BasicAuthCache authCache = new BasicAuthCache();
                 BasicScheme basicAuth = new BasicScheme();
                 authCache.put(targetHost, basicAuth);
@@ -173,8 +173,7 @@ public class HTTPClientConnection implements ClientConnection {
             final int MAX_RETRIES = this.configuration.getBrokerNotAvailableRetries();
             for (int i = 0; i < MAX_RETRIES; i++) {
                 try {
-                    ObjectMapper mapper = new ObjectMapper();
-                    String s = mapper.writeValueAsString(data);
+                    String s = MAPPER.writeValueAsString(data);
                     byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
                     Map<String, Object> rr;
                     if (method.equals("POST")) {
@@ -196,8 +195,8 @@ public class HTTPClientConnection implements ClientConnection {
                         brokerFailed();
                         String error = rr.get("error") + "";
                         if (error.contains("broker_not_started") // broker does not exist on JVM
-                                || error.contains("recovery_in_progress") // broker is in recovery mode, maybe it would become leader                                
-                                || error.contains("broker_not_leader")) // broker is not leader
+                            || error.contains("recovery_in_progress") // broker is in recovery mode, maybe it would become leader
+                            || error.contains("broker_not_leader")) // broker is not leader
                         {
                             throw new RetryableError(rr + "");
                         } else {
@@ -445,9 +444,9 @@ public class HTTPClientConnection implements ClientConnection {
     private Map<String, Object> post(String contentType, byte[] content) throws IOException {
         HttpPost httpget = new HttpPost(getBaseUrl());
         RequestConfig requestConfig = RequestConfig.custom()
-                .setSocketTimeout(configuration.getSotimeout())
-                .setConnectTimeout(configuration.getConnectionTimeout())
-                .build();
+            .setSocketTimeout(configuration.getSotimeout())
+            .setConnectTimeout(configuration.getConnectionTimeout())
+            .build();
         httpget.setConfig(requestConfig);
         ByteArrayEntity body = new ByteArrayEntity(content);
         body.setChunked(true);
@@ -458,8 +457,7 @@ public class HTTPClientConnection implements ClientConnection {
                 brokerFailed();
                 throw new IOException("HTTP request failed: " + response1.getStatusLine());
             }
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(response1.getEntity().getContent(), Map.class);
+            return MAPPER.readValue(response1.getEntity().getContent(), Map.class);
         }
     }
 
@@ -467,9 +465,9 @@ public class HTTPClientConnection implements ClientConnection {
         String base = getBaseUrl();
         HttpGet httpget = new HttpGet(base + url);
         RequestConfig requestConfig = RequestConfig.custom()
-                .setSocketTimeout(configuration.getSotimeout())
-                .setConnectTimeout(configuration.getConnectionTimeout())
-                .build();
+            .setSocketTimeout(configuration.getSotimeout())
+            .setConnectTimeout(configuration.getConnectionTimeout())
+            .build();
         httpget.setConfig(requestConfig);
 
         try (CloseableHttpResponse response1 = httpclient.execute(httpget, getContext());) {
@@ -478,8 +476,7 @@ public class HTTPClientConnection implements ClientConnection {
                 brokerFailed();
                 throw new IOException("HTTP request failed: " + response1.getStatusLine());
             }
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(response1.getEntity().getContent(), Map.class);
+            return MAPPER.readValue(response1.getEntity().getContent(), Map.class);
         }
     }
 
@@ -527,7 +524,7 @@ public class HTTPClientConnection implements ClientConnection {
     @Override
     public CreateCodePoolResult createCodePool(CreateCodePoolRequest request) throws ClientException {
         request("POST", map("action", "createCodePool", "id", request.getCodePoolID(), "ttl", request.getTtl() + "",
-                "data", request.getCodePoolData()));
+            "data", request.getCodePoolData()));
         CreateCodePoolResult result = new CreateCodePoolResult();
         result.setOk(true);
         return result;

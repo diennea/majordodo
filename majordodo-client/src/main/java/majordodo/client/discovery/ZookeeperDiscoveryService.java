@@ -42,6 +42,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     private static final Logger LOGGER = Logger.getLogger(ZookeeperDiscoveryService.class.getName());
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Supplier<ZooKeeper> client;
     private String zkPath = "/majordodo";
@@ -90,12 +91,12 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     @Override
     public void brokerFailed(BrokerAddress address) {
+        LOGGER.log(Level.SEVERE, "brokerFailed {0}, discarding cached value {1}", new Object[]{address, leaderBrokerCache});
         leaderBrokerCache = null;
     }
 
     private BrokerAddress parseBrokerAddress(byte[] data) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, String> res = mapper.readValue(new ByteArrayInputStream(data), Map.class);
+        Map<String, String> res = MAPPER.readValue(new ByteArrayInputStream(data), Map.class);
         LOGGER.log(Level.SEVERE, "zookeeper client result " + res);
         BrokerAddress address = new BrokerAddress();
         address.setInfo(res);
