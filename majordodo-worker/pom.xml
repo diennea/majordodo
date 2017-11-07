@@ -50,6 +50,15 @@
     <issueManagement>
         <url>https://dev.majordodo.org/jira</url>		
     </issueManagement> 
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
+        <libs.spotbugs>3.1.0</libs.spotbugs> 
+        <libs.jcipi-annotations>1.0</libs.jcipi-annotations> 
+        <libs.spotbugsannotations>3.1.0</libs.spotbugsannotations>
+        <libs.spotbugsmaven>3.1.0-RC6</libs.spotbugsmaven>
+    </properties>    
     <build>
         <plugins>
             <plugin>
@@ -68,15 +77,32 @@
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${libs.spotbugsmaven}</version>
+            </plugin>
         </plugins>
     </build>
-    <dependencies>                     
+    <dependencies>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs</artifactId>
+            <version>${libs.spotbugs}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
+            <version>${libs.jcipi-annotations}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>${libs.spotbugsannotations}</version>
+            <optional>true</optional>
+        </dependency>                     
     </dependencies>
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-    </properties>    
     <distributionManagement>        
         <repository>            
             <id>dev.majordodo.org</id>
@@ -175,11 +201,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>findbugs-maven-plugin</artifactId>
-                        <version>3.0.4</version>                
                     </plugin>
                 </plugins>              
             </build>
