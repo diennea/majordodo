@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.majordodo</groupId>
         <artifactId>majordodo-parent</artifactId>
-        <version>0.12.0-SNAPSHOT</version>
+        <version>0.12.1-SNAPSHOT</version>
     </parent>
     <artifactId>majordodo-website</artifactId>
     <packaging>jar</packaging>
