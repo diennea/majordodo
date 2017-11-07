@@ -539,8 +539,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     }
 
-    private void openNewLedger() throws LogNotAvailableException {
-        zKClusterManager.ensureLeaderRole();
+    private void openNewLedger() throws LogNotAvailableException {        
         writeLock.lock();
         try {
             closeCurrentWriter();
@@ -660,6 +659,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public void startWriting() throws LogNotAvailableException {
         actualLedgersList = zKClusterManager.getActualLedgersList();
+        zKClusterManager.ensureLeaderRole();
         openNewLedger();
     }
 

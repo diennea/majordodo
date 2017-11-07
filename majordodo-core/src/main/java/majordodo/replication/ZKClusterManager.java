@@ -346,7 +346,6 @@ public class ZKClusterManager implements AutoCloseable {
     }
 
     public void requestLeadership() {
-        LOGGER.log(Level.SEVERE, "requestLeadership", new Exception().fillInStackTrace());
         zk.create(leaderpath, localhostdata, acls, CreateMode.EPHEMERAL, masterCreateCallback, null);
     }
 
