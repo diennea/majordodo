@@ -259,8 +259,10 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 LOGGER.log(Level.SEVERE, "Starting as leader, brokerId:{0}", brokerId);
                 brokerStatus.recoverForLeadership();
 
+                brokerStatus.setReadonly(true);
                 Map<String, Long> busySlots = new HashMap<>();
-                for (Task task : brokerStatus.getTasksAtBoot()) {
+                Collection<Task> tasksAtBoot = brokerStatus.getTasksAtBoot();
+                for (Task task : tasksAtBoot) {
                     switch (task.getStatus()) {
                         case Task.STATUS_WAITING:
                             LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=waiting)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
@@ -298,11 +300,14 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                         }
                     }
                 }
+                Collection<WorkerStatus> workersAtBoot = brokerStatus.getWorkersAtBoot();
+                brokerStatus.setReadonly(false);
                 brokerStatus.reloadBusySlotsAtBoot(busySlots);
                 brokerStatus.startWriting();
                 Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
                 List<String> workersConnectedAtBoot = new ArrayList<>();
-                workers.start(brokerStatus, deadWorkerTasks, workersConnectedAtBoot, globalResourceUsageCounters);
+                workers.start(brokerStatus, deadWorkerTasks,
+                    workersConnectedAtBoot, globalResourceUsageCounters, tasksAtBoot, workersAtBoot);
                 started = true;
                 for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
                     tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());

@@ -57,7 +57,7 @@ public class ZKTestEnv implements AutoCloseable {
         
         // in unit tests we do not need real network for bookies
         conf.setEnableLocalTransport(true);
-        conf.setDisableServerSocketBind(true);
+//        conf.setDisableServerSocketBind(true);
 
         conf.setAllowLoopback(true);
 

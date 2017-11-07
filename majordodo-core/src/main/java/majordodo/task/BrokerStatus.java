@@ -48,7 +48,7 @@ import majordodo.utils.IntCounter;
  * @author enrico.olivelli
  */
 public final class BrokerStatus {
-    
+
     private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
 
     private final Map<Long, Task> tasks = new HashMap<>();
@@ -66,6 +66,15 @@ public final class BrokerStatus {
     private final AtomicInteger checkpointsCount = new AtomicInteger();
     private final SlotsManager slotsManager = new SlotsManager();
     private final BrokerStatusStats stats = new BrokerStatusStats();
+    private boolean readonly;
+
+    public boolean isReadonly() {
+        return readonly;
+    }
+
+    public void setReadonly(boolean readonly) {
+        this.readonly = readonly;
+    }
 
     public WorkerStatus getWorkerStatus(String workerId) {
         return workers.get(workerId);
@@ -171,11 +180,29 @@ public final class BrokerStatus {
     }
 
     public Collection<WorkerStatus> getWorkersAtBoot() {
-        return workers.values();
+        lock.readLock().lock();
+        try {
+            if (!readonly) {
+                throw new IllegalStateException("getTasksAtBoot is available only if readonly=true");
+            }
+            // beware that this is a live view on the map
+            return workers.values();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public Collection<Task> getTasksAtBoot() {
-        return tasks.values();
+        lock.readLock().lock();
+        try {
+            if (!readonly) {
+                throw new IllegalStateException("getTasksAtBoot is available only if readonly=true");
+            }
+            // beware that this is a live view on the map
+            return tasks.values();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public Collection<Transaction> getTransactionsAtBoot() {
@@ -651,6 +678,9 @@ public final class BrokerStatus {
 
         lock.writeLock().lock();
         try {
+            if (readonly) {
+                throw new IllegalStateException("readonly");
+            }
             lastLogSequenceNumber = num;
             switch (edit.editType) {
                 case StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER: {
@@ -766,7 +796,7 @@ public final class BrokerStatus {
                     }
                     tasks.put(edit.taskId, task);
                     stats.taskStatusChange(-1, task.getStatus());
-                    
+
                     if (edit.slot != null) {
                         // we need this, for log-replay on recovery and on followers
                         slotsManager.assignSlot(edit.slot, edit.taskId);
@@ -811,7 +841,7 @@ public final class BrokerStatus {
                     // the slot it acquired on prepare (and eventually released on rollback)
                     // task is not really submitted not, it will be submitted on commit
                     transaction.getPreparedTasks().add(task);
-                    
+
                     return new ModificationResult(num, task, null);
                 }
                 case StatusEdit.TYPE_WORKER_CONNECTED: {
@@ -877,8 +907,11 @@ public final class BrokerStatus {
     }
 
     public void recover() {
-
+        lock.writeLock().lock();
         try {
+            if (readonly) {
+                throw new IllegalStateException("readonly");
+            }
             BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
             this.maxTaskId = snapshot.getMaxTaskId();
             this.newTaskId.set(maxTaskId + 1);
@@ -934,6 +967,8 @@ public final class BrokerStatus {
         } catch (LogNotAvailableException err) {
             LOGGER.log(Level.SEVERE, "error during recovery", err);
             throw new RuntimeException(err);
+        } finally {
+            lock.writeLock().unlock();
         }
 
         LOGGER.log(Level.SEVERE, "After recovery maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);

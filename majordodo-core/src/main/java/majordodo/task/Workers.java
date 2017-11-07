@@ -63,9 +63,9 @@ public class Workers {
         });
     }
 
-    public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks, List<String> connectedAtBoot, ResourceUsageCounters globalResourceUsageCounters) {
-        Collection<WorkerStatus> workersAtBoot = statusAtBoot.getWorkersAtBoot();
-        Collection<Task> tasksAtBoot = statusAtBoot.getTasksAtBoot();
+    public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks,
+        List<String> connectedAtBoot, ResourceUsageCounters globalResourceUsageCounters, Collection<Task> tasksAtBoot,
+        Collection<WorkerStatus> workersAtBoot) {
         for (WorkerStatus workerStatus : workersAtBoot) {
             String workerId = workerStatus.getWorkerId();
             WorkerManager manager = getWorkerManager(workerId);
