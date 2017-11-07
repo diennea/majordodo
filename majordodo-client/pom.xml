@@ -137,6 +137,11 @@
             <name>Majordodo Public Repository</name>
             <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
         </repository>        
+        <snapshotRepository>
+            <id>dev.majordodo.org.snapshots</id>
+            <name>Majordodo Public Repository</name>
+            <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>                                       
+        </snapshotRepository>
     </distributionManagement>  
     <profiles>
         <profile>
