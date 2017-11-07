@@ -18,8 +18,8 @@
         </license>
     </licenses>
     <scm>
-        <url>scm:git:git@github.com/diennea/majordodo.git</url>        
-        <developerConnection>scm:git:git@github.com/diennea/majordodo.git</developerConnection>
+        <url>scm:git:https://github.com/diennea/majordodo.git</url>
+        <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
     </scm>
     <developers>
         <developer>
