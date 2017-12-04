@@ -71,6 +71,9 @@ public class EmbeddedClient implements AutoCloseable {
         }
 
         public EmbeddedBrokerConnection(Broker broker) {
+            if (broker == null) {
+                throw new IllegalStateException("embedded broker not registered, maybe it has not started yet");
+            }
             this.broker = broker;
         }
 
