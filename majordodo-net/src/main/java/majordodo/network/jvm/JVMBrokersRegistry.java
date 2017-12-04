@@ -35,7 +35,7 @@ public class JVMBrokersRegistry {
     private static String lastRegisteredBroker = "";
 
     public static void registerBroker(String id, JVMBrokerSupportInterface broker) {
-        LOGGER.log(Level.SEVERE, "registerBroker {0}", id);
+        LOGGER.log(Level.FINE, "registerBroker {0}", id);
         brokers.put(id, broker);
         lastRegisteredBroker = id;
     }

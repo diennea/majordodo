@@ -197,7 +197,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.log.setSharedSecret(configuration.getSharedSecret());
         this.log.setSslUnsecure(configuration.isSslUnsecure());
 
-        LOGGER.log(Level.SEVERE, "requireAuthentication is set to " + configuration.isRequireAuthentication());
+        LOGGER.log(Level.INFO, "requireAuthentication is set to " + configuration.isRequireAuthentication());
         this.globalResourceUsageCounters = new ResourceUsageCounters("global-" + brokerId);
     }
 
