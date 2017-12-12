@@ -114,7 +114,7 @@ public final class SimpleBufferedInputStream extends FilterInputStream {
      *
      * @param in the underlying input stream.
      * @param size the buffer size.
-     * @exception IllegalArgumentException if size <= 0.
+     * @exception IllegalArgumentException if size &lt;= 0.
      */
     public SimpleBufferedInputStream(InputStream in, int size) {
         super(in);

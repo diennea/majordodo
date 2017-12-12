@@ -47,10 +47,7 @@ public final class ExtendedDataOutputStream extends DataOutputStream {
      * Writes an long in a variable-length format. Writes between one and nine
      * bytes. Smaller values take fewer bytes. Negative numbers are not
      * supported.
-     * <p>
-     * The format is described further in {@link DataOutput#writeVInt(int)}.
      *
-     * @see DataInput#readVLong()
      */
     public final void writeVLong(long i) throws IOException {
         if (i < 0) {
