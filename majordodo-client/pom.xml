@@ -17,8 +17,8 @@
     </licenses>
     <scm>
         <url>https://github.com/diennea/majordodo.git</url>        
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
     <developers>
         <developer>
             <id>eolivelli</id>
@@ -102,11 +102,6 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs</artifactId>
-            <version>${libs.spotbugs}</version>
         </dependency>
         <dependency>
             <groupId>net.jcip</groupId>

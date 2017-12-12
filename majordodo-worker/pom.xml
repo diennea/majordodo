@@ -18,8 +18,8 @@
     <scm>
         <url>scm:git:https://github.com/diennea/majordodo.git</url>
         <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
     <developers>
         <developer>
             <id>eolivelli</id>
@@ -85,11 +85,6 @@
         </plugins>
     </build>
     <dependencies>
-        <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs</artifactId>
-            <version>${libs.spotbugs}</version>
-        </dependency>
         <dependency>
             <groupId>net.jcip</groupId>
             <artifactId>jcip-annotations</artifactId>
