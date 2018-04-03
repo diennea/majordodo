@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import java.util.function.BiConsumer;
@@ -56,7 +57,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-import javax.xml.ws.Holder;
 import majordodo.network.BrokerHostData;
 import majordodo.network.BrokerNotAvailableException;
 import majordodo.network.BrokerRejectedConnectionException;
@@ -249,7 +249,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             }
             long _start = System.currentTimeMillis();
             try {
-                Holder<Exception> exception = new Holder<>();
+                AtomicReference<Exception> exception = new AtomicReference<>();
                 CountDownLatch latch = new CountDownLatch(edits.size());
                 List<Long> res = new ArrayList<>(edits.size());
                 for (int i = 0; i < size; i++) {
@@ -265,7 +265,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             int index = (Integer) i;
                             if (rc != BKException.Code.OK) {
                                 BKException error = BKException.create(rc);
-                                exception.value = error;
+                                exception.set(error);
                                 res.set(index, null);
                                 for (int j = 0; j < edits.size(); j++) {
                                     // early exit
@@ -280,8 +280,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     }, i);
                 }
                 latch.await();
-                if (exception.value != null) {
-                    throw exception.value;
+                if (exception.get() != null) {
+                    throw exception.get();
                 }
                 for (Long l : res) {
                     if (l == null) {

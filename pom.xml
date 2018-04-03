@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.12.0-SNAPSHOT</version>
+    <version>0.13.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
     <url>http://majordodo.org</url>
@@ -144,7 +144,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.18.1</version>
+                        <version>2.21.0</version>
                         <configuration>                                        
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
@@ -194,7 +194,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.18.1</version>
+                        <version>2.21.0</version>
                         <configuration>                                        
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
