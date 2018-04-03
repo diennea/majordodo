@@ -65,8 +65,8 @@
     </dependencies>    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <libs.netty4>4.1.16.Final</libs.netty4>
-        <libs.netty4.tcnative>2.0.6.Final</libs.netty4.tcnative>
+        <libs.netty4>4.1.22.Final</libs.netty4>
+        <libs.netty4.tcnative>2.0.7.Final</libs.netty4.tcnative>
         <libs.jackson>1.9.13</libs.jackson>
         <libs.zookeeper>3.5.3-beta</libs.zookeeper>
     </properties>
