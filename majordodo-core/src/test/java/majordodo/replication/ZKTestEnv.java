@@ -28,7 +28,8 @@ import org.apache.bookkeeper.proto.BookieServer;
 public class ZKTestEnv implements AutoCloseable {
 
     static {
-        System.setProperty("zookeeper.admin.enableServer", "false");
+        System.setProperty("zookeeper.admin.enableServer", "true");
+        System.setProperty("zookeeper.admin.serverPort", "0");
     }
 
     TestingZookeeperServerEmbedded zkServer;
