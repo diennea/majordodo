@@ -33,6 +33,12 @@
             <projectNameForChangelog>Majordodo</projectNameForChangelog>
             <releases>
                 <release>
+                    <version>0.13.0</version>
+                    <date>June 2018</date>
+                    <href>https://github.com/diennea/majordodo/releases</href>
+                    <text>Majordodo 0.13.0 add compatiblity for JDK10, upgrade Apache BookKeeper to 4.7.0 and other minor fixes</text>
+                </release>
+                <release>
                     <version>0.12.0</version>
                     <date>December 2017</date>
                     <href>https://github.com/diennea/majordodo/releases</href>
