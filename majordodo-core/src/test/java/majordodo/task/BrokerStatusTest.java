@@ -78,6 +78,31 @@ public class BrokerStatusTest {
 
         }
     }
+    
+    @Test
+    public void testCollectMaxAvailableSpacePerUserOnWorkerMaxThreads1() throws Exception {
+        try (Broker broker = new Broker(new BrokerConfiguration(), new MemoryCommitLog(), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+            broker.startAsWritable();
+
+            int maxThreadPerTaskType1 = 1;
+            Map<String, Integer> maxThreadsPerTaskType2 = Collections.singletonMap(TASKTYPE_MYTYPE, maxThreadPerTaskType1);
+            
+            // add other 10 tasks for the same user
+            for (int i = 0; i < 10; i++) {
+                SubmitTaskResult res = broker.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, "", 1, 0, 0, null, 0, null, null));
+                assertTrue(res.getTaskId() > 0);
+            }
+
+            int maxThreadPerUserPerTaskTypePercent = 80;
+            // at least one should be assigned
+            {
+                List<AssignedTask> assignTasksToWorker = broker.assignTasksToWorker(100, maxThreadsPerTaskType2, Collections.singletonList(group),
+                    Collections.emptySet(), "myworker", new HashMap<>(), new ResourceUsageCounters(), maxThreadPerUserPerTaskTypePercent);
+                assertEquals(1, assignTasksToWorker.size());
+            }
+
+        }
+    }
 
     @Test
     public void testCollectMaxAvailableSpacePerUserOnWorkerUsingTaskTypeAny() throws Exception {

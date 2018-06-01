@@ -20,7 +20,6 @@
 package majordodo.task;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import majordodo.utils.DiscardingBoundedPriorityQueue;
@@ -287,6 +285,9 @@ public final class TasksChooser {
                     IntCounter counterForUser = availableSpacePerUser.get(new IntTaskTypeUser(tasktype, entry.userid));
                     if (counterForUser == null) {
                         int limitForUserWithoutAnyTaskRunning = (availableSpaceForTaskType * maxThreadPerUserPerTaskTypePercent) / 100;
+                        if (limitForUserWithoutAnyTaskRunning <= 0) {
+                            limitForUserWithoutAnyTaskRunning = 1;
+                        }
                         counterForUser = new IntCounter(limitForUserWithoutAnyTaskRunning);
                         availableSpacePerUser.put(new IntTaskTypeUser(tasktype, entry.userid), counterForUser);
                     }
