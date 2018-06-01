@@ -20,9 +20,7 @@
 package majordodo.broker;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
-import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.curator.test.TestingServer;
@@ -51,9 +49,8 @@ public class ZKTestEnv implements AutoCloseable {
         conf.setAutoRecoveryDaemonEnabled(false);
 
         conf.setAllowLoopback(true);
-
-        ClientConfiguration adminConf = new ClientConfiguration(conf);
-        BookKeeperAdmin.format(adminConf, false, true);
+        
+        BookKeeperAdmin.format(conf, false, true);
         this.bookie = new BookieServer(conf);
         this.bookie.start();
     }
