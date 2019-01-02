@@ -56,7 +56,7 @@ public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
         kdc = new MiniKdc(conf, kdcDir.getRoot());
         kdc.start();
 
-        String localhostName = "localhost.localdomain";
+        String localhostName = "localhost";
         String principalServerNoRealm = "majordodo/" + localhostName;
         String principalServer = "majordodo/" + localhostName + "@" + kdc.getRealm();
         String principalClientNoRealm = "majordodoclient/" + localhostName;
@@ -137,7 +137,7 @@ public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
     
     NettyChannelAcceptor server;
     ZKTestEnv zkEnv;
-    String host = "localhost.localdomain";
+    String host = "localhost";
     int port = 7000;
 
     @Override

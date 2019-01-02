@@ -112,7 +112,7 @@ public class SimpleBrokerStatusReplicationKerberosTest {
         kdc = new MiniKdc(conf, kdcDir.getRoot());
         kdc.start();
 
-        String localhostName = "localhost.localdomain";
+        String localhostName = "localhost";
         String principalServerNoRealm = "majordodo/" + localhostName;
         String principalServer = "majordodo/" + localhostName + "@" + kdc.getRealm();
         String principalClientNoRealm = "majordodoclient/" + localhostName;
