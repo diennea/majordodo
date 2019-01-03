@@ -101,7 +101,8 @@ public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
         try (FileWriter writer = new FileWriter(krb5file)) {
             writer.write("[libdefaults]\n"
                 + " default_realm = " + kdc.getRealm() + "\n"
-                + "\n"
+                // disable UDP as Kerby will listen only on TCP by default
+                + " udp_preference_limit=1\n"
                 + "\n"
                 + "[realms]\n"
                 + " " + kdc.getRealm() + "  = {\n"
