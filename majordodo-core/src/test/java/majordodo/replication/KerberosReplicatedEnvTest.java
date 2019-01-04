@@ -29,8 +29,9 @@ import majordodo.task.SimpleBrokerSuite;
 import majordodo.task.StatusChangesLog;
 import org.apache.hadoop.minikdc.MiniKdc;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 
 /**
@@ -40,17 +41,17 @@ import org.junit.rules.TemporaryFolder;
  */
 public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
 
-    private MiniKdc kdc;
-    private Properties conf;
+    private static MiniKdc kdc;
+    private static Properties conf;
 
-    @Rule
-    public TemporaryFolder kdcDir = new TemporaryFolder();
+    @ClassRule
+    public static TemporaryFolder kdcDir = new TemporaryFolder();
 
-    @Rule
-    public TemporaryFolder kerberosWorkDir = new TemporaryFolder();
+    @ClassRule
+    public static TemporaryFolder kerberosWorkDir = new TemporaryFolder();
 
-    @Before
-    public void startMiniKdc() throws Exception {
+    @BeforeClass
+    public static void startMiniKdc() throws Exception {
 
         createMiniKdcConf();
         kdc = new MiniKdc(conf, kdcDir.getRoot());
@@ -123,19 +124,19 @@ public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
      * /**
      * Create a Kdc configuration
      */
-    public void createMiniKdcConf() {
+    public static void createMiniKdcConf() {
         conf = MiniKdc.createConf();
     }
 
-    @After
-    public void stopMiniKdc() {
+    @AfterClass
+    public static void stopMiniKdc() {
         System.clearProperty("java.security.auth.login.config");
         System.clearProperty("java.security.krb5.conf");
         if (kdc != null) {
             kdc.stop();
         }
     }
-    
+
     NettyChannelAcceptor server;
     ZKTestEnv zkEnv;
     String host = "localhost";
@@ -148,7 +149,7 @@ public class KerberosReplicatedEnvTest extends SimpleBrokerSuite {
 
     @Override
     protected StatusChangesLog createStatusChangesLog() throws Exception {
-        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir,BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
+        return new ReplicatedCommitLog(zkEnv.getAddress(), zkEnv.getTimeout(), zkEnv.getPath(), workDir, BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, null)), false);
     }
 
     @Override
