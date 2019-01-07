@@ -19,6 +19,7 @@
  */
 package majordodo.replication;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -82,6 +83,8 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
  *
  * @author enrico.olivelli
  */
+@SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
+        justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class ReplicatedCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());

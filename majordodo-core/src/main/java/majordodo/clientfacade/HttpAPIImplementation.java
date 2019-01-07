@@ -19,6 +19,7 @@
  */
 package majordodo.clientfacade;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +48,8 @@ import org.codehaus.jackson.map.ObjectMapper;
  *
  * @author enrico.olivelli
  */
+@SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
+        justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class HttpAPIImplementation {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

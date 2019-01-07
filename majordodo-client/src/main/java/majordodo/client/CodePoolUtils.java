@@ -19,6 +19,7 @@
  */
 package majordodo.client;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -47,6 +48,8 @@ import java.util.zip.ZipOutputStream;
  *
  * @author enrico.olivelli
  */
+@SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
+        justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class CodePoolUtils {
 
     private static final Logger LOGGER = Logger.getLogger(CodePoolUtils.class.getName());

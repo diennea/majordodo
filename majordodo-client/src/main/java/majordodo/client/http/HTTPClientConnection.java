@@ -19,6 +19,7 @@
  */
 package majordodo.client.http;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import majordodo.client.ClientConnection;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -59,6 +60,8 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.codehaus.jackson.map.ObjectMapper;
 
+@SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
+        justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class HTTPClientConnection implements ClientConnection {
 
     private static final Logger LOGGER = Logger.getLogger(HTTPClientConnection.class.getName());
