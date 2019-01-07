@@ -382,9 +382,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private final LeaderShipChangeListener leaderShiplistener = new LeaderShipChangeListener() {
 
         @Override
-        public void leadershipLost() {
-            LOGGER.log(Level.SEVERE, "leadershipLost");
-            signalBrokerFailed(new Exception("leadership lost"));
+        public void leadershipLost(String reason) {
+            LOGGER.log(Level.SEVERE, "leadershipLost: "+reason);
+            signalBrokerFailed(new Exception("leadership lost: "+reason));
 
         }
 

@@ -112,7 +112,7 @@ public class ZKClusterManager implements AutoCloseable {
 
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener,
-        byte[] localhostdata, boolean writeacls) throws Exception {
+            byte[] localhostdata, boolean writeacls) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
         this.basePath = basePath;
         this.listener = listener;
@@ -125,7 +125,8 @@ public class ZKClusterManager implements AutoCloseable {
     }
 
     /**
-     * Let (embedded) brokers read actual list of ledgers used. in order to perform extrernal clean ups
+     * Let (embedded) brokers read actual list of ledgers used. in order to
+     * perform extrernal clean ups
      *
      * @param zk
      * @param ledgersPath
@@ -241,11 +242,13 @@ public class ZKClusterManager implements AutoCloseable {
                 case OK: {
                     LOGGER.log(Level.INFO, "data on ZK at {0}: {1}", new Object[]{leaderpath, new String(data, StandardCharsets.UTF_8)});
                     if (state == MasterStates.ELECTED
-                        && !Arrays.equals(data, localhostdata)) {
-                        LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from actual {2}", new Object[]{leaderpath,
-                            new String(localhostdata, StandardCharsets.UTF_8),
-                            new String(data, StandardCharsets.UTF_8)});
-                        leadershipLost();
+                            && !Arrays.equals(data, localhostdata)) {
+                        String localData = new String(localhostdata, StandardCharsets.UTF_8);
+                        String currentData = new String(data, StandardCharsets.UTF_8);
+                        LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from current {2}", new Object[]{leaderpath,
+                            localData, currentData}
+                        );
+                        leadershipLost("expected data on ZK at " + leaderpath + ": " + localData + " different from current " + currentData);
                     }
                     zk.getData(leaderpath, masterExistsWatcher, masterCheckBallback, null);
                     break;
@@ -337,12 +340,12 @@ public class ZKClusterManager implements AutoCloseable {
 
     };
 
-    private void leadershipLost() {
-        listener.leadershipLost();
+    private void leadershipLost(String reason) {
+        listener.leadershipLost(reason);
     }
 
     private void onSessionExpired() {
-        leadershipLost();
+        leadershipLost("ZK session expired");
     }
 
     public void requestLeadership() {
@@ -351,7 +354,7 @@ public class ZKClusterManager implements AutoCloseable {
 
     @Override
     public void close() {
-        listener.leadershipLost();
+        listener.leadershipLost("service is stopping");
         if (zk != null) {
             try {
                 zk.close();
