@@ -48,8 +48,8 @@ public class BookkeeperFailuresTest extends BrokerTestUtils {
 
     private final LeaderShipChangeListener leaderShiplistener = new LeaderShipChangeListener() {
         @Override
-        public void leadershipLost() {
-            System.out.println("leadershipLost");
+        public void leadershipLost(String reason) {
+            System.out.println("leadershipLost:" + reason);
         }
 
         @Override
@@ -103,7 +103,7 @@ public class BookkeeperFailuresTest extends BrokerTestUtils {
 
         try (BookKeeper bk = createBookKeeper();) {
             try (LedgerHandle fenceLedger = bk.openLedger(
-                broker1scl.getCurrentLedgerId(), BookKeeper.DigestType.MAC, "dodo".getBytes(StandardCharsets.UTF_8));) {
+                    broker1scl.getCurrentLedgerId(), BookKeeper.DigestType.MAC, "dodo".getBytes(StandardCharsets.UTF_8));) {
 
                 try {
                     long taskId4 = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 1, 0, 0, null, 0, null, null)).getTaskId();

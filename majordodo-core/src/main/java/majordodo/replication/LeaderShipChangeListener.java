@@ -29,6 +29,6 @@ public class LeaderShipChangeListener {
     public void leadershipAcquired() {
     }
 
-    public void leadershipLost() {
+    public void leadershipLost(String reason) {
     }
 }

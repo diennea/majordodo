@@ -50,8 +50,8 @@ public class SimpleLeadershipTest {
                 }
 
                 @Override
-                public void leadershipLost() {
-                    System.out.println("leadershipLost!");
+                public void leadershipLost(String reason) {
+                    System.out.println("leadershipLost: " + reason);
                     leadeshipLost.countDown();
                 }
             }, "test".getBytes("utf-8"), false)) {
@@ -76,7 +76,7 @@ public class SimpleLeadershipTest {
             CountDownLatch leadeship2_Taken;
             ZKClusterManager clusterManager_2;
             try (ZKClusterManager clusterManager_1
-                = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader1, "test".getBytes("utf-8"), false)) {
+                    = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader1, "test".getBytes("utf-8"), false)) {
                 clusterManager_1.start();
                 clusterManager_1.requestLeadership();
                 assertTrue(leadeship1_Taken.await(10, TimeUnit.SECONDS));
@@ -88,7 +88,7 @@ public class SimpleLeadershipTest {
                     }
                 };
                 clusterManager_2
-                    = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader2, "test2".getBytes("utf-8"), false);
+                        = new ZKClusterManager(zkServer.getAddress(), 4000, "/dodo", leader2, "test2".getBytes("utf-8"), false);
                 clusterManager_2.start();
                 clusterManager_2.requestLeadership();
             }
