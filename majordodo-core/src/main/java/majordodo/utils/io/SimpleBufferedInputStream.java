@@ -114,7 +114,7 @@ public final class SimpleBufferedInputStream extends FilterInputStream {
      *
      * @param in the underlying input stream.
      * @param size the buffer size.
-     * @exception IllegalArgumentException if size <= 0.
+     * @exception IllegalArgumentException if size &lt;= 0.
      */
     public SimpleBufferedInputStream(InputStream in, int size) {
         super(in);
@@ -127,7 +127,7 @@ public final class SimpleBufferedInputStream extends FilterInputStream {
     /**
      * Fills the buffer with more data, taking into account shuffling and other tricks for dealing with marks. Assumes
      * that it is being called by a synchronized method. This method also assumes that all data has already been read
-     * in, hence pos > count.
+     * in, hence pos &gt; count.
      */
     private void fill() throws IOException {
         byte[] buffer = getBufIfOpen();
