@@ -49,4 +49,6 @@ public class TestUtils {
         throw new Exception(
                 "condition not met in time!");
     }
+
+    public static Callable<Void> NOOP = () -> null;
 }

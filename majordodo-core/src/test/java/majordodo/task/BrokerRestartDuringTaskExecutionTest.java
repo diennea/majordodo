@@ -40,6 +40,7 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.utils.TestUtils;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -156,7 +157,7 @@ public class BrokerRestartDuringTaskExecutionTest {
             try (WorkerCore core = new WorkerCore(config, "process1", locator, null);) {
                 core.start();
                 core.setExecutorFactory(
-                    (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
+                        (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
                     @Override
                     public String executeTask(Map<String, Object> parameters) throws Exception {
                         System.out.println("executeTask: " + parameters);
@@ -201,18 +202,15 @@ public class BrokerRestartDuringTaskExecutionTest {
                         // wait the worker to finish execution
                         assertTrue(taskFinishedLatch.await(2, TimeUnit.MINUTES));
 
-                        boolean ok = false;
-                        for (int i = 0; i < 100; i++) {
+                        TestUtils.waitForCondition(() -> {
                             Task task = broker.getBrokerStatus().getTask(taskId);
-                            if (task.getStatus() == Task.STATUS_FINISHED) {
-                                ok = true;
-                                break;
-                            } else {
-                                System.out.println("task status: " + task.getStatus() + " result:" + task.getResult());
+                            if (task == null) {
+                                System.out.println("no task " + taskId);
+                                return false;
                             }
-                            Thread.sleep(1000);
-                        }
-                        assertTrue(ok);
+                            System.out.println("task status: " + task.getStatus() + " result:" + task.getResult());
+                            return task.getStatus() == Task.STATUS_FINISHED;
+                        }, TestUtils.NOOP, 300);
                     }
 
                 }
