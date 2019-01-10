@@ -176,7 +176,8 @@
                 <activeByDefault>false</activeByDefault>                
             </activation>   
             <modules>
-                <module>./majordodo-worker</module>                
+                <module>./majordodo-worker</module>
+                <module>./majordodo-test-clients</module>             
                 <module>./majordodo-client</module>
                 <module>./majordodo-net</module>
                 <module>./majordodo-core</module>
