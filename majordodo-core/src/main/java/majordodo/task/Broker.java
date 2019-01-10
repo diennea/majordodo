@@ -51,6 +51,7 @@ import majordodo.clientfacade.SlotsStatusView;
 import majordodo.clientfacade.TransactionsStatusView;
 import majordodo.clientfacade.TransactionStatus;
 import majordodo.utils.IntCounter;
+import majordodo.utils.Version;
 
 /**
  * Global status of the broker
@@ -117,7 +118,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public static String VERSION() {
-        return "0.13.0";
+        return Version.getVersion();
     }
 
     private final Workers workers;
