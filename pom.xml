@@ -144,7 +144,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.21.0</version>
+                        <version>3.0.0-M3</version>
                         <configuration>                                        
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
@@ -154,7 +154,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.3</version>
+                        <version>3.8.0</version>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
@@ -162,7 +162,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
-                        <version>2.7</version>
+                        <version>3.1.0</version>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
@@ -194,7 +194,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.21.0</version>
+                        <version>3.0.0-M3</version>
                         <configuration>                                        
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
@@ -203,7 +203,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>2.3.2</version>
+                        <version>3.8.0</version>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
@@ -211,7 +211,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
-                        <version>2.4.3</version>
+                        <version>3.1.0</version>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
@@ -219,7 +219,7 @@
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.6</version>
+                        <version>1.6.8</version>
                         <extensions>true</extensions>
                         <configuration>
                             <serverId>ossrh</serverId>
@@ -230,7 +230,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
-                        <version>2.4</version>
+                        <version>3.0.1</version>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
@@ -244,7 +244,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>2.10.3</version>
+                        <version>3.0.1</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
