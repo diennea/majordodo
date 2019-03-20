@@ -224,7 +224,7 @@ public class BrokerMain implements AutoCloseable {
                 }
                 ReplicatedCommitLog _log = new ReplicatedCommitLog(zkAddress, zkSessionTimeout, zkPath, Paths.get(snapdir),
                     BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
-                    zkSecure, additionalBookKeeperConfig
+                    zkSecure, additionalBookKeeperConfig, id
                 );
                 log = _log;
                 int ensemble = Integer.parseInt(configuration.getProperty("bookkeeper.ensemblesize", _log.getEnsemble() + ""));

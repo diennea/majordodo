@@ -84,7 +84,7 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
  * @author enrico.olivelli
  */
 @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
-        justification = "https://github.com/spotbugs/spotbugs/issues/756")
+    justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class ReplicatedCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());
@@ -107,6 +107,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long maxLogicalLogFileSize = 1024 * 1024 * 256;
     private long writtenBytes = 0;
     private boolean sslUnsecure = true;
+    private final String brokerId;
 
     @Override
     public boolean isSslUnsecure() {
@@ -190,7 +191,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         private CommitFileWriter() throws LogNotAvailableException {
             try {
-                this.out = bookKeeper.createLedger(ensemble, writeQuorumSize, ackQuorumSize, BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
+                this.out = bookKeeper.createLedger(ensemble, 
+                    writeQuorumSize, 
+                    ackQuorumSize, 
+                    BookKeeper.DigestType.MAC, 
+                    sharedSecret.getBytes(StandardCharsets.UTF_8), 
+                    LedgerMetadataUtils.buildBrokerLedgerMetadata(brokerId)
+                );
                 writtenBytes = 0;
             } catch (Exception err) {
                 throw new LogNotAvailableException(err);
@@ -383,8 +390,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         @Override
         public void leadershipLost(String reason) {
-            LOGGER.log(Level.SEVERE, "leadershipLost: "+reason);
-            signalBrokerFailed(new Exception("leadership lost: "+reason));
+            LOGGER.log(Level.SEVERE, "leadershipLost: " + reason);
+            signalBrokerFailed(new Exception("leadership lost: " + reason));
 
         }
 
@@ -397,11 +404,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata,
         boolean writeacls) throws Exception {
-        this(zkAddress, zkTimeout, zkPath, snapshotsDirectory, localhostdata, writeacls, Collections.emptyMap());
+        this(zkAddress, zkTimeout, zkPath, snapshotsDirectory, localhostdata, writeacls, Collections.emptyMap(), "");
     }
 
     public ReplicatedCommitLog(String zkAddress, int zkTimeout, String zkPath, Path snapshotsDirectory, byte[] localhostdata,
-        boolean writeacls, Map<String, String> bookkeeperConfiguration) throws Exception {
+        boolean writeacls, Map<String, String> bookkeeperConfiguration, String brokerId) throws Exception {
         if (localhostdata == null) {
             localhostdata = new byte[0];
         }
@@ -423,6 +430,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             close();
             throw t;
         }
+        this.brokerId = brokerId;
     }
 
     public int getEnsemble() {

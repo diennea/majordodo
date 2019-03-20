@@ -185,7 +185,7 @@ public class EmbeddedBroker implements AutoCloseable {
                 }
                 ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
                     BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
-                    zkSecure, additionalBookKeeperConfig
+                    zkSecure, additionalBookKeeperConfig, id
                 );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
