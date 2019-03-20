@@ -34,7 +34,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import jdk.internal.jline.internal.ShutdownHooks.Task;
 
 /**
  * Handles NodeManagers
