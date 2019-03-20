@@ -19,15 +19,19 @@
  */
 package majordodo.replication;
 
+import java.nio.charset.StandardCharsets;
 import majordodo.task.BrokerStatusSnapshot;
 import majordodo.task.LogSequenceNumber;
 import majordodo.task.StatusEdit;
 import majordodo.task.Task;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.bookkeeper.client.BookKeeper;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -41,6 +45,8 @@ import org.junit.rules.TemporaryFolder;
  * @author enrico.olivelli
  */
 public class ReplicatedCommitLogSimpleTest {
+
+    private static final String BROKER_ID = "testBrokerId";
 
     @Rule
     public TemporaryFolder folderSnapshots = new TemporaryFolder();
@@ -70,6 +76,15 @@ public class ReplicatedCommitLogSimpleTest {
                 LogSequenceNumber logStatusEdit2 = log.logStatusEdit(edit2);
                 LogSequenceNumber logStatusEdit3 = log.logStatusEdit(edit3);
                 LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
+
+                Map<String, byte[]> customMeta = log
+                    .getBookKeeper()
+                    .openLedgerNoRecovery(logStatusEdit4.ledgerId, BookKeeper.DigestType.MAC, log.getSharedSecret().getBytes(StandardCharsets.UTF_8))
+                    .getCustomMetadata();
+
+                Assert.assertEquals("majordodo", new String(customMeta.get("application"), StandardCharsets.UTF_8));
+                Assert.assertEquals("broker", new String(customMeta.get("component"), StandardCharsets.UTF_8));
+                Assert.assertEquals("", new String(customMeta.get("broker-id"), StandardCharsets.UTF_8));
             }
 
             try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null, false);) {
@@ -95,7 +110,29 @@ public class ReplicatedCommitLogSimpleTest {
                 assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
                 assertEquals("db1,db2", edits.get(2).resources);
                 assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(3).editType);
+            }
 
+            try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo",
+                folderSnapshots.getRoot().toPath(), null, false, Collections.emptyMap(), BROKER_ID);) {
+
+                log.getClusterManager().start();
+                log.requestLeadership();
+                BrokerStatusSnapshot snapshot = log.loadBrokerStatusSnapshot();
+                log.recovery(snapshot.getActualLogSequenceNumber(), (a, b) -> {
+                }, false);
+                log.startWriting();
+
+                StatusEdit edit1 = StatusEdit.ADD_TASK(1, "mytask", "param1", "myuser", 0, 0, 0, null, 0, null, null);
+                long ledgerId = log.logStatusEdit(edit1).ledgerId;
+
+                Map<String, byte[]> customMeta = log
+                    .getBookKeeper()
+                    .openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, log.getSharedSecret().getBytes(StandardCharsets.UTF_8))
+                    .getCustomMetadata();
+
+                Assert.assertEquals("majordodo", new String(customMeta.get("application"), StandardCharsets.UTF_8));
+                Assert.assertEquals("broker", new String(customMeta.get("component"), StandardCharsets.UTF_8));
+                Assert.assertEquals(BROKER_ID, new String(customMeta.get("broker-id"), StandardCharsets.UTF_8));
             }
 
         }
