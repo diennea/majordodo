@@ -38,12 +38,12 @@ public class LedgerMetadataUtils {
     private static final String CREATED_BY_METADATA = "broker-id";
 
     public static Map<String, byte[]> buildBrokerLedgerMetadata(String brokerId) {
-        byte[] createdByValue = brokerId == null ? null : brokerId.getBytes(StandardCharsets.UTF_8);
+        String createdByValue = brokerId == null ? "" : brokerId;
         
         return ImmutableMap.of(
             APPLICATION_METADATA, APPLICATION_METADATA_VALUE,
             COMPONENT_METADATA, COMPONENT_METADATA_VALUE,
-            CREATED_BY_METADATA, createdByValue
+            CREATED_BY_METADATA, createdByValue.getBytes(StandardCharsets.UTF_8)
         );
     }
 }
