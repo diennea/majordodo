@@ -21,6 +21,7 @@ package majordodo.task;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -122,13 +123,14 @@ public class Workers {
                     synchronized (waitForEvent) {
                         waitForEvent.wait(500);
                     }
-                    Collection<WorkerManager> managers;
+                    List<WorkerManager> managers;
                     lock.readLock().lock();
                     try {
                         managers = new ArrayList<>(nodeManagers.values());
                     } finally {
                         lock.readLock().unlock();
                     }
+                    Collections.shuffle(managers);
                     for (WorkerManager man : managers) {
                         if (!man.isThreadAssigned()) {
                             man.threadAssigned();
