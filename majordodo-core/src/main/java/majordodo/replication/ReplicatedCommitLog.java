@@ -100,9 +100,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long lastSequenceNumber = -1;
     private Path snapshotsDirectory;
     private LedgersInfo actualLedgersList;
-    private int ensemble = 1;
-    private int writeQuorumSize = 1;
-    private int ackQuorumSize = 1;
+    // these are expected to be configurable at runtime from the EmbeddedBroker
+    private volatile int ensembleSize = 1;
+    private volatile int writeQuorumSize = 1;
+    private volatile int ackQuorumSize = 1;
     private long ledgersRetentionPeriod = 1000 * 60 * 60 * 24;
     private long maxLogicalLogFileSize = 1024 * 1024 * 256;
     private long writtenBytes = 0;
@@ -191,10 +192,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         private CommitFileWriter() throws LogNotAvailableException {
             try {
-                this.out = bookKeeper.createLedger(ensemble, 
+                this.out = bookKeeper.createLedger(ensembleSize, 
                     writeQuorumSize, 
                     ackQuorumSize, 
-                    BookKeeper.DigestType.MAC, 
+                    BookKeeper.DigestType.CRC32C, 
                     sharedSecret.getBytes(StandardCharsets.UTF_8), 
                     LedgerMetadataUtils.buildBrokerLedgerMetadata(brokerId)
                 );
@@ -434,11 +435,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     public int getEnsemble() {
-        return ensemble;
+        return ensembleSize;
     }
 
     public void setEnsemble(int ensemble) {
-        this.ensemble = ensemble;
+        this.ensembleSize = ensemble;
     }
 
     public int getWriteQuorumSize() {

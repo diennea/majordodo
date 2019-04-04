@@ -13,6 +13,7 @@ import majordodo.client.SubmitTaskResponse;
 import majordodo.client.TaskStatus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,6 +32,9 @@ public class BrokerEmbeddedClientTest {
 
         try (EmbeddedBroker main = new EmbeddedBroker(ee);) {
             main.start();
+            
+            // assert that we are able to access internal log
+            assertNotNull(main.getStatusChangesLog());
 
             try (EmbeddedClient client = new EmbeddedClient();
                     ClientConnection con = client.openConnection()) {
