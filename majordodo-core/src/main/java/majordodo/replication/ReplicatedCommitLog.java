@@ -100,6 +100,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     private long lastSequenceNumber = -1;
     private Path snapshotsDirectory;
     private LedgersInfo actualLedgersList;
+    // these are expected to be configurable at runtime from the EmbeddedBroker
     private volatile int ensembleSize = 1;
     private volatile int writeQuorumSize = 1;
     private volatile int ackQuorumSize = 1;
