@@ -60,8 +60,14 @@
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
                 <exclusion>
+                    <!-- netty 3 -->
                     <groupId>netty</groupId>
-                    <artifactId>io.netty</artifactId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <!-- netty 4 -->
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>commons-logging</groupId>

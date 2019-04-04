@@ -20,7 +20,33 @@
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
+            <artifactId>netty-buffer</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec</artifactId>
+            <version>${libs.netty4}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <version>${libs.netty4}</version>
+            <classifier>linux-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-unix-common</artifactId>
             <version>${libs.netty4}</version>
         </dependency>
         <dependency>
@@ -65,8 +91,8 @@
     </dependencies>    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <libs.netty4>4.1.22.Final</libs.netty4>
-        <libs.netty4.tcnative>2.0.7.Final</libs.netty4.tcnative>
+        <libs.netty4>4.1.34.Final</libs.netty4>
+        <libs.netty4.tcnative>2.0.23.Final</libs.netty4.tcnative>
         <libs.jackson>1.9.13</libs.jackson>
         <libs.zookeeper>3.5.3-beta</libs.zookeeper>
     </properties>
