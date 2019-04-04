@@ -251,4 +251,13 @@ public class EmbeddedBroker implements AutoCloseable {
         stop();
     }
 
+    /**
+     * Give access to the log, this way we will let 'embeeded' users to
+     * modify BookKeeper replication parameters dynamically
+     * @return 
+     */
+    public StatusChangesLog getStatusChangesLog() {
+        return statusChangesLog;
+    }
+
 }
