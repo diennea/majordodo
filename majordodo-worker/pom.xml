@@ -3,7 +3,7 @@
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Worker Implementations</name>
-    <version>0.15.0</version>
+    <version>0.15.1-SNAPSHOT</version>
     <groupId>org.majordodo</groupId>
     <artifactId>majordodo-worker</artifactId>
     <url>http://majordodo.org</url>
@@ -18,7 +18,7 @@
     <scm>
         <url>scm:git:https://github.com/diennea/majordodo.git</url>
         <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
-      <tag>v0.15.0</tag>
+      <tag>release/0.15</tag>
   </scm>
     <developers>
         <developer>
