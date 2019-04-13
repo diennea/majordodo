@@ -61,6 +61,11 @@
             <name>Matteo Minardi</name>
             <organization>Diennea</organization>
         </developer>
+        <developer>
+            <id>dmercuriali</id>
+            <name>Dennis Mercuriali</name>
+            <organization>Diennea</organization>
+        </developer>
     </developers>
     <issueManagement>
         <url>https://github.com/diennea/majordodo/issues</url>		
