@@ -19,6 +19,8 @@
  */
 package majordodo.client.discovery;
 
+import static org.apache.zookeeper.ServerAdminClient.stat;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -32,6 +34,7 @@ import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -46,7 +49,7 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     private final Supplier<ZooKeeper> client;
     private String zkPath = "/majordodo";
-    private BrokerAddress leaderBrokerCache;
+    private volatile BrokerAddress leaderBrokerCache;
 
     public ZookeeperDiscoveryService(Supplier<ZooKeeper> client) {
         this.client = client;
@@ -67,20 +70,24 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
     @Override
     public BrokerAddress getLeaderBroker() {
-        if (leaderBrokerCache != null) {
-            return leaderBrokerCache;
+        BrokerAddress _address = leaderBrokerCache;
+        if (_address != null) {
+            return _address;
         }
 
         String leaderPath = zkPath + "/leader";
-        ZooKeeper zk = client.get();
-        if (zk == null) {
+        ZooKeeper currentClient = client.get();
+        if (currentClient == null) {
             LOGGER.log(Level.SEVERE, "zookeeper client is not available");
             return null;
         }
+        LOGGER.log(Level.INFO, "lookingForLeader broker zkclient={0}", currentClient);
         try {
-            byte[] data = zk.getData(leaderPath, false, null);
-            leaderBrokerCache = parseBrokerAddress(data);
-            return leaderBrokerCache;
+            Stat stat = new Stat();
+            byte[] data = currentClient.getData(leaderPath, false, stat);
+            _address = parseBrokerAddress(data, stat);
+            leaderBrokerCache = _address;
+            return _address;
         } catch (KeeperException.NoNodeException nobroker) {
             return null;
         } catch (KeeperException | InterruptedException | IOException err) {
@@ -95,9 +102,9 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
         leaderBrokerCache = null;
     }
 
-    private BrokerAddress parseBrokerAddress(byte[] data) throws IOException {
+    private BrokerAddress parseBrokerAddress(byte[] data, Stat stat) throws IOException {
         Map<String, String> res = MAPPER.readValue(new ByteArrayInputStream(data), Map.class);
-        LOGGER.log(Level.SEVERE, "zookeeper client result " + res);
+        LOGGER.log(Level.INFO, "zookeeper client result {0} stat {1}", new Object[] {res, stat});
         BrokerAddress address = new BrokerAddress();
         address.setInfo(res);
         String url = res.get("client.api.url");
@@ -126,8 +133,9 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
             for (String s : all) {
 //                LOGGER.log(Level.SEVERE, "getting " + s);
                 try {
-                    byte[] data = zk.getData(s, false, null);
-                    BrokerAddress address = parseBrokerAddress(data);
+                    Stat stat = new Stat();
+                    byte[] data = zk.getData(s, false, stat);
+                    BrokerAddress address = parseBrokerAddress(data, stat);
                     if (address != null) {
                         aa.add(address);
                     }
