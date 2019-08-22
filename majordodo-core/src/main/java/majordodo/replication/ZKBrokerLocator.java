@@ -27,6 +27,7 @@ import majordodo.network.BrokerHostData;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 
 /**
  * Locates master broker using ZK
@@ -38,12 +39,15 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
     private static final Logger LOGGER = Logger.getLogger(ZKBrokerLocator.class.getName());
 
     private BrokerHostData lookForLeader() {
-        ZooKeeper actualClient = zk.get();
-        LOGGER.severe("lookingForLeader broker zkclient=" + actualClient);
-        if (actualClient != null) {
+        ZooKeeper currentClient = zk.get();
+        LOGGER.log(Level.INFO, "lookingForLeader broker zkclient={0}", currentClient);
+        if (currentClient != null) {
             try {
-                byte[] result = actualClient.getData(basePath + "/leader", workerWatcher, null);
-                return BrokerHostData.parseHostdata(result);
+                Stat stat = new Stat();
+                byte[] result = currentClient.getData(basePath + "/leader", workerWatcher, stat);
+                BrokerHostData hostdata = BrokerHostData.parseHostdata(result);
+                LOGGER.log(Level.INFO, "zknode {0}/leader contains {1} (stat {2})", new Object[]{basePath, hostdata, stat});
+                return hostdata;
             } catch (Throwable t) {
                 LOGGER.log(Level.SEVERE, "error reading leader broker data", t);
                 return null;
@@ -58,7 +62,7 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
         @Override
         public void process(WatchedEvent event) {
             // only for debug purposes
-            LOGGER.info("event " + event.getPath() + " " + event.getState() + " " + event.getType());
+            LOGGER.log(Level.INFO, "event {0} {1} {2}", new Object[]{event.getPath(), event.getState(), event.getType()});
         }
 
     };
@@ -75,14 +79,14 @@ public class ZKBrokerLocator extends GenericNettyBrokerLocator {
         ownedZk = new ZooKeeper(zkAddress, zkSessiontimeout, workerWatcher);
         zk = () -> ownedZk;
         this.basePath = basePath;
-        LOGGER.info("zkAddress:" + zkAddress + ", zkSessionTimeout:" + zkSessiontimeout + " basePath:" + basePath);
+        LOGGER.log(Level.INFO, "zkAddress:{0}, zkSessionTimeout:{1} basePath:{2}", new Object[]{zkAddress, zkSessiontimeout, basePath});
         lookForLeader();
     }
 
     public ZKBrokerLocator(Supplier<ZooKeeper> zk, String basePath) throws Exception {
         this.zk = zk;
         this.basePath = basePath;
-        LOGGER.info("basePath:" + basePath + " using system-provided Zookeeper Client");
+        LOGGER.log(Level.INFO, "basePath:{0} using system-provided Zookeeper Client", basePath);
         lookForLeader();
     }
 

@@ -58,7 +58,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {
             BrokerHostData broker = getServer();
-            LOGGER.log(Level.SEVERE, "connect to broker " + broker);
+            LOGGER.log(Level.SEVERE, "connect to broker {0}", broker);
             if (broker == null) {
                 throw new BrokerNotAvailableException(new Exception("no broker available"));
             }

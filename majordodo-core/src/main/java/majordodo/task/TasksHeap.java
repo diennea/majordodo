@@ -137,7 +137,7 @@ public class TasksHeap {
             delta = 1;
         }
         int newSize = actuallist.length + delta;
-        LOGGER.log(Level.SEVERE, "doAutoGrow size {0}, newsize {1}", new Object[]{size, newSize});
+        LOGGER.log(Level.INFO, "doAutoGrow size {0}, newsize {1}", new Object[]{size, newSize});
         TaskEntry[] newList = new TaskEntry[newSize];
         System.arraycopy(actuallist, 0, newList, 0, actuallist.length);
         for (int i = actuallist.length; i < newList.length; i++) {

@@ -355,7 +355,9 @@ public final class BrokerStatus {
                     case Task.STATUS_ERROR:
                     case Task.STATUS_FINISHED:
                         if (t.getCreatedTimestamp() < finished_deadline) {
-                            LOGGER.log(Level.INFO, "purging finished task {0} slot {2}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot()});
+                            if (LOGGER.isLoggable(Level.FINER)) {
+                                LOGGER.log(Level.FINER, "purging finished task {0} slot {2}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot()});
+                            }                            
                             it.remove();
                             stats.taskStatusChange(t.getStatus(), -1);
                         }
@@ -416,7 +418,7 @@ public final class BrokerStatus {
     void recoverForLeadership() {
         try {
             // we have to be sure that we are in sych we the global status                        
-            LOGGER.severe("recoverForLeadership, from " + this.lastLogSequenceNumber);
+            LOGGER.log(Level.INFO, "recoverForLeadership, from {0}", this.lastLogSequenceNumber);
             AtomicInteger done = new AtomicInteger();
             log.recovery(this.lastLogSequenceNumber,
                 (logSeqNumber, edit) -> {
@@ -428,12 +430,12 @@ public final class BrokerStatus {
                 }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
-            LOGGER.severe("recovered gap of " + done.get() + " entries before entering leadership mode. newTaskId=" + newTaskId + " newTransactionId=" + newTransactionId);
+            LOGGER.log(Level.INFO, "recovered gap of {0} entries before entering leadership mode. newTaskId={1} newTransactionId={2}", new Object[]{done.get(), newTaskId, newTransactionId});
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
         }
 
-        LOGGER.log(Level.SEVERE, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
+        LOGGER.log(Level.INFO, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
     }
 
     int applyRunningTasksFilterToAssignTasksRequest(String workerId, Map<String, Integer> availableSpace) {

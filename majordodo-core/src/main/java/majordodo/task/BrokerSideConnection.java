@@ -142,7 +142,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             LOGGER.log(Level.SEVERE, "receivedMessageFromWorker {0}, but channel is closed", message);
             return;
         }
-        LOGGER.log(Level.FINE, "receivedMessageFromWorker {0}", message);
+        LOGGER.log(Level.FINER, "receivedMessageFromWorker {0}", message);
         switch (message.type) {
             case Message.TYPE_SASL_TOKEN_MESSAGE_REQUEST: {
                 try {

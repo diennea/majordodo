@@ -75,7 +75,7 @@ public class Workers {
             }
             Set<Long> toRecoverForWorker = new HashSet<>();
             deadWorkerTasks.put(workerId, toRecoverForWorker);
-            LOGGER.log(Level.SEVERE, "Booting workerManager for workerId:{0}, actual status: {1} {2}", new Object[]{workerStatus.getWorkerId(), workerStatus.getStatus(), WorkerStatus.statusToString(workerStatus.getStatus())});
+            LOGGER.log(Level.INFO, "Booting workerManager for workerId:{0}, actual status: {1} {2}", new Object[]{workerStatus.getWorkerId(), workerStatus.getStatus(), WorkerStatus.statusToString(workerStatus.getStatus())});
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId())) {
                     if (task.getStatus() == Task.STATUS_RUNNING) {

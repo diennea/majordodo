@@ -97,7 +97,7 @@ public class FileCommitLog extends StatusChangesLog {
             this.sequenceNumber = sequenceNumber;
             filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
             // in case of IOException the stream is not opened, not need to close it
-            LOGGER.log(Level.SEVERE, "starting new file {0} ", filename);
+            LOGGER.log(Level.INFO, "starting new file {0} ", filename);
             File file = filename.toFile();
             if (file.isFile()) {
                 throw new IOException("File " + file.getAbsolutePath() + " already exists");

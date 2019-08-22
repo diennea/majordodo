@@ -57,10 +57,10 @@ public final class CodePoolClassloader extends URLClassLoader {
     }
 
     private void buildCodePoolTmpDirectory(String codePoolId, byte[] data) throws IOException {
-        LOGGER.log(Level.SEVERE, "Unzipping codepool data for pool " + codePoolId + " to " + directory.toAbsolutePath());
+        LOGGER.log(Level.INFO, "Unzipping codepool data for pool " + codePoolId + " to " + directory.toAbsolutePath());
         List<URL> unzipCodePoolData = CodePoolUtils.unzipCodePoolData(directory, data);
         unzipCodePoolData.forEach(this::addURL);
-        LOGGER.log(Level.SEVERE, "Classpath for " + codePoolId + ": " + Arrays.toString(this.getURLs()));
+        LOGGER.log(Level.INFO, "Classpath for " + codePoolId + ": " + Arrays.toString(this.getURLs()));
 
     }
 

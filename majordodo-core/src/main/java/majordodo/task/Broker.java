@@ -251,13 +251,13 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         public void run() {
             try {
                 brokerStatusMonitor.start();
-                LOGGER.log(Level.SEVERE, "Waiting to become leader...");
+                LOGGER.log(Level.INFO, "Waiting to become leader...");
                 finishedTaskCollectorScheduler.start();
                 brokerStatus.followTheLeader();
                 if (stopped || failed) {
                     return;
                 }
-                LOGGER.log(Level.SEVERE, "Starting as leader, brokerId:{0}", brokerId);
+                LOGGER.log(Level.INFO, "Starting as leader, brokerId:{0}", brokerId);
                 brokerStatus.recoverForLeadership();
 
                 brokerStatus.setReadonly(true);
@@ -266,21 +266,21 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 for (Task task : tasksAtBoot) {
                     switch (task.getStatus()) {
                         case Task.STATUS_WAITING:
-                            LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=waiting)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
+                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=waiting)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
                             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
                             break;
                         case Task.STATUS_DELAYED:
-                            LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=delayed)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
+                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=delayed)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
                             delayedTasksQueue.add(task);
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
                             break;
                         case Task.STATUS_RUNNING:
-                            LOGGER.log(Level.SEVERE, "Task {0}, {1}, user={2}, slot={3} is in running status", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
+                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is in running status", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
@@ -294,7 +294,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 for (Transaction t : brokerStatus.getTransactionsAtBoot()) {
                     if (t.getPreparedTasks() != null) {
                         for (Task task : t.getPreparedTasks()) {
-                            LOGGER.log(Level.SEVERE, "Uncommitted trasaction {0} holds Task {1}, {2}, user={3}, slot={4}", new Object[]{t.getTransactionId(), task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
+                            LOGGER.log(Level.SEVERE, "Uncommitted transaction {0} holds Task {1}, {2}, user={3}, slot={4}", new Object[]{t.getTransactionId(), task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
                             if (task.getSlot() != null && !task.getSlot().isEmpty()) {
                                 busySlots.put(task.getSlot(), task.getTaskId());
                             }
@@ -883,7 +883,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
 
         for (Task task : toSchedule) {
-            LOGGER.log(Level.SEVERE, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + ""});
+            LOGGER.log(Level.INFO, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + ""});
             this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
         }
 
