@@ -90,18 +90,21 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs</artifactId>
             <version>${libs.spotbugs}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.jcip</groupId>
             <artifactId>jcip-annotations</artifactId>
             <version>${libs.jcipi-annotations}</version>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
             <version>${libs.spotbugsannotations}</version>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>

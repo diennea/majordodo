@@ -67,12 +67,12 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
     }
 
     void connectionAccepted(BrokerSideConnection con) {
-        LOGGER.log(Level.SEVERE, "connectionAccepted {0}", con);
+        LOGGER.log(Level.INFO, "connectionAccepted {0}", con);
         workersConnections.put(con.getClientId(), con);
     }
 
     void connectionClosed(BrokerSideConnection con) {
-        LOGGER.log(Level.SEVERE, "connectionClosed {0}", con);
+        LOGGER.log(Level.INFO, "connectionClosed {0}", con);
         connections.remove(con.getConnectionId());
         if (con.getClientId() != null) {
             workersConnections.remove(con.getClientId()); // to be remove only if the connection is the current connection

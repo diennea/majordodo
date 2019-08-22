@@ -416,7 +416,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     LOGGER.log(Level.SEVERE, "error on main WorkerCore loop:" + error, error);
                 }
             }
-            LOGGER.log(Level.FINE, "shutting down " + processId);
+            LOGGER.log(Level.FINE, "shutting down {0}", processId);
 
             Channel _channel = channel;
             if (_channel != null) {
@@ -474,11 +474,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.INFO, "connecting, location=" + this.location + " processId=" + this.processId + " workerid=" + this.workerId);
+        LOGGER.log(Level.INFO, "connecting, location={0} processId={1} workerid={2}", new Object[]{this.location, this.processId, this.workerId});
         disconnect();
         try {
             channel = brokerLocator.connect(this, this);
-            LOGGER.log(Level.FINE, "connected, channel:" + channel);
+            LOGGER.log(Level.FINE, "connected, channel:{0}", channel);
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTED, this);
         } catch (BrokerRejectedConnectionException | BrokerNotAvailableException error) {
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTION_ERROR, this);

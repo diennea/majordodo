@@ -17,8 +17,8 @@
     </licenses>
     <scm>
         <url>https://github.com/diennea/majordodo.git</url>        
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
     <developers>
         <developer>
             <id>eolivelli</id>
@@ -90,6 +90,17 @@
             <artifactId>zookeeper</artifactId>
             <version>3.5.5</version>
             <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <!-- netty 4 -->
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>               
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -107,18 +118,22 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs</artifactId>
             <version>${libs.spotbugs}</version>
+            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.jcip</groupId>
             <artifactId>jcip-annotations</artifactId>
             <version>${libs.jcipi-annotations}</version>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
             <version>${libs.spotbugsannotations}</version>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <properties>
