@@ -9,7 +9,7 @@
     <scm>
         <url>scm:git:https://github.com/diennea/majordodo.git</url>
         <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>release/0.16</tag>
     </scm>
     <build>
         <plugins>
