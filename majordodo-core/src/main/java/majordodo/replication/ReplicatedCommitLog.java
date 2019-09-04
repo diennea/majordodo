@@ -977,7 +977,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         try {
             long nextEntry = skipPast.sequenceNumber + 1;
-            LOGGER.log(Level.INFO, "followTheLeader skipPast:{0} toRead: {1} actualList:{2}, nextEntry:{3}", new Object[]{skipPast, toRead, actualList, nextEntry});
+            LOGGER.log(Level.FINE, "followTheLeader skipPast:{0} toRead: {1} actualList:{2}, nextEntry:{3}", new Object[]{skipPast, toRead, actualList, nextEntry});
             for (Long previous : toRead) {
                 //LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
 
