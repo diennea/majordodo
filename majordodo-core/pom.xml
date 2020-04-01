@@ -45,9 +45,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>jackson-mapper-asl</artifactId>
-            <version>1.9.13</version>            
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.10.3</version>        
         </dependency>
         <dependency>
             <groupId>org.apache.bookkeeper</groupId>
@@ -100,7 +100,7 @@
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
-            <version>3.5.6</version>
+            <version>3.5.7</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -153,6 +153,6 @@
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jetty.version>9.4.18.v20190429</jetty.version>
+        <jetty.version>9.4.20.v20190813</jetty.version>
     </properties>
 </project>

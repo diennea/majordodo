@@ -19,8 +19,8 @@
  */
 package majordodo.client.discovery;
 
-import static org.apache.zookeeper.ServerAdminClient.stat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -35,7 +35,6 @@ import majordodo.client.BrokerDiscoveryService;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Discevery service over zookeeper
