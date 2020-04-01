@@ -19,8 +19,8 @@
  */
 package majordodo.client.http;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import majordodo.client.ClientConnection;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
 import majordodo.client.BrokerStatus;
+import majordodo.client.ClientConnection;
 import majordodo.client.ClientException;
 import majordodo.client.CodePoolStatus;
 import majordodo.client.CreateCodePoolRequest;
@@ -58,7 +59,6 @@ import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.codehaus.jackson.map.ObjectMapper;
 
 @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE",
         justification = "https://github.com/spotbugs/spotbugs/issues/756")

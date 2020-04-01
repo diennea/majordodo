@@ -19,6 +19,7 @@
  */
 package majordodo.clientfacade;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,7 +42,6 @@ import javax.servlet.http.HttpServletResponse;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
 import majordodo.task.Task;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone installation

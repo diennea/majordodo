@@ -19,13 +19,12 @@
  */
 package majordodo.replication;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.zookeeper.data.Stat;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Information on ledgers user by the broker

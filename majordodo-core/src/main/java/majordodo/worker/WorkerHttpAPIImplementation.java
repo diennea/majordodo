@@ -19,6 +19,7 @@
  */
 package majordodo.worker;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -29,7 +30,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import majordodo.task.Broker;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone installation
