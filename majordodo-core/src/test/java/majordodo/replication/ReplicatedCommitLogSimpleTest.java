@@ -19,22 +19,22 @@
  */
 package majordodo.replication;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import java.nio.charset.StandardCharsets;
-import majordodo.task.BrokerStatusSnapshot;
-import majordodo.task.LogSequenceNumber;
-import majordodo.task.StatusEdit;
-import majordodo.task.Task;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import majordodo.task.BrokerStatusSnapshot;
+import majordodo.task.LogSequenceNumber;
+import majordodo.task.StatusEdit;
+import majordodo.task.Task;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -76,7 +76,7 @@ public class ReplicatedCommitLogSimpleTest {
                 LogSequenceNumber logStatusEdit2 = log.logStatusEdit(edit2);
                 LogSequenceNumber logStatusEdit3 = log.logStatusEdit(edit3);
                 LogSequenceNumber logStatusEdit4 = log.logStatusEdit(edit4);
-
+                
                 Map<String, byte[]> customMeta = log
                     .getBookKeeper()
                     .openLedgerNoRecovery(logStatusEdit4.ledgerId, BookKeeper.DigestType.MAC, log.getSharedSecret().getBytes(StandardCharsets.UTF_8))
@@ -86,7 +86,7 @@ public class ReplicatedCommitLogSimpleTest {
                 Assert.assertEquals("broker", new String(customMeta.get("component"), StandardCharsets.UTF_8));
                 Assert.assertEquals("", new String(customMeta.get("broker-id"), StandardCharsets.UTF_8));
             }
-
+            
             try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo", folderSnapshots.getRoot().toPath(), null, false);) {
                 log.getClusterManager().start();
                 log.requestLeadership();
@@ -105,11 +105,12 @@ public class ReplicatedCommitLogSimpleTest {
                     last.set(a.sequenceNumber);
                 }, false);
                 log.startWriting();
-                assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
-                assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);
-                assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
-                assertEquals("db1,db2", edits.get(2).resources);
-                assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(3).editType);
+                assertEquals(StatusEdit.TYPE_NOOP, edits.get(0).editType);
+                assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(1).editType);
+                assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(2).editType);
+                assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(3).editType);
+                assertEquals("db1,db2", edits.get(3).resources);
+                assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(4).editType);
             }
 
             try (ReplicatedCommitLog log = new ReplicatedCommitLog(zkServer.getAddress(), 40000, "/dodo",
@@ -134,7 +135,7 @@ public class ReplicatedCommitLogSimpleTest {
                 Assert.assertEquals("broker", new String(customMeta.get("component"), StandardCharsets.UTF_8));
                 Assert.assertEquals(BROKER_ID, new String(customMeta.get("broker-id"), StandardCharsets.UTF_8));
             }
-
+            
         }
     }
 
@@ -181,11 +182,12 @@ public class ReplicatedCommitLogSimpleTest {
                     last.set(a.sequenceNumber);
                 }, false);
                 log.startWriting();
-                assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(0).editType);
-                assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(1).editType);
-                assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(2).editType);
-                assertEquals("db1,db2", edits.get(2).resources);
-                assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(3).editType);
+                assertEquals(StatusEdit.TYPE_NOOP, edits.get(0).editType);
+                assertEquals(StatusEdit.TYPE_ADD_TASK, edits.get(1).editType);
+                assertEquals(StatusEdit.TYPE_WORKER_CONNECTED, edits.get(2).editType);
+                assertEquals(StatusEdit.TYPE_ASSIGN_TASK_TO_WORKER, edits.get(3).editType);
+                assertEquals("db1,db2", edits.get(3).resources);
+                assertEquals(StatusEdit.TYPE_TASK_STATUS_CHANGE, edits.get(4).editType);
 
             }
 

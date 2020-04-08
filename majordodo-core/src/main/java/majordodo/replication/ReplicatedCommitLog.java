@@ -19,15 +19,11 @@
  */
 package majordodo.replication;
 
+import static majordodo.network.ConnectionRequestInfo.CLIENT_TYPE_BROKER;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
-import majordodo.task.BrokerStatusSnapshot;
-import majordodo.task.LogNotAvailableException;
-import majordodo.task.LogSequenceNumber;
-import majordodo.task.StatusChangesLog;
-import majordodo.task.StatusEdit;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -46,12 +42,10 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -64,9 +58,13 @@ import majordodo.network.BrokerRejectedConnectionException;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.ConnectionRequestInfo;
-import static majordodo.network.ConnectionRequestInfo.CLIENT_TYPE_BROKER;
 import majordodo.network.Message;
 import majordodo.network.netty.NettyBrokerLocator;
+import majordodo.task.BrokerStatusSnapshot;
+import majordodo.task.LogNotAvailableException;
+import majordodo.task.LogSequenceNumber;
+import majordodo.task.StatusChangesLog;
+import majordodo.task.StatusEdit;
 import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
@@ -204,12 +202,23 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 throw new LogNotAvailableException(err);
             }
         }
+        
+        protected void tryDeleteLedgerSuppressingErrors() {
+            try {
+                bookKeeper.deleteLedger(getLedgerId());
+            } catch (InterruptedException ex) {
+                LOGGER.log(Level.SEVERE, "Cannot delete ledger from metadata " + getLedgerId() + ", interrupted", ex);
+                Thread.currentThread().interrupt();
+            } catch (BKException ex) {
+                LOGGER.log(Level.SEVERE, "Cannot delete ledger from metadata " + getLedgerId(), ex);
+            }
+        }
 
         public long getLedgerId() {
             return this.out.getId();
         }
 
-        public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
+         public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
             long _start = System.currentTimeMillis();
             try {
                 byte[] serialize = edit.serialize();
@@ -220,15 +229,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     openNewLedger();
                 }
                 return res;
-            } catch (BKException.BKLedgerClosedException err) {
+            } catch (BKException.BKLedgerClosedException | BKException.BKLedgerFencedException | BKException.BKNotEnoughBookiesException err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw err;
-            } catch (BKException.BKLedgerFencedException err) {
+            } catch (InterruptedException err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
-                throw err;
-            } catch (BKException.BKNotEnoughBookiesException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
-                throw err;
+                Thread.currentThread().interrupt();
+                throw new LogNotAvailableException(err);
             } catch (Exception err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
@@ -546,6 +553,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     throw new LogNotAvailableException(missingBk);
                 }
             } catch (InterruptedException err) {
+                Thread.currentThread().interrupt();
                 throw new LogNotAvailableException(err);
             } finally {
                 writeLock.unlock();
@@ -561,16 +569,29 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             writer = new CommitFileWriter();
             currentLedgerId = writer.getLedgerId();
             LOGGER.log(Level.INFO, "Opened new ledger:" + currentLedgerId);
-            if (actualLedgersList.getFirstLedger() < 0) {
-                actualLedgersList.setFirstLedger(currentLedgerId);
+            // #160: workaround to prevent BookKeeper fault if a Bookie goes down when there are no entries on the ledger
+            boolean done = false;
+            try {
+                writer.writeEntry(StatusEdit.NOOP());
+                done = true;
+            } catch (BKException t) {
+                throw new LogNotAvailableException(t);
+            } finally {
+                if (!done) {
+                    LOGGER.log(Level.SEVERE, "Something went wrong while writing on ledeger " + currentLedgerId + ". Trying to delete it");
+                    writer.tryDeleteLedgerSuppressingErrors();
+                }
             }
             actualLedgersList.addLedger(currentLedgerId);
             zKClusterManager.saveActualLedgersList(actualLedgersList);
+        } catch (LogNotAvailableException t) {
+            LOGGER.log(Level.SEVERE, "error", t);
+            throw t;
         } finally {
             writeLock.unlock();
         }
     }
-
+    
     public ZKClusterManager getClusterManager() {
         return zKClusterManager;
     }
