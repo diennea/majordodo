@@ -69,7 +69,6 @@ import majordodo.utils.FileUtils;
 import org.apache.bookkeeper.client.AsyncCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.BKBookieHandleNotAvailableException;
-import org.apache.bookkeeper.client.BKException.BKLedgerClosedException;
 import org.apache.bookkeeper.client.BKException.BKNoSuchLedgerExistsException;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -219,7 +218,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             return this.out.getId();
         }
 
-        public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
+         public long writeEntry(StatusEdit edit) throws LogNotAvailableException, BKException.BKLedgerClosedException, BKException.BKLedgerFencedException, BKNotEnoughBookiesException {
             long _start = System.currentTimeMillis();
             try {
                 byte[] serialize = edit.serialize();
@@ -230,15 +229,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     openNewLedger();
                 }
                 return res;
-            } catch (BKException.BKLedgerClosedException err) {
+            } catch (BKException.BKLedgerClosedException | BKException.BKLedgerFencedException | BKException.BKNotEnoughBookiesException err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw err;
-            } catch (BKException.BKLedgerFencedException err) {
+            } catch (InterruptedException err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
-                throw err;
-            } catch (BKException.BKNotEnoughBookiesException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
-                throw err;
+                Thread.currentThread().interrupt();
+                throw new LogNotAvailableException(err);
             } catch (Exception err) {
                 LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
@@ -556,6 +553,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     throw new LogNotAvailableException(missingBk);
                 }
             } catch (InterruptedException err) {
+                Thread.currentThread().interrupt();
                 throw new LogNotAvailableException(err);
             } finally {
                 writeLock.unlock();
@@ -576,6 +574,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             try {
                 writer.writeEntry(StatusEdit.NOOP());
                 done = true;
+            } catch (BKException t) {
+                throw new LogNotAvailableException(t);
             } finally {
                 if (!done) {
                     LOGGER.log(Level.SEVERE, "Something went wrong while writing on ledeger " + currentLedgerId + ". Trying to delete it");
@@ -587,9 +587,6 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         } catch (LogNotAvailableException t) {
             LOGGER.log(Level.SEVERE, "error", t);
             throw t;
-        } catch (BKLedgerClosedException | BKException.BKLedgerFencedException | BKNotEnoughBookiesException t) {
-            LOGGER.log(Level.SEVERE, "error", t);
-                throw new LogNotAvailableException(t);
         } finally {
             writeLock.unlock();
         }
