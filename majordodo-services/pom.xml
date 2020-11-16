@@ -10,7 +10,7 @@
     <name>Majordodo Services</name>
     <artifactId>majordodo-services</artifactId>
     <properties>
-        <jetty.version>9.4.20.v20190813</jetty.version>
+        <jetty.version>9.4.34.v20201102</jetty.version>
     </properties>
     <build>       
         <plugins>
