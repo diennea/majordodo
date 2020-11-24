@@ -1,12 +1,6 @@
 Is this a question, a feature request or a bug report?
 
 
-**QUESTION**
-
-Have you checked our documentation at https://majordodo.readme.io/?
-If you could not find an answer there, please consider asking your question on our mailing list at majordodo-users@lists.majordodo.org.
-
-
 **FEATURE REQUEST**
 
 1. Please describe the feature you are requesting.

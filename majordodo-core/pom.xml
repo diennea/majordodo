@@ -52,17 +52,12 @@
         <dependency>
             <groupId>org.apache.bookkeeper</groupId>
             <artifactId>bookkeeper-server</artifactId>
-            <version>4.10.0</version>
+            <version>4.12.0</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <!-- netty 3 -->
-                    <groupId>netty</groupId>
-                    <artifactId>*</artifactId>
                 </exclusion>
                 <exclusion>
                     <!-- netty 4 -->
