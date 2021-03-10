@@ -153,6 +153,6 @@
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jetty.version>9.4.20.v20190813</jetty.version>
+        <jetty.version>11.0.1</jetty.version>
     </properties>
 </project>
