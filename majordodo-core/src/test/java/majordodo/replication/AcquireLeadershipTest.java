@@ -228,8 +228,6 @@ public class AcquireLeadershipTest {
 //                log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
                 System.out.println("SET DATA AT " + zkServer.getPath() + "/leader");
 
-                broker1.getClient()
-                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
 
                 try {
                     broker1.getClient()
