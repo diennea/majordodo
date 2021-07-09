@@ -9,4 +9,11 @@
                 <goal>findbugs:check</goal>
             </goals>
         </action>
+        <action>
+            <actionName>CUSTOM-dependency:tree</actionName>
+            <displayName>dependency:tree</displayName>
+            <goals>
+                <goal>dependency:tree</goal>
+            </goals>
+        </action>
     </actions>
