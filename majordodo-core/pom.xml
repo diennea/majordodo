@@ -90,7 +90,7 @@
             <!-- needed by BK auth handler -->
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.5.5</version>
+            <version>4.5.13</version>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
