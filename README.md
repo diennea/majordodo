@@ -1,5 +1,4 @@
 # [Majordodo](http://majordodo.org/)
-[![Build Status](https://dev.majordodo.org/jenkins/buildStatus/icon?job=Majordodo)](https://dev.majordodo.org/jenkins/job/Majordodo/)
 
 Majordodo is a Distributed Resource Manager, essentially consisting of brokers which coordinate a pool of workers. Users (clients) submit tasks to be executed using a simple HTTP JSON based API
 
