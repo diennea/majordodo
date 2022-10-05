@@ -93,7 +93,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <libs.netty4>4.1.72.Final</libs.netty4>
         <libs.netty4.tcnative>2.0.46.Final</libs.netty4.tcnative>
-        <libs.jackson>2.10.5.1</libs.jackson>
+        <libs.jackson>2.12.6.1</libs.jackson>
         <libs.zookeeper>3.7.0</libs.zookeeper>
     </properties>
 </project>
