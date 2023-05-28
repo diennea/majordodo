@@ -20,15 +20,20 @@
 package majordodo.broker;
 
 import java.nio.file.Path;
+import java.util.logging.Logger;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
+import org.apache.bookkeeper.common.component.Lifecycle;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.proto.BookieServer;
+import org.apache.bookkeeper.server.EmbeddedServer;
+import org.apache.bookkeeper.server.conf.BookieConfiguration;
 import org.apache.curator.test.TestingServer;
 
 public class ZKTestEnv implements AutoCloseable {
 
+    private static final Logger LOG = Logger.getLogger(ZKTestEnv.class.getName());
+
     TestingServer zkServer;
-    BookieServer bookie;
+    EmbeddedServer embeddedServer;
     Path path;
 
     public ZKTestEnv(Path path) throws Exception {
@@ -51,8 +56,13 @@ public class ZKTestEnv implements AutoCloseable {
         conf.setAllowLoopback(true);
         
         BookKeeperAdmin.format(conf, false, true);
-        this.bookie = new BookieServer(conf);
-        this.bookie.start();
+        BookieConfiguration bkConf = new BookieConfiguration(conf);
+        embeddedServer = EmbeddedServer.builder(bkConf).build();
+
+        embeddedServer.getLifecycleComponentStack().start();
+        if (!waitForBookieServiceState(Lifecycle.State.STARTED)) {
+            LOG.warning("bookie start timed out");
+        }
     }
 
     public String getAddress() {
@@ -70,8 +80,11 @@ public class ZKTestEnv implements AutoCloseable {
     @Override
     public void close() throws Exception {
         try {
-            if (bookie != null) {
-                bookie.shutdown();
+            if (embeddedServer != null) {
+                embeddedServer.getLifecycleComponentStack().close();
+                if (!waitForBookieServiceState(Lifecycle.State.CLOSED)) {
+                    LOG.warning("bookie stop timed out");
+                }
             }
         } catch (Throwable t) {
         }
@@ -81,6 +94,17 @@ public class ZKTestEnv implements AutoCloseable {
             }
         } catch (Throwable t) {
         }
+    }
+
+    private boolean waitForBookieServiceState(Lifecycle.State expectedState) throws InterruptedException {
+        for (int i = 0; i < 100; i++) {
+            Lifecycle.State currentState = embeddedServer.getBookieService().lifecycleState();
+            if (currentState == expectedState) {
+                return true;
+            }
+            Thread.sleep(500);
+        }
+        return false;
     }
 
 }
