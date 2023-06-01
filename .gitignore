@@ -7,3 +7,4 @@ release.properties
 .settings
 /majordodo-core/nbproject/
 **/.DS_Store
+.idea/
