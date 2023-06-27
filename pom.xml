@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.majordodo</groupId>
     <artifactId>majordodo-parent</artifactId>
-    <version>0.18.0-SNAPSHOT</version>
+    <version>0.19.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Majordodo</name>    
     <url>http://majordodo.org</url>
@@ -18,7 +18,7 @@
     <scm>
         <url>scm:git:https://github.com/diennea/majordodo.git</url>
         <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
-        <tag>release/0.18</tag>
+        <tag>HEAD</tag>
     </scm>
     <developers>
         <developer>
