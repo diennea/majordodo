@@ -17,7 +17,7 @@
     </licenses>
     <scm>
         <url>https://github.com/diennea/majordodo.git</url>        
-        <tag>HEAD</tag>
+        <tag>release/0.18</tag>
     </scm>
     <developers>
         <developer>
