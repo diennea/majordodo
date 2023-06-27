@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.majordodo</groupId>
         <artifactId>majordodo-parent</artifactId>
-        <version>0.18.0</version>
+        <version>0.18.1-SNAPSHOT</version>
     </parent>
     <artifactId>majordodo-site-skin</artifactId>
     <packaging>jar</packaging>
