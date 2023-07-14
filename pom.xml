@@ -5,7 +5,7 @@
     <artifactId>majordodo-parent</artifactId>
     <version>0.19.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Majordodo</name>    
+    <name>Majordodo</name>
     <url>http://majordodo.org</url>
     <description>A Distributed Resource Manager</description>
     <licenses>
@@ -68,14 +68,14 @@
         </developer>
     </developers>
     <issueManagement>
-        <url>https://github.com/diennea/majordodo/issues</url>		
-    </issueManagement> 
+        <url>https://github.com/diennea/majordodo/issues</url>
+    </issueManagement>
     <properties>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <libs.spotbugs>3.1.8</libs.spotbugs> 
-        <libs.jcipi-annotations>1.0</libs.jcipi-annotations> 
+        <libs.spotbugs>3.1.8</libs.spotbugs>
+        <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
         <libs.spotbugsannotations>3.1.8</libs.spotbugsannotations>
         <libs.spotbugsmaven>3.1.8</libs.spotbugsmaven>
     </properties>
@@ -129,72 +129,72 @@
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
-            </plugin>               
-                    
+            </plugin>
+
         </plugins>
-        
+
     </build>
     <profiles>
         <profile>
             <id>default</id>
             <activation>
-                <activeByDefault>true</activeByDefault>                
-            </activation> 
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <modules>
                 <module>./majordodo-worker</module>
                 <module>./majordodo-test-clients</module>
                 <module>./majordodo-client</module>
                 <module>./majordodo-net</module>
-                <module>./majordodo-core</module>        
-                <module>./majordodo-services</module>                        
+                <module>./majordodo-core</module>
+                <module>./majordodo-services</module>
                 <module>./majordodo-web-ui</module>
-                <module>./majordodo-embedded</module>                        
-                <module>./majordodo-site-skin</module>                        
-                <module>./majordodo-website</module>                        
+                <module>./majordodo-embedded</module>
+                <module>./majordodo-site-skin</module>
+                <module>./majordodo-website</module>
             </modules>
-            <distributionManagement>        
-                <repository>            
-                    <!-- temporary with are hosted at Majordodo house -->    
+            <distributionManagement>
+                <repository>
+                    <!-- temporary with are hosted at Majordodo house -->
                     <id>dev.majordodo.org</id>
                     <name>Majordodo Public Repository</name>
-                    <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>                                       
+                    <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
                 </repository>
                 <snapshotRepository>
                     <id>dev.majordodo.org.snapshots</id>
                     <name>Majordodo Public Repository</name>
-                    <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>                                       
+                    <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>
                 </snapshotRepository>
             </distributionManagement>
-            <build>        
-                <plugins>                        
+            <build>
+                <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.0.0-M3</version>
-                        <configuration>                                        
+                        <configuration>
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
                             <forkedProcessTimeoutInSeconds>180</forkedProcessTimeoutInSeconds>
                             <trimStackTrace>false</trimStackTrace>
                             <argLine>--add-opens java.base/sun.security.x509=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED</argLine>
                         </configuration>
-                    </plugin>            
-                </plugins>        
+                    </plugin>
+                </plugins>
             </build>
         </profile>
         <profile>
             <id>ossrh</id>
             <activation>
-                <activeByDefault>false</activeByDefault>                
-            </activation>   
+                <activeByDefault>false</activeByDefault>
+            </activation>
             <modules>
                 <module>./majordodo-worker</module>
-                <module>./majordodo-test-clients</module>             
+                <module>./majordodo-test-clients</module>
                 <module>./majordodo-client</module>
                 <module>./majordodo-net</module>
                 <module>./majordodo-core</module>
-                <module>./majordodo-web-ui</module>            
-                <module>./majordodo-embedded</module>        
+                <module>./majordodo-web-ui</module>
+                <module>./majordodo-embedded</module>
             </modules>
             <distributionManagement>
                 <snapshotRepository>
@@ -203,16 +203,16 @@
                 </snapshotRepository>
             </distributionManagement>
             <build>
-                <plugins>    
+                <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.0.0-M3</version>
-                        <configuration>                                        
+                        <configuration>
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
                         </configuration>
-                    </plugin>            
+                    </plugin>
 
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
@@ -224,7 +224,7 @@
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <autoReleaseAfterClose>true</autoReleaseAfterClose>
                         </configuration>
-                    </plugin>                                 
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
@@ -267,11 +267,11 @@
                             </execution>
                         </executions>
                     </plugin>
-                </plugins>              
+                </plugins>
             </build>
         </profile>
         <profile>
-            <id>website</id>            
+            <id>website</id>
             <modules>
                 <module>./majordodo-site-skin</module>
                 <module>./majordodo-website</module>

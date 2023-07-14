@@ -9,7 +9,7 @@
     <artifactId>majordodo-website</artifactId>
     <packaging>jar</packaging>
     <name>Majordodo Website</name>
-    <build>               
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
