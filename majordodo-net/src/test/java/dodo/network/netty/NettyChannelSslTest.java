@@ -60,41 +60,6 @@ public class NettyChannelSslTest {
 
     }
 
-//    @Before
-//    public void setupLogger() throws Exception {
-//        Level level = Level.ALL;
-//        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-//
-//            @Override
-//            public void uncaughtException(Thread t, Throwable e) {
-//                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-//                e.printStackTrace();
-//            }
-//        });
-//        java.util.logging.LogManager.getLogManager().reset();
-//        ConsoleHandler ch = new ConsoleHandler();
-//        ch.setLevel(level);
-//        SimpleFormatter f = new SimpleFormatter() {
-//
-//            @Override
-//            public synchronized String format(LogRecord record) {
-//                if (record.getThrown() != null) {
-//                    return super.format(record);
-//                } else {
-//                    try {
-//                        return record.getThreadID() + " - " + record.getLoggerName() + " - " + java.text.MessageFormat.format(record.getMessage(), record.getParameters()) + "\r\n";
-//                    } catch (IllegalArgumentException er) {
-//                        return record.getThreadID() + " - " + record.getLoggerName() + " - " + record.getMessage() + "\r\n";
-//                    }
-//                }
-//            }
-//
-//        };
-//
-//        ch.setFormatter(f);
-//        java.util.logging.Logger.getLogger("").setLevel(level);
-//        java.util.logging.Logger.getLogger("").addHandler(ch);
-//    }
     @Test
     public void clientServerTest() throws Exception {
         List<Message> receivedFromServer = new CopyOnWriteArrayList<Message>();
