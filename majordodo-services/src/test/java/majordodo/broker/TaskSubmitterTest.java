@@ -9,13 +9,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.CopyOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Properties;
@@ -102,7 +99,6 @@ public class TaskSubmitterTest {
     }
 
     public void doTest(Properties pp) throws Exception {
-        Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         pp.put("logs.dir", folder.newFolder().getAbsolutePath());
         pp.put("data.dir", folder.newFolder().getAbsolutePath());
         try (BrokerMain main = new BrokerMain(pp);) {
