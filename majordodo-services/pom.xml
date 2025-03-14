@@ -10,7 +10,7 @@
     <name>Majordodo Services</name>
     <artifactId>majordodo-services</artifactId>
     <properties>
-        <jetty.version>11.0.15</jetty.version>
+        <jetty.version>9.4.44.v20210927</jetty.version>
         <bouncycastle.version>1.70</bouncycastle.version>
     </properties>
     <build>

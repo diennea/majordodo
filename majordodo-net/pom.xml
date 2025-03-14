@@ -8,9 +8,9 @@
         <relativePath>..</relativePath>
         <artifactId>majordodo-parent</artifactId>
     </parent>
-    <artifactId>majordodo-net</artifactId>
+    <artifactId>majordodo-net</artifactId>    
     <name>Majordodo Network layer</name>
-    <packaging>jar</packaging>
+    <packaging>jar</packaging>        
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -53,12 +53,12 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-tcnative-boringssl-static</artifactId>
             <version>${libs.netty4.tcnative}</version>
-            <scope>compile</scope>
+            <scope>compile</scope>            
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${libs.jackson}</version>
+            <version>${libs.jackson}</version>            
         </dependency>
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
@@ -68,7 +68,7 @@
             <exclusions>
                 <exclusion>
                     <groupId>jline</groupId>
-                    <artifactId>jline</artifactId>
+                    <artifactId>jline</artifactId>                    
                 </exclusion>
                 <exclusion>
                     <groupId>javax.jms</groupId>
@@ -88,7 +88,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-    </dependencies>
+    </dependencies>    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <libs.netty4>4.1.92.Final</libs.netty4>

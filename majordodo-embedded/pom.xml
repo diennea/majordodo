@@ -9,18 +9,18 @@
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Embedded</name>
     <artifactId>majordodo-embedded</artifactId>
-    <build>
+    <build>        
     </build>
-    <dependencies>
+    <dependencies>       
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
+        </dependency>   
         <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

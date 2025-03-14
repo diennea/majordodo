@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">   
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Test Clients</name>
@@ -49,27 +49,27 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-worker</artifactId>
             <version>${project.version}</version>
-        </dependency>
+        </dependency>        
     </dependencies>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-        <libs.spotbugs>3.1.8</libs.spotbugs>
-        <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
+        <libs.spotbugs>3.1.8</libs.spotbugs> 
+        <libs.jcipi-annotations>1.0</libs.jcipi-annotations> 
         <libs.spotbugsannotations>3.1.8</libs.spotbugsannotations>
         <libs.spotbugsmaven>3.1.8</libs.spotbugsmaven>
-    </properties>
-    <distributionManagement>
-        <repository>
+    </properties>    
+    <distributionManagement>        
+        <repository>            
             <id>dev.majordodo.org</id>
             <name>Majordodo Public Repository</name>
             <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
-        </repository>
+        </repository>        
         <snapshotRepository>
             <id>dev.majordodo.org.snapshots</id>
             <name>Majordodo Public Repository</name>
-            <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>
+            <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>                                       
         </snapshotRepository>
-    </distributionManagement>
+    </distributionManagement>  
 </project>
