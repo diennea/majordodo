@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">   
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Client</name>
@@ -16,7 +17,7 @@
         </license>
     </licenses>
     <scm>
-        <url>https://github.com/diennea/majordodo.git</url>        
+        <url>https://github.com/diennea/majordodo.git</url>
         <tag>HEAD</tag>
     </scm>
     <developers>
@@ -47,8 +48,8 @@
         </developer>
     </developers>
     <issueManagement>
-        <url>https://github.com/diennea/majordodo/issues</url>		
-    </issueManagement> 
+        <url>https://github.com/diennea/majordodo/issues</url>
+    </issueManagement>
     <build>
         <plugins>
             <plugin>
@@ -74,12 +75,12 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>       
+    <dependencies>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>4.5.13</version>
-        </dependency> 
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -95,7 +96,7 @@
                     <!-- netty 4 -->
                     <groupId>io.netty</groupId>
                     <artifactId>*</artifactId>
-                </exclusion>               
+                </exclusion>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
@@ -140,29 +141,29 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-        <libs.spotbugs>3.1.8</libs.spotbugs> 
-        <libs.jcipi-annotations>1.0</libs.jcipi-annotations> 
+        <libs.spotbugs>3.1.8</libs.spotbugs>
+        <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
         <libs.spotbugsannotations>3.1.8</libs.spotbugsannotations>
         <libs.spotbugsmaven>3.1.8</libs.spotbugsmaven>
-    </properties>   
-    <distributionManagement>        
-        <repository>            
+    </properties>
+    <distributionManagement>
+        <repository>
             <id>dev.majordodo.org</id>
             <name>Majordodo Public Repository</name>
             <url>https://dev.majordodo.org/nexus/content/repositories/releases/</url>
-        </repository>        
+        </repository>
         <snapshotRepository>
             <id>dev.majordodo.org.snapshots</id>
             <name>Majordodo Public Repository</name>
-            <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>                                       
+            <url>https://dev.majordodo.org/nexus/content/repositories/snapshots/</url>
         </snapshotRepository>
-    </distributionManagement>  
+    </distributionManagement>
     <profiles>
         <profile>
             <id>ossrh</id>
             <activation>
-                <activeByDefault>false</activeByDefault>                
-            </activation>              
+                <activeByDefault>false</activeByDefault>
+            </activation>
             <distributionManagement>
                 <snapshotRepository>
                     <id>ossrh</id>
@@ -170,16 +171,16 @@
                 </snapshotRepository>
             </distributionManagement>
             <build>
-                <plugins>    
+                <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.0.0-M3</version>
-                        <configuration>                                        
+                        <configuration>
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
                         </configuration>
-                    </plugin>            
+                    </plugin>
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
@@ -190,7 +191,7 @@
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <autoReleaseAfterClose>false</autoReleaseAfterClose>
                         </configuration>
-                    </plugin>                                 
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
@@ -233,8 +234,8 @@
                             </execution>
                         </executions>
                     </plugin>
-                </plugins>              
+                </plugins>
             </build>
         </profile>
-    </profiles>  
+    </profiles>
 </project>
