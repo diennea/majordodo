@@ -8,3 +8,4 @@ release.properties
 /majordodo-core/nbproject/
 **/.DS_Store
 .idea/
+**/*.iml
