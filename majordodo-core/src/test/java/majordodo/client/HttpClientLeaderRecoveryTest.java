@@ -19,6 +19,8 @@
  */
 package majordodo.client;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -30,10 +32,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import majordodo.client.ClientConnection;
-import majordodo.client.ClientException;
-import majordodo.client.SubmitTaskRequest;
-import majordodo.client.SubmitTaskResponse;
 import majordodo.client.discovery.ZookeeperDiscoveryService;
 import majordodo.client.http.Client;
 import majordodo.client.http.ClientConfiguration;
@@ -52,8 +50,6 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -141,75 +137,75 @@ public class HttpClientLeaderRecoveryTest {
             ZooKeeper zkClient = new ZooKeeper(zkServer.getAddress(), zkServer.getTimeout(), null);
             try {
 
-            ClientConfiguration configuration = ClientConfiguration
-                .defaultConfiguration()
-                .setUsername("admin")
-                .setPassword("password")
-                .setBrokerDiscoveryService(new ZookeeperDiscoveryService(zkClient).setZkPath(zkServer.getPath()));
+                ClientConfiguration configuration = ClientConfiguration
+                        .defaultConfiguration()
+                        .setUsername("admin")
+                        .setPassword("password")
+                        .setBrokerDiscoveryService(new ZookeeperDiscoveryService(zkClient).setZkPath(zkServer.getPath()));
 
-            try (Client client = new Client(configuration);
-                ClientConnection con = client.openConnection()) {
+                try (Client client = new Client(configuration);
+                     ClientConnection con = client.openConnection()) {
 
-                Broker broker1 = null;
-                Broker broker2 = null;
-                Server httpserver1 = null;
-                Server httpserver2 = null;
-                try {
-                    broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, additionalInfo1)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
-                    broker1.startAsWritable();
-                    try (NettyChannelAcceptor server1 = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
-                        server1.start();
+                    Broker broker1 = null;
+                    Broker broker2 = null;
+                    Server httpserver1 = null;
+                    Server httpserver2 = null;
+                    try {
+                        broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", false, additionalInfo1)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                        broker1.startAsWritable();
+                        try (NettyChannelAcceptor server1 = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
+                            server1.start();
 
-                        httpserver1 = startHttpServer(httphost, httpport, httppath, broker1);
-                        try {
-                            broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, additionalInfo2)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
-                            broker2.start();
-                            httpserver2 = startHttpServer(httphost2, httpport2, httppath2, broker2);
-                            Broker _broker2 = broker2;
-                            try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
-                                server2.start();
+                            httpserver1 = startHttpServer(httphost, httpport, httppath, broker1);
+                            try {
+                                broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), folderSnapshots2.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, additionalInfo2)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                                broker2.start();
+                                httpserver2 = startHttpServer(httphost2, httpport2, httppath2, broker2);
+                                Broker _broker2 = broker2;
+                                try (NettyChannelAcceptor server2 = new NettyChannelAcceptor(broker2.getAcceptor(), host2, port2)) {
+                                    server2.start();
 
+                                    long taskId = submitTask(taskParams, con);
+                                    broker1.noop();
+                                    assertNotNull(broker1.getClient().getTask(taskId));
+                                    TestUtils.waitForCondition(() -> {
+                                        return _broker2.getClient().getTask(taskId) != null;
+                                    }, null, 100);
+                                }
+                                broker1.close();
+                                broker1 = null;
+
+                                TestUtils.waitForCondition(() -> {
+                                    return _broker2.isWritable();
+                                }, null, 100);
+
+                                // client will failover to broker2
                                 long taskId = submitTask(taskParams, con);
-                                broker1.noop();
-                                assertNotNull(broker1.getClient().getTask(taskId));
+
+                                assertNotNull(_broker2.getClient().getTask(taskId));
                                 TestUtils.waitForCondition(() -> {
                                     return _broker2.getClient().getTask(taskId) != null;
                                 }, null, 100);
-                            }
-                            broker1.close();
-                            broker1 = null;
 
-                            TestUtils.waitForCondition(() -> {
-                                return _broker2.isWritable();
-                            }, null, 100);
-
-                            // client will failover to broker2
-                            long taskId = submitTask(taskParams, con);
-
-                            assertNotNull(_broker2.getClient().getTask(taskId));
-                            TestUtils.waitForCondition(() -> {
-                                return _broker2.getClient().getTask(taskId) != null;
-                            }, null, 100);
-
-                        } finally {
-                            if (broker2 != null) {
-                                broker2.close();
-                                broker2 = null;
+                            } finally {
+                                if (broker2 != null) {
+                                    broker2.close();
+                                    broker2 = null;
+                                }
                             }
                         }
-                    }
-                } finally {
-                    if (broker1 != null) {
-                        broker1.close();
-                    }
-                    if (httpserver1 != null) {
-                        httpserver1.stop();
-                    }
-                    if (httpserver2 != null) {
-                        httpserver2.stop();
+                    } finally {
+                        if (broker1 != null) {
+                            broker1.close();
+                        }
+                        if (httpserver1 != null) {
+                            httpserver1.stop();
+                        }
+                        if (httpserver2 != null) {
+                            httpserver2.stop();
+                        }
                     }
                 }
-            }
             } finally {
                 zkClient.close();
             }
