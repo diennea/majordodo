@@ -46,7 +46,6 @@ import majordodo.replication.ReplicatedCommitLog;
 import majordodo.task.SingleUserAuthenticationManager;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
@@ -281,8 +280,7 @@ public class BrokerMain implements AutoCloseable {
         ContextHandlerCollection contexts = new ContextHandlerCollection();
         httpserver.setHandler(contexts);
 
-        ServletContextHandler context = new ServletContextHandler();
-        context.insertHandler(new GzipHandler());
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.GZIP);
         context.setContextPath("/");
         ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
         jerseyServlet.setInitOrder(0);
