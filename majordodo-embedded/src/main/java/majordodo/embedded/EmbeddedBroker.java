@@ -19,19 +19,10 @@
  */
 package majordodo.embedded;
 
+import static majordodo.embedded.EmbeddedBrokerConfiguration.BOOKKEEPER_ADDITIONAL_PREFIX;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.replication.ReplicatedCommitLog;
-import majordodo.task.Broker;
-import majordodo.task.BrokerConfiguration;
-import majordodo.task.FileCommitLog;
-import majordodo.task.TaskPropertiesMapperFunction;
-import majordodo.task.TaskProperties;
-import majordodo.task.MemoryCommitLog;
-import majordodo.task.StatusChangesLog;
-import majordodo.task.TasksHeap;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,10 +30,19 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.clientfacade.AuthenticationManager;
-import static majordodo.embedded.EmbeddedBrokerConfiguration.BOOKKEEPER_ADDITIONAL_PREFIX;
 import majordodo.network.BrokerHostData;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.replication.ReplicatedCommitLog;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
+import majordodo.task.FileCommitLog;
 import majordodo.task.GlobalResourceLimitsConfiguration;
+import majordodo.task.MemoryCommitLog;
 import majordodo.task.NoLimitsGlobalResourceLimitsConfiguration;
+import majordodo.task.StatusChangesLog;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
 
 /**
  * Utility to embed a Majordodo Broker
@@ -136,8 +136,14 @@ public class EmbeddedBroker implements AutoCloseable {
         boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
         boolean sslunsecure = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL_UNSECURE, false);
         boolean requireAuthentication = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION, EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION_DEFAULT);
-        File certfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
-        File certchainfile = (File) configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
+        Object _certfile = configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_FILE, null);
+        File certfile = _certfile == null
+                       ? null
+                       : _certfile instanceof File ? (File) _certfile : new File(_certfile.toString());
+        Object _certchainfile = configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, null);
+        File certchainfile = _certchainfile == null
+                             ? null
+                             : _certchainfile instanceof File ? (File) _certchainfile : new File(_certchainfile.toString());
         String sslciphers = configuration.getProperty(EmbeddedBrokerConfiguration.SSL_CIPHERS, "").toString();
         String certpassword = configuration.getStringProperty(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_PASSWORD, null);
         String mode = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_MODE, EmbeddedBrokerConfiguration.MODE_SIGLESERVER);
@@ -154,7 +160,7 @@ public class EmbeddedBroker implements AutoCloseable {
         for (String key : configuration.getProperties().keySet()) {
             if (key.startsWith(BOOKKEEPER_ADDITIONAL_PREFIX)) {
                 additionalBookKeeperConfig
-                    .put(key.substring(BOOKKEEPER_ADDITIONAL_PREFIX.length()), configuration.getStringProperty(key, null));
+                        .put(key.substring(BOOKKEEPER_ADDITIONAL_PREFIX.length()), configuration.getStringProperty(key, null));
             }
         }
 
@@ -184,8 +190,8 @@ public class EmbeddedBroker implements AutoCloseable {
                     Files.createDirectory(_snapshotsDirectory);
                 }
                 ReplicatedCommitLog _statusChangesLog = new ReplicatedCommitLog(zkAdress, zkSessionTimeout, zkPath, _snapshotsDirectory,
-                    BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
-                    zkSecure, additionalBookKeeperConfig, id
+                        BrokerHostData.formatHostdata(new BrokerHostData(host, port, Broker.VERSION(), ssl, additionalInfo)),
+                        zkSecure, additionalBookKeeperConfig, id
                 );
                 statusChangesLog = _statusChangesLog;
                 int ensemble = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BK_ENSEMBLE_SIZE, _statusChangesLog.getEnsemble());
@@ -254,7 +260,7 @@ public class EmbeddedBroker implements AutoCloseable {
     /**
      * Give access to the log, this way we will let 'embeeded' users to
      * modify BookKeeper replication parameters dynamically
-     * @return 
+     * @return
      */
     public StatusChangesLog getStatusChangesLog() {
         return statusChangesLog;
