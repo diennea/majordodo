@@ -10,6 +10,9 @@
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Embedded</name>
     <artifactId>majordodo-embedded</artifactId>
+    <properties>
+        <bouncycastle.version>1.70</bouncycastle.version>
+    </properties>
     <build>
     </build>
     <dependencies>
@@ -28,6 +31,25 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>majordodo-client</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.majordodo</groupId>
+            <artifactId>majordodo-services</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
