@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <!-- no parent! this is only a http client API without any direct dependency on Majordodo core -->
     <modelVersion>4.0.0</modelVersion>
     <name>Majordodo Worker Implementations</name>
@@ -19,7 +18,7 @@
     <scm>
         <url>scm:git:https://github.com/diennea/majordodo.git</url>
         <developerConnection>scm:git:https://github.com/diennea/majordodo.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>release/0.19</tag>
     </scm>
     <developers>
         <developer>
