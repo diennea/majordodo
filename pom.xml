@@ -72,8 +72,8 @@
     </issueManagement>
     <properties>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <libs.spotbugs>4.8.6</libs.spotbugs>
         <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
         <libs.spotbugsannotations>4.8.6</libs.spotbugsannotations>

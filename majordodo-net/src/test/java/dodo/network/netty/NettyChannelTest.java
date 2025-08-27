@@ -19,26 +19,22 @@
  */
 package dodo.network.netty;
 
-import majordodo.network.netty.NettyConnector;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.network.netty.NettyChannel;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.Assert.assertEquals;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import majordodo.network.Channel;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
 import majordodo.network.ReplyCallback;
 import majordodo.network.ServerSideConnection;
 import majordodo.network.ServerSideConnectionAcceptor;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
-import static org.junit.Assert.assertEquals;
-import org.junit.Before;
+import majordodo.network.netty.NettyChannel;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.network.netty.NettyConnector;
 import org.junit.Test;
 
 /**
@@ -117,7 +113,7 @@ public class NettyChannelTest {
                         replyReceivedFromClient.add(message);
                     }
                 });
-                Message response = replyReceivedFromClient.take();
+                Message response = replyReceivedFromClient.poll(20, SECONDS);
                 assertEquals(Message.TYPE_ACK, response.type);
             }
         }

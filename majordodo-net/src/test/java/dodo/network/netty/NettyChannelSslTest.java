@@ -19,21 +19,21 @@
  */
 package dodo.network.netty;
 
-import majordodo.network.netty.NettyConnector;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.network.netty.NettyChannel;
-import majordodo.network.Channel;
+import static org.junit.Assert.assertEquals;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import majordodo.network.ChannelEventListener;
 import majordodo.network.Message;
 import majordodo.network.ReplyCallback;
 import majordodo.network.ServerSideConnection;
 import majordodo.network.ServerSideConnectionAcceptor;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
-import static org.junit.Assert.assertEquals;
+import majordodo.network.netty.NettyChannel;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.network.netty.NettyConnector;
 import org.junit.Test;
 
 /**
@@ -62,32 +62,27 @@ public class NettyChannelSslTest {
 
     @Test
     public void clientServerTest() throws Exception {
-        List<Message> receivedFromServer = new CopyOnWriteArrayList<Message>();
-        ServerSideConnectionAcceptor acceptor = new ServerSideConnectionAcceptor() {
+        List<Message> receivedFromServer = new CopyOnWriteArrayList<>();
+        ServerSideConnectionAcceptor acceptor = channel -> {
+            channel.setMessagesReceiver(new ChannelEventListener() {
 
-            @Override
-            public ServerSideConnection createConnection(final Channel channel) {
-                channel.setMessagesReceiver(new ChannelEventListener() {
+                @Override
+                public void messageReceived(Message message) {
+                    receivedFromServer.add(message);
+                    channel.sendReplyMessage(message, Message.ACK("ok"));
+                }
 
-                    @Override
-                    public void messageReceived(Message message) {
-                        receivedFromServer.add(message);
-                        channel.sendReplyMessage(message, Message.ACK("ok"));
-                    }
+                @Override
+                public void channelClosed() {
+                }
 
-                    @Override
-                    public void channelClosed() {
-                    }
-
-                });
-                return new SimpleServerSideConnection();
-            }
-
+            });
+            return new SimpleServerSideConnection();
         };
         BlockingQueue<Message> receivedFromClient = new ArrayBlockingQueue<>(100);
         BlockingQueue<Message> replyReceivedFromClient = new ArrayBlockingQueue<>(100);
 
-        try (NettyChannelAcceptor server = new NettyChannelAcceptor(acceptor);) {
+        try (NettyChannelAcceptor server = new NettyChannelAcceptor(acceptor)) {
             server.setHost("0.0.0.0");
             server.setSsl(true);
             server.setPort(7404);
@@ -114,7 +109,7 @@ public class NettyChannelSslTest {
                         replyReceivedFromClient.add(message);
                     }
                 });
-                Message response = replyReceivedFromClient.take();
+                Message response = replyReceivedFromClient.poll(20, TimeUnit.SECONDS);
                 assertEquals(Message.TYPE_ACK, response.type);
             }
         }
