@@ -54,10 +54,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-        <libs.spotbugs>3.1.8</libs.spotbugs>
+        <libs.spotbugs>4.8.6</libs.spotbugs>
         <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
-        <libs.spotbugsannotations>3.1.8</libs.spotbugsannotations>
-        <libs.spotbugsmaven>3.1.8</libs.spotbugsmaven>
+        <libs.spotbugsannotations>4.8.6</libs.spotbugsannotations>
+        <libs.spotbugsmaven>4.8.6.6</libs.spotbugsmaven>
     </properties>
     <build>
         <plugins>
@@ -124,7 +124,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>3.0.0-M3</version>
+                        <version>3.2.5</version>
                         <configuration>
                             <forkCount>1</forkCount>
                             <reuseForks>false</reuseForks>
@@ -133,7 +133,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.8.0</version>
+                        <version>3.13.0</version>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
@@ -166,7 +166,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.0.1</version>
+                        <version>3.1.0</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
