@@ -127,6 +127,12 @@
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-test</artifactId>
             <version>5.9.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter-api</artifactId>
+                </exclusion>
+            </exclusions>
             <scope>test</scope>
         </dependency>
         <dependency>
