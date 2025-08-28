@@ -65,41 +65,6 @@ public class NettyChannelTest {
 
     }
 
-//    @Before
-//    public void setupLogger() throws Exception {
-//        Level level = Level.ALL;
-//        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-//
-//            @Override
-//            public void uncaughtException(Thread t, Throwable e) {
-//                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-//                e.printStackTrace();
-//            }
-//        });
-//        java.util.logging.LogManager.getLogManager().reset();
-//        ConsoleHandler ch = new ConsoleHandler();
-//        ch.setLevel(level);
-//        SimpleFormatter f = new SimpleFormatter() {
-//
-//            @Override
-//            public synchronized String format(LogRecord record) {
-//                if (record.getThrown() != null) {
-//                    return super.format(record);
-//                } else {
-//                    try {
-//                        return record.getThreadID() + " - " + record.getLoggerName() + " - " + java.text.MessageFormat.format(record.getMessage(), record.getParameters()) + "\r\n";
-//                    } catch (IllegalArgumentException er) {
-//                        return record.getThreadID() + " - " + record.getLoggerName() + " - " + record.getMessage() + "\r\n";
-//                    }
-//                }
-//            }
-//
-//        };
-//
-//        ch.setFormatter(f);
-//        java.util.logging.Logger.getLogger("").setLevel(level);
-//        java.util.logging.Logger.getLogger("").addHandler(ch);
-//    }
     @Test
     public void clientServerTest() throws Exception {
         List<Message> receivedFromServer = new CopyOnWriteArrayList<Message>();
@@ -129,6 +94,7 @@ public class NettyChannelTest {
 
         try (NettyChannelAcceptor server = new NettyChannelAcceptor(acceptor);) {
             server.setHost("0.0.0.0");
+            server.setPort(7404);
             server.start();
             try (NettyConnector connector = new NettyConnector(new ChannelEventListener() {
 
@@ -141,6 +107,7 @@ public class NettyChannelTest {
                 public void channelClosed() {
                 }
             })) {
+                connector.setPort(7404);
                 NettyChannel channel = connector.connect();
                 Message message = Message.KILL_WORKER("testrequest");
                 channel.sendMessageWithAsyncReply(message, 10000, new ReplyCallback() {

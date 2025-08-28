@@ -91,9 +91,9 @@
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <libs.netty4>4.1.92.Final</libs.netty4>
-        <libs.netty4.tcnative>2.0.60.Final</libs.netty4.tcnative>
-        <libs.jackson>2.10.5.1</libs.jackson>
-        <libs.zookeeper>3.8.1</libs.zookeeper>
+        <libs.netty4>4.1.121.Final</libs.netty4>
+        <libs.netty4.tcnative>2.0.72.Final</libs.netty4.tcnative>
+        <libs.jackson>2.17.2</libs.jackson>
+        <libs.zookeeper>3.9.3</libs.zookeeper>
     </properties>
 </project>

@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.After;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -46,7 +47,6 @@ import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.replication.ReplicatedCommitLog;
 import majordodo.replication.ZKBrokerLocator;
 import majordodo.replication.ZKTestEnv;
-import org.apache.commons.lang.exception.ExceptionUtils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -67,74 +67,74 @@ import org.junit.runner.Description;
  * @author francesco.caliumi
  */
 public abstract class BrokerTestUtils {
-    
+
     protected static Level logLevel = Level.SEVERE;
-    
+
     protected static final String TASKTYPE_MYTYPE = "mytype";
     protected static final String userId = "queue1";
     protected static final int group = 12345;
     protected static final String[] RESOURCES = new String[]{"resource1", "resource2"};
-    
+
     protected Path workDir;
     protected Map<String, Integer> groupsMap = new HashMap<>();
-    
+
     protected static boolean ignoreUnhandledExceptions;
     protected final List<Throwable> unhandledExceptions = Collections.synchronizedList(new ArrayList<>());
-    
+
     // Single broker
     protected static boolean startBroker = false;
     protected static BrokerConfiguration brokerConfig = null;
     protected Broker broker = null;
     private StatusChangesLog brokerLog = null;
     protected NettyChannelAcceptor server = null;
-    
+
     // Replicated brokers
     protected static boolean startReplicatedBrokers = false;
     protected ZKTestEnv zkServer = null;
     protected ZKBrokerLocator brokerLocator = null;
-    
+
     protected static BrokerConfiguration broker1Config = null;
     protected String broker1Host = "localhost";
     protected int broker1Port = 7000;
     protected Broker broker1 = null;
     protected NettyChannelAcceptor server1 = null;
-    
+
     protected static BrokerConfiguration broker2Config = null;
     protected String broker2Host = "localhost";
     protected int broker2Port = 7001;
     protected Broker broker2 = null;
     protected NettyChannelAcceptor server2 = null;
-    
+
     @Rule
     public TemporaryFolder folderSnapshots = new TemporaryFolder();
     @Rule
     public TemporaryFolder folderZk = new TemporaryFolder();
-    
+
     // Annotations
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public static @interface StartBroker {
 
     }
-    
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public static @interface StartReplicatedBrokers {
 
     }
-    
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public static @interface IgnoreUnhandledExceptions {
 
     }
-    
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public static @interface LogLevel {
         String level() default "SEVERE";
     }
-    
+
     @ClassRule
     public static TestRule testStarter = new TestRule() {
         @Override
@@ -142,31 +142,31 @@ public abstract class BrokerTestUtils {
             try {
 //                System.out.println("starting test class " + description.getClassName());
                 Class clazz = Class.forName(description.getClassName(), false, Thread.currentThread().getContextClassLoader());
-                
+
                 if (clazz.isAnnotationPresent(StartBroker.class)) {
                     startBroker = true;
                 }
-                
+
                 if (clazz.isAnnotationPresent(StartReplicatedBrokers.class)) {
                     startReplicatedBrokers = true;
                 }
-                
+
                 if (clazz.isAnnotationPresent(IgnoreUnhandledExceptions.class)) {
                     ignoreUnhandledExceptions = true;
                 }
-                
+
                 if (clazz.isAnnotationPresent(LogLevel.class)) {
                     LogLevel l = (LogLevel) clazz.getAnnotation(LogLevel.class);
                     logLevel = Level.parse(l.level());
                 }
-                
+
                 return base;
             } catch (ClassNotFoundException ex) {
                 throw new RuntimeException(ex);
             }
         }
     };
-    
+
     @BeforeClass
     public static void brokerTestUtilsBeforeClass() throws Exception {
         if (startBroker) {
@@ -177,7 +177,7 @@ public abstract class BrokerTestUtils {
             broker2Config = new BrokerConfiguration();
         }
     }
-    
+
     @Before
     public void brokerTestUtilsBefore() throws Exception {
         // Setup exception handler
@@ -190,7 +190,7 @@ public abstract class BrokerTestUtils {
                 unhandledExceptions.add(e);
             }
         });
-        
+
         // Setup Logger
         System.out.println("Setup logger to level "+logLevel.getName());
         java.util.logging.LogManager.getLogManager().reset();
@@ -204,66 +204,66 @@ public abstract class BrokerTestUtils {
         });
         java.util.logging.Logger.getLogger("").setLevel(logLevel);
         java.util.logging.Logger.getLogger("").addHandler(ch);
-        
+
         // Initialize groupsMap
         groupsMap.clear();
         groupsMap.put(userId, group);
-        
+
         // Setup workdir
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
-        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime()); 
-        
+        workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
+
         if (startBroker) {
             broker = new Broker(
-                    brokerConfig, 
-                    new FileCommitLog(workDir, workDir, 1024 * 1024), 
+                    brokerConfig,
+                    new FileCommitLog(workDir, workDir, 1024 * 1024),
                     new TasksHeap(1000, createTaskPropertiesMapperFunction())
             );
             broker.startAsWritable();
-                
+
             server = new NettyChannelAcceptor(broker.getAcceptor());
             server.start();
         }
         if (startReplicatedBrokers) {
             zkServer = new ZKTestEnv(folderZk.getRoot().toPath());
             zkServer.startBookie();
-            
+
             // Broker 1
             broker1 = new Broker(
-                broker1Config, 
+                broker1Config,
                 new ReplicatedCommitLog(
                     zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
                     folderSnapshots.newFolder().toPath(),
                     BrokerHostData.formatHostdata(new BrokerHostData(broker1Host, broker1Port, "", false, null)),
                     false),
                 new TasksHeap(1000, createTaskPropertiesMapperFunction()));
-        
+
             broker1.startAsWritable();
-            
+
             server1 = new NettyChannelAcceptor(broker1.getAcceptor(), broker1Host, broker1Port);
             server1.start();
-            
+
             // Broker 2
             broker2 = new Broker(
-                broker2Config, 
+                broker2Config,
                 new ReplicatedCommitLog(
                     zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
                     folderSnapshots.newFolder().toPath(),
                     BrokerHostData.formatHostdata(new BrokerHostData(broker2Host, broker2Port, "", false, null)),
                     false),
                 new TasksHeap(1000, createTaskPropertiesMapperFunction()));
-            
+
             broker2.start();
-            
+
             server2 = new NettyChannelAcceptor(broker2.getAcceptor(), broker2Host, broker2Port);
             server2.start();
-            
+
             // Broker locator
             brokerLocator = new ZKBrokerLocator(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath());
         }
-        
+
     }
-    
+
     @After
     public void brokerTestUtilsAfter() throws Exception {
         if (startBroker) {
@@ -286,7 +286,7 @@ public abstract class BrokerTestUtils {
             broker1 = null;
             zkServer = null;
         }
-        
+
         // Resetting brokers config
         if (startBroker) {
             brokerConfig = new BrokerConfiguration();
@@ -295,7 +295,7 @@ public abstract class BrokerTestUtils {
             broker1Config = new BrokerConfiguration();
             broker2Config = new BrokerConfiguration();
         }
-        
+
         if (workDir != null) {
             Files.walkFileTree(workDir, new FileVisitor<Path>() {
 
@@ -323,7 +323,7 @@ public abstract class BrokerTestUtils {
 
             });
         }
-        
+
         if (!ignoreUnhandledExceptions && !unhandledExceptions.isEmpty()) {
             System.out.println("Errors occurred during excecution:");
             for (Throwable e: unhandledExceptions) {
@@ -332,22 +332,22 @@ public abstract class BrokerTestUtils {
             fail("There are "+unhandledExceptions.size()+" unhandled exceptions!");
         }
     }
-    
+
     protected void restartSingleBroker(boolean badly) throws Exception {
         if (!startBroker) {
             throw new IllegalStateException("Not in single broker mode");
         }
-        
+
         if (badly) {
             broker.die();
         }
-        
+
         server.close();
         broker.close();
-        
+
         broker = new Broker(
-                brokerConfig, 
-                new FileCommitLog(workDir, workDir, 1024 * 1024), 
+                brokerConfig,
+                new FileCommitLog(workDir, workDir, 1024 * 1024),
                 new TasksHeap(1000, createTaskPropertiesMapperFunction())
         );
         broker.startAsWritable();
@@ -355,7 +355,7 @@ public abstract class BrokerTestUtils {
         server = new NettyChannelAcceptor(broker.getAcceptor());
         server.start();
     }
-    
+
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return new TaskPropertiesMapperFunction() {
             @Override
@@ -365,7 +365,7 @@ public abstract class BrokerTestUtils {
             }
         };
     }
-    
+
     public static String getThreadName(long threadid) {
         for (Thread t : Thread.getAllStackTraces().keySet()) {
             if (t.getId() == threadid) {
@@ -374,11 +374,11 @@ public abstract class BrokerTestUtils {
         }
         return null;
     }
-    
+
     public static void checkResourcesUsage(Broker broker, String workerId, String[] resources, int expectedVal) {
         // a little dirty, this function should be called inside TasksHeap writeLock
         broker.getGlobalResourceUsageCounters().updateResourceCounters();
-                    
+
         Map<String, Integer> countersGlobal = broker.getGlobalResourceUsageCounters().getCountersView();
         for (String resource : Arrays.asList(resources)) {
             System.out.println("Global counter resource=" + resource + "; counter=" + countersGlobal.get(resource));
@@ -389,10 +389,10 @@ public abstract class BrokerTestUtils {
                 assertEquals(expectedVal, countersGlobal.get(resource).intValue());
             }
         }
-        
+
         if (workerId != null) {
             broker.getWorkers().getWorkerManager(workerId).getResourceUsageCounters().updateResourceCounters();
-            
+
             Map<String, Integer> countersWorker = broker.getWorkers().getWorkerManager(workerId)
                 .getResourceUsageCounters().getCountersView();
             for (String resource : Arrays.asList(resources)) {
@@ -406,11 +406,11 @@ public abstract class BrokerTestUtils {
             }
         }
     }
-    
+
     public static void checkTaskStatus(Broker broker, long taskId, int status, Object expectedResult, long waitTime, boolean checkTaskExistence) throws Exception {
         long waitForCycle = 1000;
         long cycles = waitTime / waitForCycle;
-        
+
         boolean ok = false;
         for (int i = 0; i < cycles; i++) {
             Task task = broker.getBrokerStatus().getTask(taskId);
@@ -429,11 +429,11 @@ public abstract class BrokerTestUtils {
         }
         assertTrue(ok);
     }
-    
+
     public static void waitForBrokerToBecomeLeader(Broker broker, long waitTime) throws InterruptedException {
         long waitForCycle = 1000;
         long cycles = waitTime / waitForCycle;
-        
+
         boolean ok = false;
         for (int i = 0; i < cycles; i++) {
             if (broker.isWritable()) {

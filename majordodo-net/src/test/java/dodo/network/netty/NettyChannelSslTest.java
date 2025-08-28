@@ -90,6 +90,7 @@ public class NettyChannelSslTest {
         try (NettyChannelAcceptor server = new NettyChannelAcceptor(acceptor);) {
             server.setHost("0.0.0.0");
             server.setSsl(true);
+            server.setPort(7404);
             server.start();
             try (NettyConnector connector = new NettyConnector(new ChannelEventListener() {
 
@@ -103,6 +104,7 @@ public class NettyChannelSslTest {
                 }
             })) {
                 connector.setSsl(true);
+                connector.setPort(7404);
                 NettyChannel channel = connector.connect();
                 Message message = Message.KILL_WORKER("testrequest");
                 channel.sendMessageWithAsyncReply(message, 10000, new ReplyCallback() {
