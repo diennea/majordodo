@@ -23,8 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.executors.TaskExecutor;
 import majordodo.executors.TaskExecutorFactory;
 import majordodo.executors.TaskExecutorFactoryImplementation;
@@ -38,7 +39,7 @@ import org.reflections.Reflections;
  */
 public class DefaultExecutorFactory implements TaskExecutorFactory {
 
-    private static final Logger LOGGER = Logger.getLogger(DefaultExecutorFactory.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultExecutorFactory.class);
     private final List<TaskExecutorFactory> factories = new ArrayList<>();
 
     public DefaultExecutorFactory() {
@@ -59,16 +60,16 @@ public class DefaultExecutorFactory implements TaskExecutorFactory {
     private void discoverFromClasspath() {
         try {
             Reflections reflections = new Reflections();
-            LOGGER.severe("looking on classpath for classes annotated with @TaskExecutorFactoryImplementation");
+            LOGGER.error("looking on classpath for classes annotated with @TaskExecutorFactoryImplementation");
             Set<Class<?>> classes = reflections.getTypesAnnotatedWith(TaskExecutorFactoryImplementation.class);
 
             for (Class c : classes) {
-                LOGGER.log(Level.SEVERE, "found class {0}", c);
+                LOGGER.error("found class {}", c);
                 TaskExecutorFactory factory = (TaskExecutorFactory) c.newInstance();
                 factories.add(factory);
             }
             if (factories.isEmpty()) {
-                LOGGER.log(Level.SEVERE, "no class annotated with @TaskExecutorFactoryImplementation was found on the class path. This worker does not implement any tasktype!");
+                LOGGER.error("no class annotated with @TaskExecutorFactoryImplementation was found on the class path. This worker does not implement any tasktype!");
             }
         } catch (Throwable t) {
             throw new RuntimeException(t);

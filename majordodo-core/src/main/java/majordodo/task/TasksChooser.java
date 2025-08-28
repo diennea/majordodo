@@ -28,7 +28,8 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import majordodo.utils.DiscardingBoundedPriorityQueue;
 import majordodo.utils.IntCounter;
@@ -263,7 +264,7 @@ public final class TasksChooser {
 
     }
 
-    private static final Logger LOGGER = Logger.getLogger(TasksChooser.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(TasksChooser.class);
 
     void accept(int position, TasksHeap.TaskEntry entry) {
 

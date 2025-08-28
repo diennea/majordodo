@@ -20,12 +20,9 @@
 package majordodo.security.sasl;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.security.auth.Subject;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -43,6 +40,8 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 import org.apache.zookeeper.server.auth.KerberosName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sasl Client
@@ -51,8 +50,7 @@ import org.apache.zookeeper.server.auth.KerberosName;
  */
 public class SaslNettyClient {
 
-    private static final Logger LOG = Logger
-        .getLogger(SaslNettyClient.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(SaslNettyClient.class.getName());
 
     /**
      * Used to respond to server's counterpart, SaslServer with SASL tokens represented as byte arrays.
@@ -68,13 +66,13 @@ public class SaslNettyClient {
         clientSubject = loginClient();
 
         if (clientSubject == null) {
-            LOG.log(Level.SEVERE, "Using plain SASL/DIGEST-MD5 auth to connect to " + serverHostname);
+            LOG.error("Using plain SASL/DIGEST-MD5 auth to connect to {}", serverHostname);
             saslClient = Sasl.createSaslClient(
-                new String[]{SaslUtils.AUTH_DIGEST_MD5}, null, null,
-                SaslUtils.DEFAULT_REALM, SaslUtils.getSaslProps(),
-                new SaslClientCallbackHandler(username, password.toCharArray()));
+                    new String[]{SaslUtils.AUTH_DIGEST_MD5}, null, null,
+                    SaslUtils.DEFAULT_REALM, SaslUtils.getSaslProps(),
+                    new SaslClientCallbackHandler(username, password.toCharArray()));
         } else if (clientSubject.getPrincipals().isEmpty()) {
-            LOG.log(Level.SEVERE, "Using JAAS/SASL/DIGEST-MD5 auth to connect to " + serverPrincipal);
+            LOG.error("Using JAAS/SASL/DIGEST-MD5 auth to connect to {}", serverPrincipal);
             String[] mechs = {"DIGEST-MD5"};
             username = (String) (clientSubject.getPublicCredentials().toArray()[0]);
             password = (String) (clientSubject.getPrivateCredentials().toArray()[0]);
@@ -88,7 +86,7 @@ public class SaslNettyClient {
             final String serviceName = serviceKerberosName.getServiceName();
             final String serviceHostname = serviceKerberosName.getHostName();
             final String clientPrincipalName = clientKerberosName.toString();
-            LOG.log(Level.SEVERE, "Using JAAS/SASL/GSSAPI auth to connect to server Principal " + serverPrincipal);
+            LOG.error("Using JAAS/SASL/GSSAPI auth to connect to server Principal {}", serverPrincipal);
             saslClient = Subject.doAs(clientSubject, new PrivilegedExceptionAction<SaslClient>() {
                 @Override
                 public SaslClient run() throws SaslException {
@@ -111,11 +109,11 @@ public class SaslNettyClient {
         if (clientSubject != null) {
             try {
                 final byte[] retval
-                    = Subject.doAs(clientSubject, new PrivilegedExceptionAction<byte[]>() {
-                        public byte[] run() throws SaslException {
-                            return saslClient.evaluateChallenge(saslToken);
-                        }
-                    });
+                        = Subject.doAs(clientSubject, new PrivilegedExceptionAction<byte[]>() {
+                    public byte[] run() throws SaslException {
+                        return saslClient.evaluateChallenge(saslToken);
+                    }
+                });
                 return retval;
             } catch (PrivilegedActionException e) {
                 e.printStackTrace();
@@ -130,16 +128,16 @@ public class SaslNettyClient {
         String clientSection = "MajordodoClient";
         AppConfigurationEntry[] entries = Configuration.getConfiguration().getAppConfigurationEntry(clientSection);
         if (entries == null) {
-            LOG.log(Level.FINE, "No JAAS Configuration found with section MajordodoClient");
+            LOG.debug("No JAAS Configuration found with section MajordodoClient");
             return null;
         }
         try {
             LoginContext loginContext = new LoginContext(clientSection, new ClientCallbackHandler(null));
             loginContext.login();
-            LOG.log(Level.FINE, "Using JAAS Configuration subject: " + loginContext.getSubject());
+            LOG.debug("Using JAAS Configuration subject: {}", loginContext.getSubject());
             return loginContext.getSubject();
         } catch (LoginException error) {
-            LOG.log(Level.FINE, "Error JAAS Configuration subject: " + error, error);
+            LOG.debug("Error JAAS Configuration subject: {}", error, error);
             return null;
         }
     }
@@ -158,7 +156,7 @@ public class SaslNettyClient {
 
         @Override
         public void handle(Callback[] callbacks) throws
-            UnsupportedCallbackException {
+                UnsupportedCallbackException {
             for (Callback callback : callbacks) {
                 if (callback instanceof NameCallback) {
                     NameCallback nc = (NameCallback) callback;
@@ -211,9 +209,8 @@ public class SaslNettyClient {
             byte[] retval = saslClient.evaluateChallenge(saslTokenMessage);
             return retval;
         } catch (SaslException e) {
-            LOG.log(Level.SEVERE,
-                "saslResponse: Failed to respond to SASL server's token:",
-                e);
+            LOG.error("saslResponse: Failed to respond to SASL server's token:",
+                    e);
             return null;
         }
     }
@@ -237,7 +234,7 @@ public class SaslNettyClient {
          * @throws UnsupportedCallbackException
          */
         public void handle(Callback[] callbacks)
-            throws UnsupportedCallbackException {
+                throws UnsupportedCallbackException {
             NameCallback nc = null;
             PasswordCallback pc = null;
             RealmCallback rc = null;
@@ -252,7 +249,7 @@ public class SaslNettyClient {
                     rc = (RealmCallback) callback;
                 } else {
                     throw new UnsupportedCallbackException(callback,
-                        "handle: Unrecognized SASL client callback");
+                            "handle: Unrecognized SASL client callback");
                 }
             }
             if (nc != null) {

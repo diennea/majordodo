@@ -33,8 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.function.Predicate;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -42,6 +40,8 @@ import javax.servlet.http.HttpServletResponse;
 import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.task.Broker;
 import majordodo.task.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone installation
@@ -53,7 +53,7 @@ import majordodo.task.Task;
 public class HttpAPIImplementation {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Logger LOGGER = Logger.getLogger(HttpAPIImplementation.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpAPIImplementation.class);
 
     private static AuthenticatedUser login(HttpServletRequest req) {
         Broker broker = (Broker) JVMBrokersRegistry.getDefaultBroker();
@@ -336,7 +336,7 @@ public class HttpAPIImplementation {
                             break;
                         case "running":
                             filterPred = (t)
-                                -> t.getStatus() == Task.STATUS_RUNNING;
+                                    -> t.getStatus() == Task.STATUS_RUNNING;
                             break;
                         case "error":
                             filterPred = (t) -> t.getStatus() == Task.STATUS_ERROR;
@@ -365,10 +365,10 @@ public class HttpAPIImplementation {
                     }
 
                     Map<String, Long> groupByTaskType = broker.getClient().getAllTasks().stream()
-                        .filter(filterPred).filter(filterWorker).filter(filterTasktype)
-                        .collect(
-                            Collectors.groupingBy(TaskStatusView::getType, Collectors.counting())
-                        );
+                            .filter(filterPred).filter(filterWorker).filter(filterTasktype)
+                            .collect(
+                                    Collectors.groupingBy(TaskStatusView::getType, Collectors.counting())
+                            );
 
                     resultMap.put("tasks", groupByTaskType);
                     resultMap.put("count", groupByTaskType.values().stream().collect(Collectors.summingLong((l) -> l)));
@@ -380,7 +380,7 @@ public class HttpAPIImplementation {
 
         }
 
-        LOGGER.log(Level.FINER, "GET  -> {0}", resultMap);
+        LOGGER.debug("GET  -> {}", resultMap);
         String s = MAPPER.writeValueAsString(resultMap);
         byte[] res = s.getBytes(StandardCharsets.UTF_8);
 
@@ -449,7 +449,7 @@ public class HttpAPIImplementation {
             }
             Map<String, Object> data = MAPPER.readValue(oo.toString("utf-8"), Map.class);
             AuthenticatedUser auth_user = login(req);
-            LOGGER.log(Level.FINE, "POST {0} broker={1}, user: {2}", new Object[]{data, broker, auth_user});
+            LOGGER.debug("POST {} broker={}, user: {}", data, broker, auth_user);
             String action = data.get("action") + "";
             Map<String, Object> resultMap = new HashMap<>();
             resultMap.put("action", action);
@@ -511,7 +511,7 @@ public class HttpAPIImplementation {
                         }
 
                         if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                            && !auth_user.getUserId().equals(user)) {
+                                && !auth_user.getUserId().equals(user)) {
                             resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
                             return;
                         }
@@ -523,7 +523,7 @@ public class HttpAPIImplementation {
                             resultMap.put("taskId", taskId);
                             resultMap.put("result", result.getOutcome());
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                         }
                         resultMap.put("error", error);
@@ -542,7 +542,7 @@ public class HttpAPIImplementation {
                                 String type = (String) task.get("tasktype");
                                 String user = (String) task.get("userid");
                                 if (auth_user.getRole() != UserRole.ADMINISTRATOR
-                                    && !auth_user.getUserId().equals(user)) {
+                                        && !auth_user.getUserId().equals(user)) {
                                     resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Majordodo broker API");
                                     return;
                                 }
@@ -605,7 +605,7 @@ public class HttpAPIImplementation {
                                 }
                             } catch (Exception err) {
                                 // very bad error
-                                LOGGER.log(Level.SEVERE, "error for " + data, err);
+                                LOGGER.error("error for " + data, err);
                                 error = err + "";
                             }
 
@@ -622,7 +622,7 @@ public class HttpAPIImplementation {
                         try {
                             transactionId = broker.getClient().beginTransaction();
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                         }
                         resultMap.put("transaction", transactionId);
@@ -636,7 +636,7 @@ public class HttpAPIImplementation {
                         try {
                             broker.getClient().commitTransaction(transactionId);
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                         }
                         resultMap.put("ok", true);
@@ -650,7 +650,7 @@ public class HttpAPIImplementation {
                         try {
                             broker.getClient().rollbackTransaction(transactionId);
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                         }
                         resultMap.put("ok", true);
@@ -665,7 +665,7 @@ public class HttpAPIImplementation {
                             broker.getClient().deleteCodePool(id);
                             resultMap.put("ok", true);
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                         }
 
@@ -696,7 +696,7 @@ public class HttpAPIImplementation {
                             resultMap.put("ok", result.ok);
                             resultMap.put("result", result.outcome);
                         } catch (Exception err) {
-                            LOGGER.log(Level.SEVERE, "error for " + data, err);
+                            LOGGER.error("error for " + data, err);
                             error = err + "";
                             result = null;
                         }
@@ -714,7 +714,7 @@ public class HttpAPIImplementation {
                 }
             }
 
-            LOGGER.log(Level.FINE, "POST " + data + " -> " + resultMap);
+            LOGGER.debug("POST " + data + " -> " + resultMap);
             String s = MAPPER.writeValueAsString(resultMap);
             byte[] res = s.getBytes(StandardCharsets.UTF_8);
 
@@ -725,10 +725,10 @@ public class HttpAPIImplementation {
                 out.write(res);
             }
         } catch (IOException err) {
-            LOGGER.log(Level.FINER, "IO error: " + err, err);
+            LOGGER.trace("IO error: " + err, err);
             throw err;
         } catch (Exception err) {
-            LOGGER.log(Level.SEVERE, "Unhandled error: " + err, err);
+            LOGGER.error("Unhandled error: " + err, err);
             throw err;
         }
     }

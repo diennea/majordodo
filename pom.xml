@@ -78,7 +78,34 @@
         <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
         <libs.spotbugsannotations>4.8.6</libs.spotbugsannotations>
         <libs.spotbugsmaven>4.8.6.6</libs.spotbugsmaven>
+        <libs.logback>1.5.18</libs.logback>
+        <libs.slf4j>2.0.17</libs.slf4j>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${libs.slf4j}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>${libs.slf4j}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${libs.logback}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>${libs.logback}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>junit</groupId>

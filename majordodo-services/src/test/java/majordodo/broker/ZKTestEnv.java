@@ -20,7 +20,8 @@
 package majordodo.broker;
 
 import java.nio.file.Path;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.common.component.Lifecycle;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -30,7 +31,7 @@ import org.apache.curator.test.TestingServer;
 
 public class ZKTestEnv implements AutoCloseable {
 
-    private static final Logger LOG = Logger.getLogger(ZKTestEnv.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ZKTestEnv.class);
 
     TestingServer zkServer;
     EmbeddedServer embeddedServer;
@@ -61,7 +62,7 @@ public class ZKTestEnv implements AutoCloseable {
 
         embeddedServer.getLifecycleComponentStack().start();
         if (!waitForBookieServiceState(Lifecycle.State.STARTED)) {
-            LOG.warning("bookie start timed out");
+            LOG.warn("bookie start timed out");
         }
     }
 
@@ -83,7 +84,7 @@ public class ZKTestEnv implements AutoCloseable {
             if (embeddedServer != null) {
                 embeddedServer.getLifecycleComponentStack().close();
                 if (!waitForBookieServiceState(Lifecycle.State.CLOSED)) {
-                    LOG.warning("bookie stop timed out");
+                    LOG.warn("bookie stop timed out");
                 }
             }
         } catch (Throwable t) {

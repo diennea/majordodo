@@ -30,8 +30,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
@@ -64,7 +65,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
         justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class HTTPClientConnection implements ClientConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(HTTPClientConnection.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HTTPClientConnection.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private String transactionId;
     private boolean transacted;
@@ -194,7 +195,7 @@ public class HTTPClientConnection implements ClientConnection {
                         throw new IllegalStateException(method);
                     }
                     if (!"true".equals(rr.get("ok") + "")) {
-                        LOGGER.log(Level.SEVERE, "error from {0}: {1}", new Object[]{_broker, rr});
+                        LOGGER.error("error from {}: {}", _broker, rr);
                         brokerFailed();
                         String error = rr.get("error") + "";
                         if (error.contains("broker_not_started") // broker does not exist on JVM
@@ -210,7 +211,7 @@ public class HTTPClientConnection implements ClientConnection {
                     return rr;
                 } catch (RetryableError retry) {
                     int interval = this.configuration.getBrokerNotAvailableRetryInterval() * (i + 1);
-                    LOGGER.log(Level.SEVERE, "retry on #{0}error from {1}: {2}: sleep {3} ms", new Object[]{i + 1, _broker, retry, interval});
+                    LOGGER.error("retry on #{}error from {}: {}: sleep {} ms", i + 1, _broker, retry, interval);
                     Thread.sleep(interval);
                 }
             }

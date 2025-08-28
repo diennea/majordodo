@@ -24,8 +24,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.clientfacade.BrokerStatusView;
 import majordodo.clientfacade.DelayedTasksQueueView;
 import majordodo.clientfacade.HeapStatusView;
@@ -45,7 +46,7 @@ public class BrokerStatusMonitor {
     private final ScheduledExecutorService timer;
     private final Broker broker;
 
-    private static final Logger LOGGER = Logger.getLogger(BrokerStatusMonitor.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrokerStatusMonitor.class);
 
     public BrokerStatusMonitor(BrokerConfiguration configuration, Broker broker) {
         this.configuration = configuration;
@@ -98,7 +99,7 @@ public class BrokerStatusMonitor {
                 averageDelayInSeconds = (double) delaysSum / delayedQueue.getTasks().size() / 1000;
             }
             
-            LOGGER.log(Level.INFO, "Broker status: " + brokerStatusView.getClusterMode()
+            LOGGER.info("Broker status: " + brokerStatusView.getClusterMode()
                     + ", logpos:" + brokerStatusView.getCurrentLedgerId() + "," + brokerStatusView.getCurrentSequenceNumber() + ",Tasks:" + brokerStatusView.getTasks()
                     + ", waiting:" + brokerStatusView.getWaitingTasks()
                     + ", running:" + brokerStatusView.getRunningTasks()

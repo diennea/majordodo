@@ -19,14 +19,9 @@
  */
 package majordodo.codepools;
 
-import majordodo.task.*;
-import majordodo.clientfacade.SubmitTaskResult;
-import majordodo.clientfacade.TaskStatusView;
-import majordodo.network.netty.NettyBrokerLocator;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.worker.WorkerCore;
-import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -39,17 +34,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 import majordodo.client.CodePoolUtils;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.CreateCodePoolRequest;
 import majordodo.clientfacade.CreateCodePoolResult;
+import majordodo.clientfacade.SubmitTaskResult;
+import majordodo.clientfacade.TaskStatusView;
+import majordodo.network.netty.NettyBrokerLocator;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
+import majordodo.task.MemoryCommitLog;
+import majordodo.task.Task;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
+import majordodo.worker.WorkerCore;
+import majordodo.worker.WorkerCoreConfiguration;
+import majordodo.worker.WorkerStatusListener;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -94,26 +97,6 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
 
     }
 
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.INFO;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
-
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
@@ -138,7 +121,7 @@ public class TaskExecutionWithCodePoolSerializedObjectTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "newinstance:majordodo.testclients.SimpleExecutor";

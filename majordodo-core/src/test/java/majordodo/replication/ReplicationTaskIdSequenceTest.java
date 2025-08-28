@@ -19,22 +19,19 @@
  */
 package majordodo.replication;
 
-import majordodo.clientfacade.TaskStatusView;
-import majordodo.task.TasksHeap;
-import majordodo.task.Broker;
-import majordodo.task.BrokerConfiguration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
-import majordodo.clientfacade.AddTaskRequest;
-import majordodo.network.BrokerHostData;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.task.TaskProperties;
-import majordodo.task.TaskPropertiesMapperFunction;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import java.util.HashMap;
+import java.util.Map;
+import majordodo.clientfacade.AddTaskRequest;
+import majordodo.clientfacade.TaskStatusView;
+import majordodo.network.BrokerHostData;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,26 +43,6 @@ import org.junit.rules.TemporaryFolder;
  * @author enrico.olivelli
  */
 public class ReplicationTaskIdSequenceTest {
-
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.SEVERE;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
 
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
@@ -134,7 +111,7 @@ public class ReplicationTaskIdSequenceTest {
                         boolean ok = false;
                         for (int i = 0; i < 10; i++) {
                             TaskStatusView task = broker2.getClient().getTask(lastTaskId);
-//                            System.out.println("task:" + task);
+                            //                            System.out.println("task:" + task);
                             Thread.sleep(1000);
                             if (task != null) {
                                 ok = true;

@@ -21,8 +21,10 @@ package majordodo.worker;
 
 import majordodo.executors.TaskExecutor;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 /**
  * Real execution of the task
@@ -35,7 +37,7 @@ public class ExecutorRunnable implements Runnable {
     private Long taskId;
     private Map<String, Object> parameters;
     private TaskExecutionCallback callback;
-    private static final Logger LOGGER = Logger.getLogger(ExecutorRunnable.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorRunnable.class);
 
     public ExecutorRunnable(WorkerCore core, Long taskId, Map<String, Object> parameters, TaskExecutionCallback callback) {
         this.core = core;
@@ -59,12 +61,12 @@ public class ExecutorRunnable implements Runnable {
             String result = executor.executeTask(parameters);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.FINISHED, result, null);
         } catch (Throwable t) {
-            LOGGER.log(Level.SEVERE, "error while executing task " + parameters, t);
+            LOGGER.error("error while executing task " + parameters, t);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, null, t);
         } finally {
-            if (LOGGER.isLoggable(Level.FINEST)) {
+            if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
                 long _end = System.nanoTime();
-                LOGGER.log(Level.FINEST, "task time " + parameters + " " + (_end - _start) + " ns");
+                LOGGER.debug("task time " + parameters + " " + (_end - _start) + " ns");
             }
         }
     }

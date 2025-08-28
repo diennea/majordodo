@@ -24,12 +24,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import majordodo.task.Broker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the HTTP API, both for embedded and for standalone installation
@@ -38,7 +38,7 @@ import majordodo.task.Broker;
  */
 public class WorkerHttpAPIImplementation {
 
-    private static final Logger LOGGER = Logger.getLogger(WorkerHttpAPIImplementation.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkerHttpAPIImplementation.class);
 
     public static void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         WorkerCore worker = (WorkerCore) JVMWorkersRegistry.getLocalWorker();
@@ -87,7 +87,7 @@ public class WorkerHttpAPIImplementation {
         }
 
         ObjectMapper mapper = new ObjectMapper();
-        LOGGER.log(Level.FINE, "GET  -> " + resultMap);
+        LOGGER.debug("GET  -> " + resultMap);
         String s = mapper.writeValueAsString(resultMap);
         byte[] res = s.getBytes(StandardCharsets.UTF_8);
 

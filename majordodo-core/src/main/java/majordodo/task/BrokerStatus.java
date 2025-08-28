@@ -19,8 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.clientfacade.TaskStatusView;
-import majordodo.clientfacade.WorkerStatusView;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,13 +31,16 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import majordodo.clientfacade.CodePoolView;
+import majordodo.clientfacade.TaskStatusView;
 import majordodo.clientfacade.TransactionStatus;
+import majordodo.clientfacade.WorkerStatusView;
 import majordodo.codepools.CodePool;
 import majordodo.utils.IntCounter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 /**
  * Replicated status of the broker. Each broker, leader or follower, contains a copy of this status. The status is
@@ -49,7 +50,7 @@ import majordodo.utils.IntCounter;
  */
 public final class BrokerStatus {
 
-    private static final Logger LOGGER = Logger.getLogger(BrokerStatus.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrokerStatus.class);
 
     private final Map<Long, Task> tasks = new HashMap<>();
     private final Map<Long, Transaction> transactions = new HashMap<>();
@@ -260,7 +261,7 @@ public final class BrokerStatus {
         }
         for (String codePoolId : toPurge) {
             StatusEdit rollback = StatusEdit.DELETE_CODEPOOL(codePoolId);
-            LOGGER.log(Level.SEVERE, "Detected abandoned codepool {0}, dropping", new Object[]{codePoolId});
+            LOGGER.error("Detected abandoned codepool {}, dropping", codePoolId);
             applyModification(rollback);
         }
     }
@@ -278,7 +279,7 @@ public final class BrokerStatus {
         }
         for (long transactionId : staleTransactions) {
             StatusEdit rollback = StatusEdit.ROLLBACK_TRANSACTION(transactionId);
-            LOGGER.log(Level.SEVERE, "Detected abandoned transaction {0}, Forcing rollback", new Object[]{transactionId});
+            LOGGER.error("Detected abandoned transaction {}, Forcing rollback", transactionId);
             applyModification(rollback);
         }
     }
@@ -320,7 +321,7 @@ public final class BrokerStatus {
         try {
             this.log.close();
         } catch (LogNotAvailableException sorry) {
-            LOGGER.log(Level.SEVERE, "Error while closing transaction log", sorry);
+            LOGGER.error("Error while closing transaction log", sorry);
         }
 
     }
@@ -337,7 +338,7 @@ public final class BrokerStatus {
             boolean allowExpire = this.log.isLeader() && this.log.isWritable();
             // tasks are only purged from memry, not from logs
             // in case of broker restart it may re-appear
-            for (Iterator<Map.Entry<Long, Task>> it = tasks.entrySet().iterator(); it.hasNext();) {
+            for (Iterator<Map.Entry<Long, Task>> it = tasks.entrySet().iterator(); it.hasNext(); ) {
                 Map.Entry<Long, Task> taskEntry = it.next();
                 Task t = taskEntry.getValue();
                 switch (t.getStatus()) {
@@ -348,16 +349,17 @@ public final class BrokerStatus {
                             if (taskdeadline > 0 && taskdeadline < now) {
                                 expired.add(t.getTaskId());
                                 expiredcount++;
-                                LOGGER.log(Level.INFO, "task {0}, created at {1}, expired, deadline {2}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), new java.util.Date(taskdeadline)});
+                                LOGGER.info("task {}, created at {}, expired, deadline {}", t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), new java.util.Date(taskdeadline));
+
                             }
                         }
                         break;
                     case Task.STATUS_ERROR:
                     case Task.STATUS_FINISHED:
                         if (t.getCreatedTimestamp() < finished_deadline) {
-                            if (LOGGER.isLoggable(Level.FINER)) {
-                                LOGGER.log(Level.FINER, "purging finished task {0} slot {2}, created at {1}", new Object[]{t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot()});
-                            }                            
+                            if (LOGGER.isEnabledForLevel(Level.TRACE)) {
+                                LOGGER.debug("purging finished task {} slot {}, created at {}", t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot());
+                            }
                             it.remove();
                             stats.taskStatusChange(t.getStatus(), -1);
                         }
@@ -378,10 +380,10 @@ public final class BrokerStatus {
             log.requestLeadership();
             while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
                 log.followTheLeader(this.lastLogSequenceNumber,
-                    (logSeqNumber, edit) -> {
-                        LOGGER.log(Level.FINEST, "following the leader {0} {1}", new Object[]{logSeqNumber, edit});
-                        applyEdit(logSeqNumber, edit);
-                    });
+                        (logSeqNumber, edit) -> {
+                            LOGGER.trace("following the leader {} {}", logSeqNumber, edit);
+                            applyEdit(logSeqNumber, edit);
+                        });
                 Thread.sleep(1000);
             }
         } catch (LogNotAvailableException err) {
@@ -411,31 +413,31 @@ public final class BrokerStatus {
     private boolean brokerFailed;
 
     void brokerFailed() {
-        LOGGER.severe("brokerFailed!");
+        LOGGER.error("brokerFailed!");
         brokerFailed = true;
     }
 
     void recoverForLeadership() {
         try {
             // we have to be sure that we are in sych we the global status                        
-            LOGGER.log(Level.INFO, "recoverForLeadership, from {0}", this.lastLogSequenceNumber);
+            LOGGER.info("recoverForLeadership, from {}", this.lastLogSequenceNumber);
             AtomicInteger done = new AtomicInteger();
             log.recovery(this.lastLogSequenceNumber,
-                (logSeqNumber, edit) -> {
-                    applyEdit(logSeqNumber, edit);
-                    done.incrementAndGet();
-                    if (brokerFailed) {
-                        throw new RuntimeException("broker failed");
-                    }
-                }, false);
+                    (logSeqNumber, edit) -> {
+                        applyEdit(logSeqNumber, edit);
+                        done.incrementAndGet();
+                        if (brokerFailed) {
+                            throw new RuntimeException("broker failed");
+                        }
+                    }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
-            LOGGER.log(Level.INFO, "recovered gap of {0} entries before entering leadership mode. newTaskId={1} newTransactionId={2}", new Object[]{done.get(), newTaskId, newTransactionId});
+            LOGGER.info("recovered gap of {} entries before entering leadership mode. newTaskId={} newTransactionId={}", done.get(), newTaskId, newTransactionId);
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
         }
 
-        LOGGER.log(Level.INFO, "After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
+        LOGGER.info("After recoverForLeadership maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
     }
 
     int applyRunningTasksFilterToAssignTasksRequest(String workerId, Map<String, Integer> availableSpace) {
@@ -513,40 +515,40 @@ public final class BrokerStatus {
     }
 
     Map<TaskTypeUser, IntCounter> collectMaxAvailableSpacePerUserOnWorker(String workerId,
-        int maxThreadPerUserPerTaskTypePercent,
-        Map<String, Integer> startingAvailableSpace) {
+                                                                          int maxThreadPerUserPerTaskTypePercent,
+                                                                          Map<String, Integer> startingAvailableSpace) {
         Map<TaskTypeUser, IntCounter> res = new HashMap<>();
         lock.readLock().lock();
         try {
             this.tasks
-                .values()
-                .stream()
-                .filter(t -> t.getStatus() == Task.STATUS_RUNNING
-                && workerId.equals(t.getWorkerId()))
-                .forEach(t -> {
-                    String type = t.getType();
-                    Integer startingMaxAvailableSpacePerUser = startingAvailableSpace.get(type);
-                    if (startingMaxAvailableSpacePerUser == null) {
-                        startingMaxAvailableSpacePerUser = startingAvailableSpace.get(Task.TASKTYPE_ANY);
-                    }
-                    if (startingMaxAvailableSpacePerUser != null && startingMaxAvailableSpacePerUser > 0) {
-                        TaskTypeUser key = new TaskTypeUser(type, t.getUserId());
-                        IntCounter count = res.get(key);
-                        if (count == null) {
-                            int effectiveBoundForUser
-                                = (startingMaxAvailableSpacePerUser * maxThreadPerUserPerTaskTypePercent) / 100;
-                            if (effectiveBoundForUser <= 0) {
-                                effectiveBoundForUser = 1;
-                            }
-                            LOGGER.log(Level.FINEST, "collectMaxAvailableSpacePerUserOnWorker {0} -> for user {1} we are starting from {2} - bound is {3}", new Object[]{workerId, t.getUserId(), startingMaxAvailableSpacePerUser, effectiveBoundForUser});
-                            count = new IntCounter(effectiveBoundForUser);
-                            res.put(key, count);
-
+                    .values()
+                    .stream()
+                    .filter(t -> t.getStatus() == Task.STATUS_RUNNING
+                            && workerId.equals(t.getWorkerId()))
+                    .forEach(t -> {
+                        String type = t.getType();
+                        Integer startingMaxAvailableSpacePerUser = startingAvailableSpace.get(type);
+                        if (startingMaxAvailableSpacePerUser == null) {
+                            startingMaxAvailableSpacePerUser = startingAvailableSpace.get(Task.TASKTYPE_ANY);
                         }
-                        LOGGER.log(Level.FINEST, "collectMaxAvailableSpacePerUserOnWorker {0} -> for user {1} found task {2} - id {3}", new Object[]{workerId, t.getUserId(), t.getType(), t.getTaskId()});
-                        count.count--;
-                    }
-                });
+                        if (startingMaxAvailableSpacePerUser != null && startingMaxAvailableSpacePerUser > 0) {
+                            TaskTypeUser key = new TaskTypeUser(type, t.getUserId());
+                            IntCounter count = res.get(key);
+                            if (count == null) {
+                                int effectiveBoundForUser
+                                        = (startingMaxAvailableSpacePerUser * maxThreadPerUserPerTaskTypePercent) / 100;
+                                if (effectiveBoundForUser <= 0) {
+                                    effectiveBoundForUser = 1;
+                                }
+                                LOGGER.trace("collectMaxAvailableSpacePerUserOnWorker {} -> for user {} we are starting from {} - bound is {}", workerId, t.getUserId(), startingMaxAvailableSpacePerUser, effectiveBoundForUser);
+                                count = new IntCounter(effectiveBoundForUser);
+                                res.put(key, count);
+
+                            }
+                            LOGGER.trace("collectMaxAvailableSpacePerUserOnWorker {} -> for user {} found task {} - id {}", workerId, t.getUserId(), t.getType(), t.getTaskId());
+                            count.count--;
+                        }
+                    });
         } finally {
             lock.readLock().unlock();
         }
@@ -583,7 +585,7 @@ public final class BrokerStatus {
         List<StatusEdit> toLog = new ArrayList<>();
         for (StatusEdit edit : edits) {
             if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
-                && edit.slot != null) {
+                    && edit.slot != null) {
                 if (!slotsManager.assignSlot(edit.slot, edit.taskId)) {
                     skip.add(index);
                 } else {
@@ -623,8 +625,8 @@ public final class BrokerStatus {
         } catch (LogNotAvailableException err) {
             for (StatusEdit edit : edits) {
                 if ((edit.editType == StatusEdit.TYPE_ADD_TASK
-                    || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
-                    && edit.slot != null) {
+                        || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
+                        && edit.slot != null) {
                     slotsManager.releaseSlot(edit.slot, edit.taskId);
 
                 } else {
@@ -640,9 +642,9 @@ public final class BrokerStatus {
         if (brokerFailed) {
             throw new LogNotAvailableException("broker failed");
         }
-        LOGGER.log(Level.FINEST, "applyModification {0}", edit);
+        LOGGER.trace("applyModification {}", edit);
         if ((edit.editType == StatusEdit.TYPE_ADD_TASK || edit.editType == StatusEdit.TYPE_PREPARE_ADD_TASK)
-            && edit.slot != null) {
+                && edit.slot != null) {
             if (slotsManager.assignSlot(edit.slot, edit.taskId)) {
                 try {
                     LogSequenceNumber num = log.logStatusEdit(edit); // ? out of the lock ?        
@@ -653,7 +655,7 @@ public final class BrokerStatus {
                 }
             } else {
                 // slot already assigned
-                LOGGER.log(Level.FINEST, "slot {0} already assigned", edit.slot);
+                LOGGER.trace("slot {} already assigned", edit.slot);
                 return new ModificationResult(null, null, "slot " + edit.slot + " already assigned");
             }
         } else {
@@ -676,7 +678,7 @@ public final class BrokerStatus {
      * @param edit
      */
     private ModificationResult applyEdit(LogSequenceNumber num, StatusEdit edit) {
-        LOGGER.log(Level.FINEST, "applyEdit {0}", edit);
+        LOGGER.trace("applyEdit {}", edit);
 
         lock.writeLock().lock();
         try {
@@ -743,7 +745,7 @@ public final class BrokerStatus {
                 case StatusEdit.TYPE_COMMIT_TRANSACTION: {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
-                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        LOGGER.error("No transaction {}", edit.transactionId);
                         return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
                     }
                     for (Task task : transaction.getPreparedTasks()) {
@@ -756,13 +758,13 @@ public final class BrokerStatus {
                 case StatusEdit.TYPE_ROLLBACK_TRANSACTION: {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
-                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        LOGGER.error("No transaction {}", edit.transactionId);
                         return new ModificationResult(num, 0L, "no transaction " + edit.transactionId);
                     }
                     // release slots
                     for (Task task : transaction.getPreparedTasks()) {
                         if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                            LOGGER.log(Level.SEVERE, "Rollback transaction {0}, released slot {1}", new Object[]{edit.transactionId, task.getSlot()});
+                            LOGGER.error("Rollback transaction {}, released slot {}", edit.transactionId, task.getSlot());
                             slotsManager.releaseSlot(task.getSlot(), task.getTaskId());
                         }
                     }
@@ -808,7 +810,7 @@ public final class BrokerStatus {
                 case StatusEdit.TYPE_PREPARE_ADD_TASK: {
                     Transaction transaction = transactions.get(edit.transactionId);
                     if (transaction == null) {
-                        LOGGER.log(Level.SEVERE, "No transaction {0}", new Object[]{edit.transactionId});
+                        LOGGER.error("No transaction {}", edit.transactionId);
                         return new ModificationResult(num, null, "no transaction " + edit.transactionId);
                     }
                     Task task = new Task();
@@ -958,22 +960,22 @@ public final class BrokerStatus {
             }
             this.slotsManager.loadBusySlots(busySlots);
             log.recovery(snapshot.getActualLogSequenceNumber(),
-                (logSeqNumber, edit) -> {
-                    applyEdit(logSeqNumber, edit);
-                    if (brokerFailed) {
-                        throw new RuntimeException("broker failed");
-                    }
-                }, false);
+                    (logSeqNumber, edit) -> {
+                        applyEdit(logSeqNumber, edit);
+                        if (brokerFailed) {
+                            throw new RuntimeException("broker failed");
+                        }
+                    }, false);
             newTaskId.set(maxTaskId + 1);
             newTransactionId.set(maxTransactionId + 1);
         } catch (LogNotAvailableException err) {
-            LOGGER.log(Level.SEVERE, "error during recovery", err);
+            LOGGER.error("error during recovery", err);
             throw new RuntimeException(err);
         } finally {
             lock.writeLock().unlock();
         }
 
-        LOGGER.log(Level.SEVERE, "After recovery maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
+        LOGGER.error("After recovery maxTaskId=" + maxTaskId + ", maxTransactionId=" + maxTransactionId + ", lastLogSequenceNumber=" + lastLogSequenceNumber);
     }
 
     public void startWriting() {

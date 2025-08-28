@@ -19,22 +19,19 @@
  */
 package majordodo.replication;
 
-import majordodo.clientfacade.TaskStatusView;
-import majordodo.task.TasksHeap;
-import majordodo.task.Broker;
-import majordodo.task.BrokerConfiguration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
-import majordodo.clientfacade.AddTaskRequest;
-import majordodo.network.BrokerHostData;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.task.TaskProperties;
-import majordodo.task.TaskPropertiesMapperFunction;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import java.util.HashMap;
+import java.util.Map;
+import majordodo.clientfacade.AddTaskRequest;
+import majordodo.clientfacade.TaskStatusView;
+import majordodo.network.BrokerHostData;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
+import majordodo.task.TaskProperties;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,26 +43,6 @@ import org.junit.rules.TemporaryFolder;
  * @author enrico.olivelli
  */
 public class SimpleBrokerStatusReplicationTest {
-
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.SEVERE;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
 
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
@@ -126,7 +103,7 @@ public class SimpleBrokerStatusReplicationTest {
                         boolean ok = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker2.getClient().getTask(taskId);
-//                            System.out.println("task:" + task);
+                            //                            System.out.println("task:" + task);
                             Thread.sleep(100);
                             if (task != null) {
                                 ok = true;
@@ -159,15 +136,15 @@ public class SimpleBrokerStatusReplicationTest {
             BrokerConfiguration brokerConfig = new BrokerConfiguration();
             brokerConfig.setMaxWorkerIdleTime(5000);
 
-            try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(), 
-                folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", true, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+            try (Broker broker1 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
+                    folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host, port, "", true, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                 broker1.startAsWritable();
                 try (NettyChannelAcceptor server = new NettyChannelAcceptor(broker1.getAcceptor(), host, port)) {
                     server.setSsl(true);
                     server.start();
 
                     try (Broker broker2 = new Broker(brokerConfig, new ReplicatedCommitLog(zkServer.getAddress(),
-                        zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
+                            zkServer.getTimeout(), zkServer.getPath(), folderSnapshots.getRoot().toPath(), BrokerHostData.formatHostdata(new BrokerHostData(host2, port2, "", false, null)), false), new TasksHeap(1000, createTaskPropertiesMapperFunction()));) {
                         broker2.start();
 
                         taskId = broker1.getClient().submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
@@ -180,7 +157,7 @@ public class SimpleBrokerStatusReplicationTest {
                         boolean ok = false;
                         for (int i = 0; i < 100; i++) {
                             TaskStatusView task = broker2.getClient().getTask(taskId);
-//                            System.out.println("task:" + task);
+                            //                            System.out.println("task:" + task);
                             Thread.sleep(100);
                             if (task != null) {
                                 ok = true;

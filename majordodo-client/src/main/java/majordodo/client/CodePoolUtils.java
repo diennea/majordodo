@@ -37,8 +37,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.jar.JarEntry;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -52,7 +52,7 @@ import java.util.zip.ZipOutputStream;
         justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class CodePoolUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(CodePoolUtils.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(CodePoolUtils.class);
 
     /**
      * Encodes to base64 the given CodePool Data
@@ -202,7 +202,7 @@ public class CodePoolUtils {
     }
 
     public static List<URL> unzipCodePoolData(Path directory, byte[] data) throws IOException {
-        LOGGER.log(Level.SEVERE, "unzipCodePoolData to {0}", directory);
+        LOGGER.error("unzipCodePoolData to {}", directory);
         Files.createDirectories(directory);
         Path source = directory.resolve("source.zip");
         Files.write(source, data);
@@ -213,7 +213,7 @@ public class CodePoolUtils {
                 if (!nextEntry.isDirectory()) {
                     String filename = nextEntry.getName();
                     Path file = directory.resolve(filename);
-                    LOGGER.log(Level.SEVERE, "unzipCodePoolData inflating {0} to {1}", new Object[]{filename, file});
+                    LOGGER.error("unzipCodePoolData inflating {} to {}", filename, file);
                     Path parent = file.getParent();
                     if (parent != null) {
                         Files.createDirectories(parent);

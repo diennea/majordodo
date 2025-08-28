@@ -33,8 +33,9 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import majordodo.client.CodePoolUtils;
@@ -46,7 +47,7 @@ import majordodo.client.CodePoolUtils;
  */
 public final class CodePoolClassloader extends URLClassLoader {
 
-    private static final Logger LOGGER = Logger.getLogger(CodePoolClassloader.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(CodePoolClassloader.class);
     private final Path directory;
 
     public CodePoolClassloader(ClassLoader parent, String codePoolId, byte[] data, Path tmpDirectory) throws IOException {
@@ -57,10 +58,10 @@ public final class CodePoolClassloader extends URLClassLoader {
     }
 
     private void buildCodePoolTmpDirectory(String codePoolId, byte[] data) throws IOException {
-        LOGGER.log(Level.INFO, "Unzipping codepool data for pool " + codePoolId + " to " + directory.toAbsolutePath());
+        LOGGER.info("Unzipping codepool data for pool " + codePoolId + " to " + directory.toAbsolutePath());
         List<URL> unzipCodePoolData = CodePoolUtils.unzipCodePoolData(directory, data);
         unzipCodePoolData.forEach(this::addURL);
-        LOGGER.log(Level.INFO, "Classpath for " + codePoolId + ": " + Arrays.toString(this.getURLs()));
+        LOGGER.info("Classpath for " + codePoolId + ": " + Arrays.toString(this.getURLs()));
 
     }
 

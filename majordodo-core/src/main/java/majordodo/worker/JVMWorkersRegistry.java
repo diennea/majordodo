@@ -20,8 +20,9 @@
 package majordodo.worker;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JVM classloader based registry for Workers
@@ -31,7 +32,7 @@ import java.util.logging.Logger;
 public class JVMWorkersRegistry {
 
     private static final ConcurrentHashMap<String, WorkerCore> workers = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = Logger.getLogger(JVMWorkersRegistry.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(JVMWorkersRegistry.class);
     private static String lastRegisteredWorker = "";
 
     public static void registerWorker(String id, WorkerCore worker) {

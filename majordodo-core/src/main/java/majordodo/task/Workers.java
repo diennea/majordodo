@@ -32,8 +32,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles NodeManagers
@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  */
 public class Workers {
 
-    private static final Logger LOGGER = Logger.getLogger(Workers.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(Workers.class);
 
     private final Map<String, WorkerManager> nodeManagers = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -65,8 +65,8 @@ public class Workers {
     }
 
     public void start(BrokerStatus statusAtBoot, Map<String, Collection<Long>> deadWorkerTasks,
-        List<String> connectedAtBoot, ResourceUsageCounters globalResourceUsageCounters, Collection<Task> tasksAtBoot,
-        Collection<WorkerStatus> workersAtBoot) {
+                      List<String> connectedAtBoot, ResourceUsageCounters globalResourceUsageCounters, Collection<Task> tasksAtBoot,
+                      Collection<WorkerStatus> workersAtBoot) {
         for (WorkerStatus workerStatus : workersAtBoot) {
             String workerId = workerStatus.getWorkerId();
             WorkerManager manager = getWorkerManager(workerId);
@@ -75,7 +75,7 @@ public class Workers {
             }
             Set<Long> toRecoverForWorker = new HashSet<>();
             deadWorkerTasks.put(workerId, toRecoverForWorker);
-            LOGGER.log(Level.INFO, "Booting workerManager for workerId:{0}, actual status: {1} {2}", new Object[]{workerStatus.getWorkerId(), workerStatus.getStatus(), WorkerStatus.statusToString(workerStatus.getStatus())});
+            LOGGER.info("Booting workerManager for workerId:{}, actual status: {} {}", workerStatus.getWorkerId(), workerStatus.getStatus(), WorkerStatus.statusToString(workerStatus.getStatus()));
             for (Task task : tasksAtBoot) {
                 if (workerId.equals(task.getWorkerId())) {
                     if (task.getStatus() == Task.STATUS_RUNNING) {
@@ -87,16 +87,16 @@ public class Workers {
                         globalResourceUsageCounters.useResources(resourceIds);
 
                         if (workerStatus.getStatus() == WorkerStatus.STATUS_DEAD) {
-                            LOGGER.log(Level.INFO, "workerId:{0} should be running task {1}, but worker is DEAD", new Object[]{workerStatus.getWorkerId(), task.getTaskId()});
+                            LOGGER.info("workerId:{} should be running task {}, but worker is DEAD", workerStatus.getWorkerId(), task.getTaskId());
                             toRecoverForWorker.add(task.getTaskId());
                             // Even if worker is dead with its tasks, at boot time these resources are busy (they will be freed at toRecoverForWorker tasks termination)
                             manager.getResourceUsageCounters().useResources(resourceIds);
                         } else {
-                            LOGGER.log(Level.INFO, "Booting workerId:{0} should be running task {1}, resources {2}", new Object[]{workerStatus.getWorkerId(), task.getTaskId(), resources});
+                            LOGGER.info("Booting workerId:{} should be running task {}, resources {}", workerStatus.getWorkerId(), task.getTaskId(), resources);
                             manager.taskRunningDuringBrokerBoot(new AssignedTask(task.getTaskId(), resourceIds, resources));
                         }
                     } else {
-                        LOGGER.log(Level.SEVERE, "workerId:{0} task {1} is assigned to worker, but in status {2}", new Object[]{workerStatus.getWorkerId(), task.getTaskId(), Task.statusToString(task.getStatus())});
+                        LOGGER.error("workerId:{} task {} is assigned to worker, but in status {}", workerStatus.getWorkerId(), task.getTaskId(), Task.statusToString(task.getStatus()));
                     }
                 }
             }
@@ -137,14 +137,14 @@ public class Workers {
                             try {
                                 workersThreadpool.submit(man.operation());
                             } catch (RejectedExecutionException rejected) {
-                                LOGGER.log(Level.SEVERE, "workers manager rejected task", rejected);
+                                LOGGER.error("workers manager rejected task", rejected);
                             }
                         }
                     }
                 }
             } catch (Throwable exit) {
                 // exiting loop                
-                LOGGER.log(Level.SEVERE, "workers manager is dead", exit);
+                LOGGER.error("workers manager is dead", exit);
                 broker.brokerFailed(exit);
             }
         }
@@ -178,7 +178,7 @@ public class Workers {
             try {
                 man = nodeManagers.get(id);
                 if (man == null) {
-                    LOGGER.log(Level.INFO, "creating WorkerManager for worker {0}", id);
+                    LOGGER.info("creating WorkerManager for worker {}", id);
                     man = new WorkerManager(id, broker);
                     nodeManagers.put(id, man);
                 }

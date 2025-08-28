@@ -22,11 +22,9 @@ package majordodo.replication;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import majordodo.task.LogNotAvailableException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import majordodo.task.LogNotAvailableException;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -38,6 +36,8 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Cluster Management
@@ -46,7 +46,7 @@ import org.apache.zookeeper.data.Stat;
  */
 public class ZKClusterManager implements AutoCloseable {
 
-    private static final Logger LOGGER = Logger.getLogger(ZKClusterManager.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZKClusterManager.class);
 
     private final ZooKeeper zk;
     private final LeaderShipChangeListener listener;
@@ -72,15 +72,13 @@ public class ZKClusterManager implements AutoCloseable {
         }
         try {
             byte[] data = zk.getData(leaderpath, masterExistsWatcher, null);
-            LOGGER.log(Level.INFO, "data on ZK at {0}: {1}", new Object[]{leaderpath, new String(data, StandardCharsets.UTF_8)});
+            LOGGER.info("data on ZK at {}: {}", leaderpath, new String(data, StandardCharsets.UTF_8));
             if (!Arrays.equals(data, localhostdata)) {
-                LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from actual {2}", new Object[]{leaderpath,
-                    new String(localhostdata, StandardCharsets.UTF_8),
-                    new String(data, StandardCharsets.UTF_8)});
+                LOGGER.error("expected data on ZK at {}: {} different from actual {}", leaderpath, new String(localhostdata, StandardCharsets.UTF_8), new String(data, StandardCharsets.UTF_8));
                 throw new LogNotAvailableException("it seems that a new broker become leader");
             }
         } catch (KeeperException | InterruptedException err) {
-            LOGGER.log(Level.SEVERE, "zookeeper client error", err);
+            LOGGER.error("zookeeper client error", err);
             throw new LogNotAvailableException(err);
         }
     }
@@ -89,7 +87,7 @@ public class ZKClusterManager implements AutoCloseable {
 
         @Override
         public void process(WatchedEvent we) {
-            LOGGER.log(Level.SEVERE, "ZK event: " + we);
+            LOGGER.error("ZK event: " + we);
             switch (we.getState()) {
                 case Expired:
                     onSessionExpired();
@@ -102,6 +100,7 @@ public class ZKClusterManager implements AutoCloseable {
             }
         }
     }
+
     private final String basePath;
     private final byte[] localhostdata;
     private final String leaderpath;
@@ -112,7 +111,7 @@ public class ZKClusterManager implements AutoCloseable {
 
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "EI_EXPOSE_REP2")
     public ZKClusterManager(String zkAddress, int zkTimeout, String basePath, LeaderShipChangeListener listener,
-            byte[] localhostdata, boolean writeacls) throws Exception {
+                            byte[] localhostdata, boolean writeacls) throws Exception {
         this.zk = new ZooKeeper(zkAddress, zkTimeout, new SystemWatcher());
         this.basePath = basePath;
         this.listener = listener;
@@ -140,10 +139,10 @@ public class ZKClusterManager implements AutoCloseable {
                 byte[] actualLedgers = zk.getData(ledgersPath, false, stat);
                 return LedgersInfo.deserialize(actualLedgers, stat.getVersion());
             } catch (KeeperException.NoNodeException firstboot) {
-                LOGGER.log(Level.SEVERE, "node " + ledgersPath + " not found");
+                LOGGER.error("node " + ledgersPath + " not found");
                 return LedgersInfo.deserialize(null, -1); // -1 is a special ZK version
             } catch (KeeperException.ConnectionLossException error) {
-                LOGGER.log(Level.SEVERE, "error while loading actual ledgers list at " + ledgersPath, error);
+                LOGGER.error("error while loading actual ledgers list at " + ledgersPath, error);
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException err) {
@@ -151,7 +150,7 @@ public class ZKClusterManager implements AutoCloseable {
                     throw new LogNotAvailableException(err);
                 }
             } catch (Exception error) {
-                LOGGER.log(Level.SEVERE, "error while loading actual ledgers list at " + ledgersPath, error);
+                LOGGER.error("error while loading actual ledgers list at " + ledgersPath, error);
                 throw new LogNotAvailableException(error);
             }
         }
@@ -170,7 +169,7 @@ public class ZKClusterManager implements AutoCloseable {
                     try {
                         Stat newStat = zk.setData(ledgersPath, actualLedgers, info.getZkVersion());
                         info.setZkVersion(newStat.getVersion());
-                        LOGGER.log(Level.SEVERE, "save new ledgers list " + info);
+                        LOGGER.error("save new ledgers list " + info);
                         return;
                     } catch (KeeperException.NoNodeException firstboot) {
                         zk.create(ledgersPath, actualLedgers, acls, CreateMode.PERSISTENT);
@@ -178,14 +177,14 @@ public class ZKClusterManager implements AutoCloseable {
                         throw new LogNotAvailableException(new Exception("ledgers actual list was fenced, expecting version " + info.getZkVersion() + " " + fenced, fenced).fillInStackTrace());
                     }
                 } catch (KeeperException.ConnectionLossException anyError) {
-                    LOGGER.log(Level.SEVERE, "temporary error", anyError);
+                    LOGGER.error("temporary error", anyError);
                     Thread.sleep(10000);
                 } catch (Exception anyError) {
                     throw new LogNotAvailableException(anyError);
                 }
             }
         } catch (InterruptedException stop) {
-            LOGGER.log(Level.SEVERE, "fatal error", stop);
+            LOGGER.error("fatal error", stop);
             throw new LogNotAvailableException(stop);
         }
     }
@@ -193,7 +192,7 @@ public class ZKClusterManager implements AutoCloseable {
     public void start() throws Exception {
         try {
             if (this.zk.exists(basePath, false) == null) {
-                LOGGER.log(Level.SEVERE, "creating base path " + basePath + ", acls:" + acls);
+                LOGGER.error("creating base path " + basePath + ", acls:" + acls);
                 try {
                     this.zk.create(basePath, new byte[0], acls, CreateMode.PERSISTENT);
                 } catch (KeeperException anyError) {
@@ -201,7 +200,7 @@ public class ZKClusterManager implements AutoCloseable {
                 }
             }
             if (this.zk.exists(discoverypath, false) == null) {
-                LOGGER.log(Level.SEVERE, "creating discoverypath path " + discoverypath);
+                LOGGER.error("creating discoverypath path " + discoverypath);
                 try {
                     this.zk.create(discoverypath, new byte[0], acls, CreateMode.PERSISTENT);
                 } catch (KeeperException anyError) {
@@ -209,7 +208,7 @@ public class ZKClusterManager implements AutoCloseable {
                 }
             }
             String newPath = zk.create(discoverypath + "/brokers", localhostdata, acls, CreateMode.EPHEMERAL_SEQUENTIAL);
-            LOGGER.log(Level.SEVERE, "my own discoverypath path is " + newPath);
+            LOGGER.error("my own discoverypath path is " + newPath);
 
         } catch (KeeperException error) {
             throw new Exception("Could not init Zookeeper space at path " + basePath + ": " + error, error);
@@ -222,6 +221,7 @@ public class ZKClusterManager implements AutoCloseable {
         NOTELECTED,
         RUNNING
     }
+
     private volatile MasterStates state = MasterStates.NOTELECTED;
 
     public MasterStates getState() {
@@ -240,21 +240,19 @@ public class ZKClusterManager implements AutoCloseable {
                     requestLeadership();
                     break;
                 case OK: {
-                    LOGGER.log(Level.INFO, "data on ZK at {0}: {1}", new Object[]{leaderpath, new String(data, StandardCharsets.UTF_8)});
+                    LOGGER.info("data on ZK at {}: {}", leaderpath, new String(data, StandardCharsets.UTF_8));
                     if (state == MasterStates.ELECTED
                             && !Arrays.equals(data, localhostdata)) {
                         String localData = new String(localhostdata, StandardCharsets.UTF_8);
                         String currentData = new String(data, StandardCharsets.UTF_8);
-                        LOGGER.log(Level.SEVERE, "expected data on ZK at {0}: {1} different from current {2}", new Object[]{leaderpath,
-                            localData, currentData}
-                        );
+                        LOGGER.error("expected data on ZK at {}: {} different from current {}", leaderpath, localData, currentData);
                         leadershipLost("expected data on ZK at " + leaderpath + ": " + localData + " different from current " + currentData);
                     }
                     zk.getData(leaderpath, masterExistsWatcher, masterCheckBallback, null);
                     break;
                 }
                 default:
-                    LOGGER.log(Level.INFO, "masterCheckBallback - Unhandle code " + rc + " at " + path);
+                    LOGGER.info("masterCheckBallback - Unhandle code " + rc + " at " + path);
                     break;
             }
         }
@@ -268,7 +266,7 @@ public class ZKClusterManager implements AutoCloseable {
 
         @Override
         public void process(WatchedEvent we) {
-            LOGGER.log(Level.SEVERE, "process event {0}, at {1}, state {2}", new Object[]{we.getType(), we.getPath(), we.getState()});
+            LOGGER.error("process event {}, at {}, state {}", we.getType(), we.getPath(), we.getState());
             if (we.getType() == EventType.NodeDeleted) {
                 requestLeadership();
             } else if (we.getType() == EventType.NodeDataChanged) {
@@ -297,7 +295,7 @@ public class ZKClusterManager implements AutoCloseable {
     };
 
     private void masterExists() {
-        LOGGER.log(Level.SEVERE, "setting watch at " + leaderpath);
+        LOGGER.error("setting watch at " + leaderpath);
         zk.exists(leaderpath, masterExistsWatcher, masterExistsCallback, null);
     }
 
@@ -318,23 +316,23 @@ public class ZKClusterManager implements AutoCloseable {
 
         @Override
         public void processResult(int code, String path, Object o, String name) {
-            LOGGER.log(Level.INFO, "masterCreateCallback path:" + path + ", code:" + Code.get(code));
+            LOGGER.info("masterCreateCallback path:" + path + ", code:" + Code.get(code));
             switch (Code.get(code)) {
                 case CONNECTIONLOSS:
                     checkMaster();
                     break;
                 case OK:
-                    LOGGER.log(Level.SEVERE, "create success at " + path + ", code:" + Code.get(code) + ", I'm the new LEADER");
+                    LOGGER.error("create success at " + path + ", code:" + Code.get(code) + ", I'm the new LEADER");
                     state = MasterStates.ELECTED;
                     takeLeaderShip();
                     break;
                 case NODEEXISTS:
-                    LOGGER.log(Level.SEVERE, "create failed at " + path + ", code:" + Code.get(code) + ", a LEADER already exists");
+                    LOGGER.error("create failed at " + path + ", code:" + Code.get(code) + ", a LEADER already exists");
                     state = MasterStates.NOTELECTED;
                     masterExists();
                     break;
                 default:
-                    LOGGER.log(Level.SEVERE, "bad ZK state " + KeeperException.create(Code.get(code), path));
+                    LOGGER.error("bad ZK state " + KeeperException.create(Code.get(code), path));
             }
         }
 

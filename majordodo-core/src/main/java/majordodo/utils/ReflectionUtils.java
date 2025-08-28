@@ -26,8 +26,9 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utils for configuration
@@ -36,10 +37,10 @@ import java.util.logging.Logger;
  */
 public class ReflectionUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(ReflectionUtils.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReflectionUtils.class);
 
     public static void apply(Map<String, Object> properties, Object object) {
-        LOGGER.log(Level.FINEST, "Applying " + properties + " to " + object);
+        LOGGER.debug("Applying " + properties + " to " + object);
         Map<String, Object> notCaseSensitive = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         notCaseSensitive.putAll(properties);
         try {
@@ -49,7 +50,7 @@ public class ReflectionUtils {
                     Object value = notCaseSensitive.get(desc.getName());
                     if (value != null) {
                         Object coerced = corceValue(value, desc.getWriteMethod().getParameterTypes()[0]);
-                        LOGGER.log(Level.CONFIG, "applying " + desc.getName() + "=" + coerced + " to " + object);
+                        LOGGER.debug("applying " + desc.getName() + "=" + coerced + " to " + object);
                         desc.getWriteMethod().invoke(object, new Object[]{coerced});
                     }
                 }

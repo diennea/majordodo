@@ -19,7 +19,6 @@
  */
 package majordodo.client.discovery;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -28,8 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.client.BrokerAddress;
 import majordodo.client.BrokerDiscoveryService;
 import org.apache.zookeeper.KeeperException;
@@ -43,7 +42,7 @@ import org.apache.zookeeper.data.Stat;
  */
 public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
 
-    private static final Logger LOGGER = Logger.getLogger(ZookeeperDiscoveryService.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperDiscoveryService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Supplier<ZooKeeper> client;
@@ -77,10 +76,10 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
         String leaderPath = zkPath + "/leader";
         ZooKeeper currentClient = client.get();
         if (currentClient == null) {
-            LOGGER.log(Level.SEVERE, "zookeeper client is not available");
+            LOGGER.error("zookeeper client is not available");
             return null;
         }
-        LOGGER.log(Level.INFO, "lookingForLeader broker zkclient={0}", currentClient);
+        LOGGER.info("lookingForLeader broker zkclient={}", currentClient);
         try {
             Stat stat = new Stat();
             byte[] data = currentClient.getData(leaderPath, false, stat);
@@ -90,20 +89,20 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
         } catch (KeeperException.NoNodeException nobroker) {
             return null;
         } catch (KeeperException | InterruptedException | IOException err) {
-            LOGGER.log(Level.SEVERE, "zookeeper client error", err);
+            LOGGER.error("zookeeper client error", err);
             return null;
         }
     }
 
     @Override
     public void brokerFailed(BrokerAddress address) {
-        LOGGER.log(Level.SEVERE, "brokerFailed {0}, discarding cached value {1}", new Object[]{address, leaderBrokerCache});
+        LOGGER.error("brokerFailed {}, discarding cached value {}", address, leaderBrokerCache);
         leaderBrokerCache = null;
     }
 
     private BrokerAddress parseBrokerAddress(byte[] data, Stat stat) throws IOException {
         Map<String, String> res = MAPPER.readValue(new ByteArrayInputStream(data), Map.class);
-        LOGGER.log(Level.INFO, "zookeeper client result {0} stat {1}", new Object[] {res, stat});
+        LOGGER.info("zookeeper client result {} stat {}", res, stat);
         BrokerAddress address = new BrokerAddress();
         address.setInfo(res);
         String url = res.get("client.api.url");
@@ -123,14 +122,14 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
         String discoveryPath = zkPath + "/discovery";
         ZooKeeper zk = client.get();
         if (zk == null) {
-            LOGGER.log(Level.SEVERE, "zookeeper client is not available");
+            LOGGER.error("zookeeper client is not available");
             return null;
         }
         try {
             List<BrokerAddress> aa = new ArrayList<>();
             List<String> all = zk.getChildren(discoveryPath, false);
             for (String s : all) {
-//                LOGGER.log(Level.SEVERE, "getting " + s);
+//                LOGGER.log(ERROR, "getting " + s);
                 try {
                     Stat stat = new Stat();
                     byte[] data = zk.getData(s, false, stat);
@@ -144,7 +143,7 @@ public class ZookeeperDiscoveryService implements BrokerDiscoveryService {
             }
             return aa;
         } catch (KeeperException | InterruptedException | IOException err) {
-            LOGGER.log(Level.SEVERE, "zookeeper client error", err);
+            LOGGER.error("zookeeper client error", err);
             return null;
         }
     }

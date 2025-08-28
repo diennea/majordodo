@@ -33,7 +33,6 @@ import org.junit.Test;
  * @author francesco.caliumi
  */
 @BrokerTestUtils.StartReplicatedBrokers
-@BrokerTestUtils.LogLevel(level="ALL")
 public class ScheduledTasksAtFollowerPromotionTest extends BrokerTestUtils {
     
     @Before

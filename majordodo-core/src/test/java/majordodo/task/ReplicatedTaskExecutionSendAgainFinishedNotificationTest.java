@@ -30,10 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Formatter;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import majordodo.replication.ReplicatedCommitLog;
@@ -53,41 +49,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * Basic tests for recovery
  *
  * @author enrico.olivelli
  */
 public class ReplicatedTaskExecutionSendAgainFinishedNotificationTest {
-
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.INFO;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        ch.setFormatter(new Formatter() {
-            @Override
-            public String format(LogRecord record) {
-                if (record.getLevel().intValue() >= level.intValue()) {
-                    return "" + new java.sql.Timestamp(record.getMillis()) + " " + record.getLevel() + " " + record.getLoggerName() + ": " + formatMessage(record) + "\n";
-                } else {
-                    return null;
-                }
-            }
-        });
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
-
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);

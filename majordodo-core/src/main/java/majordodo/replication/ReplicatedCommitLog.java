@@ -47,8 +47,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -75,6 +76,7 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.slf4j.event.Level;
 
 /**
  * Commit log replicated on Apache Bookkeeper
@@ -85,7 +87,7 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
     justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class ReplicatedCommitLog extends StatusChangesLog {
 
-    private static final Logger LOGGER = Logger.getLogger(ReplicatedCommitLog.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReplicatedCommitLog.class);
     private static final long DOWNLOAD_FROM_MASTER_TIMEOUT = Long.parseLong(System.getProperty("majordodo.downloadfrommaster.timeout", "240000"));
 
     private String sharedSecret = "dodo";
@@ -148,7 +150,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         if (host == null) {
             host = addre.getAddress().getHostAddress();
         }
-        LOGGER.log(Level.INFO, "Downloading snapshot from " + addre + " ssl=" + ssl
+        LOGGER.info("Downloading snapshot from " + addre + " ssl=" + ssl
             + ", using hostname " + host + ", sslUnsecure:" + sslUnsecure);
         try (NettyBrokerLocator connector = new NettyBrokerLocator(host, addre.getPort(), broker.isSsl())) {
             connector.setSslUnsecure(sslUnsecure);
@@ -207,10 +209,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             try {
                 bookKeeper.deleteLedger(getLedgerId());
             } catch (InterruptedException ex) {
-                LOGGER.log(Level.SEVERE, "Cannot delete ledger from metadata " + getLedgerId() + ", interrupted", ex);
+                LOGGER.error("Cannot delete ledger from metadata " + getLedgerId() + ", interrupted", ex);
                 Thread.currentThread().interrupt();
             } catch (BKException ex) {
-                LOGGER.log(Level.SEVERE, "Cannot delete ledger from metadata " + getLedgerId(), ex);
+                LOGGER.error("Cannot delete ledger from metadata " + getLedgerId(), ex);
             }
         }
 
@@ -225,23 +227,23 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 writtenBytes += serialize.length;
                 long res = this.out.addEntry(serialize);
                 if (writtenBytes > maxLogicalLogFileSize) {
-                    LOGGER.log(Level.SEVERE, "{0} bytes written to ledger. need to open a new one", writtenBytes);
+                    LOGGER.error("{} bytes written to ledger. need to open a new one", writtenBytes);
                     openNewLedger();
                 }
                 return res;
             } catch (BKException.BKLedgerClosedException | BKException.BKLedgerFencedException | BKException.BKNotEnoughBookiesException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw err;
             } catch (InterruptedException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 Thread.currentThread().interrupt();
                 throw new LogNotAvailableException(err);
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
             } finally {
                 long _end = System.currentTimeMillis();
-                LOGGER.log(Level.FINEST, "writeEntry {0} time " + (_end - _start) + " ms", new Object[]{edit});
+                LOGGER.trace("writeEntry " + edit + " time " + (_end - _start) + " ms");
             }
         }
 
@@ -307,26 +309,26 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     }
                 }
                 if (writtenBytes > maxLogicalLogFileSize) {
-                    LOGGER.log(Level.INFO, "{0} bytes written to ledger. need to open a new one", writtenBytes);
+                    LOGGER.info("{} bytes written to ledger. need to open a new one", writtenBytes);
                     openNewLedger();
                 }
                 return res;
             } catch (BKException.BKLedgerClosedException err) {
                 // corner case, if some entry has been written ?? it will be duplicated on retry
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw err;
             } catch (BKException.BKLedgerFencedException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw err;
             } catch (BKException.BKNotEnoughBookiesException err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw err;
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while writing to ledger " + out, err);
+                LOGGER.error("error while writing to ledger " + out, err);
                 throw new LogNotAvailableException(err);
             } finally {
                 long _end = System.currentTimeMillis();
-                LOGGER.log(Level.FINEST, "writeEntries " + edits.size() + " time " + (_end - _start) + " ms");
+                LOGGER.trace("writeEntries " + edits.size() + " time " + (_end - _start) + " ms");
             }
         }
     }
@@ -398,14 +400,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         @Override
         public void leadershipLost(String reason) {
-            LOGGER.log(Level.SEVERE, "leadershipLost: {0}", reason);
+            LOGGER.error("leadershipLost: {}", reason);
             signalBrokerFailed(new Exception("leadership lost: " + reason));
 
         }
 
         @Override
         public void leadershipAcquired() {
-            LOGGER.log(Level.INFO, "leadershipAcquired");
+            LOGGER.info("leadershipAcquired");
         }
 
     };
@@ -425,7 +427,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         config.setThrottleValue(0);
         config.setEnableDigestTypeAutodetection(true);
         bookkeeperConfiguration.forEach((k, v) -> {
-            LOGGER.log(Level.INFO, "extra bookkeeper client property " + k + "=" + v);
+            LOGGER.info("extra bookkeeper client property " + k + "=" + v);
             config.setProperty(k, v);
         });
         try {
@@ -496,17 +498,17 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     }
                     return res;
                 } catch (BKException.BKLedgerClosedException closed) {
-                    LOGGER.log(Level.SEVERE, "ledger has been closed, need to open a new ledger", closed);
+                    LOGGER.error("ledger has been closed, need to open a new ledger", closed);
                     Thread.sleep(1000);
                     openNewLedger();
                 } catch (BKException.BKLedgerFencedException fenced) {
-                    LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
+                    LOGGER.error("this broker was fenced!", fenced);
                     zKClusterManager.close();
                     close();
                     signalBrokerFailed(fenced);
                     throw new LogNotAvailableException(fenced);
                 } catch (BKException.BKNotEnoughBookiesException missingBk) {
-                    LOGGER.log(Level.SEVERE, "bookkeeper failure", missingBk);
+                    LOGGER.error("bookkeeper failure", missingBk);
                     zKClusterManager.close();
                     close();
                     signalBrokerFailed(missingBk);
@@ -536,17 +538,17 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     lastSequenceNumber = newSequenceNumber;
                     return new LogSequenceNumber(currentLedgerId, newSequenceNumber);
                 } catch (BKException.BKLedgerClosedException closed) {
-                    LOGGER.log(Level.SEVERE, "ledger has been closed, need to open a new ledger", closed);
+                    LOGGER.error("ledger has been closed, need to open a new ledger", closed);
                     Thread.sleep(1000);
                     openNewLedger();
                 } catch (BKException.BKLedgerFencedException fenced) {
-                    LOGGER.log(Level.SEVERE, "this broker was fenced!", fenced);
+                    LOGGER.error("this broker was fenced!", fenced);
                     zKClusterManager.close();
                     close();
                     signalBrokerFailed(fenced);
                     throw new LogNotAvailableException(fenced);
                 } catch (BKException.BKNotEnoughBookiesException missingBk) {
-                    LOGGER.log(Level.SEVERE, "bookkeeper failure", missingBk);
+                    LOGGER.error("bookkeeper failure", missingBk);
                     zKClusterManager.close();
                     close();
                     signalBrokerFailed(missingBk);
@@ -568,7 +570,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             closeCurrentWriter();
             writer = new CommitFileWriter();
             currentLedgerId = writer.getLedgerId();
-            LOGGER.log(Level.INFO, "Opened new ledger:" + currentLedgerId);
+            LOGGER.info("Opened new ledger:" + currentLedgerId);
             // #160: workaround to prevent BookKeeper fault if a Bookie goes down when there are no entries on the ledger
             boolean done = false;
             try {
@@ -578,14 +580,14 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 throw new LogNotAvailableException(t);
             } finally {
                 if (!done) {
-                    LOGGER.log(Level.SEVERE, "Something went wrong while writing on ledeger " + currentLedgerId + ". Trying to delete it");
+                    LOGGER.error("Something went wrong while writing on ledeger " + currentLedgerId + ". Trying to delete it");
                     writer.tryDeleteLedgerSuppressingErrors();
                 }
             }
             actualLedgersList.addLedger(currentLedgerId);
             zKClusterManager.saveActualLedgersList(actualLedgersList);
         } catch (LogNotAvailableException t) {
-            LOGGER.log(Level.SEVERE, "error", t);
+            LOGGER.error("error", t);
             throw t;
         } finally {
             writeLock.unlock();
@@ -603,9 +605,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException {
         this.actualLedgersList = zKClusterManager.getActualLedgersList();
-        LOGGER.log(Level.INFO, "Actual ledgers list:" + actualLedgersList);
+        LOGGER.info("Actual ledgers list:" + actualLedgersList);
         this.currentLedgerId = snapshotSequenceNumber.ledgerId;
-        LOGGER.log(Level.INFO, "Latest snapshotSequenceNumber:" + snapshotSequenceNumber);
+        LOGGER.info("Latest snapshotSequenceNumber:" + snapshotSequenceNumber);
         if (currentLedgerId > 0 && !this.actualLedgersList.getActiveLedgers().contains(currentLedgerId)) {
             // TODO: download snapshot from another remote broker
             throw new LogNotAvailableException(new Exception("Actual ledgers list does not include latest snapshot ledgerid:" + currentLedgerId + ". manual recoveryis needed (pickup a recent snapshot from a live broker please)"));
@@ -614,7 +616,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             for (long ledgerId : actualLedgersList.getActiveLedgers()) {
 
                 if (ledgerId < snapshotSequenceNumber.ledgerId) {
-                    LOGGER.log(Level.INFO, "Skipping ledger " + ledgerId);
+                    LOGGER.info("Skipping ledger " + ledgerId);
                     continue;
                 }
                 LedgerHandle handle;
@@ -627,13 +629,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     long first;
                     if (ledgerId == snapshotSequenceNumber.ledgerId) {
                         first = snapshotSequenceNumber.sequenceNumber;
-                        LOGGER.log(Level.INFO, "Recovering from latest snapshot ledger " + ledgerId + ", starting from entry " + first);
+                        LOGGER.info("Recovering from latest snapshot ledger " + ledgerId + ", starting from entry " + first);
                     } else {
                         first = 0;
-                        LOGGER.log(Level.INFO, "Recovering from ledger " + ledgerId + ", starting from entry " + first);
+                        LOGGER.info("Recovering from ledger " + ledgerId + ", starting from entry " + first);
                     }
                     long lastAddConfirmed = handle.getLastAddConfirmed();
-                    LOGGER.log(Level.INFO, "Recovering from ledger " + ledgerId + ", first=" + first, " lastAddConfirmed=" + lastAddConfirmed);
+                    LOGGER.info("Recovering from ledger " + ledgerId + ", first=" + first, " lastAddConfirmed=" + lastAddConfirmed);
                     final int BATCH_SIZE = 10000;
                     if (lastAddConfirmed >= 0) {
 
@@ -645,8 +647,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             }
                             b = end + 1;
                             double percent = ((start - first) * 100.0 / (lastAddConfirmed + 1));
-                            if (LOGGER.isLoggable(Level.FINE)) {
-                                LOGGER.log(Level.FINE, "From entry {0}, to entry {1} ({2} %)", new Object[]{start, end, percent});                            
+                            if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
+                                LOGGER.debug("From entry {}, to entry {} ({} %)", start, end, percent);                            
                             }
                             Enumeration<LedgerEntry> seq = handle.readEntries(start, end);
                             while (seq.hasMoreElements()) {
@@ -654,10 +656,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                                 LogSequenceNumber number = new LogSequenceNumber(ledgerId, entry.getEntryId());
                                 StatusEdit statusEdit = StatusEdit.read(entry.getEntry());
                                 if (number.after(snapshotSequenceNumber)) {
-                                    LOGGER.log(Level.FINEST, "RECOVER ENTRY {0}, {1}", new Object[]{number, statusEdit});
+                                    LOGGER.trace("RECOVER ENTRY {}, {}", number, statusEdit);
                                     consumer.accept(number, statusEdit);
                                 } else {
-                                    LOGGER.log(Level.FINEST, "SKIP ENTRY {0}<{1}, {2}", new Object[]{number, snapshotSequenceNumber, statusEdit});
+                                    LOGGER.trace("SKIP ENTRY {}<{}, {}", number, snapshotSequenceNumber, statusEdit);
                                 }
                             }
                         }
@@ -667,11 +669,11 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
             }
         } catch (InterruptedException | BKException err) {
-            LOGGER.log(Level.SEVERE, "Fatal error during recovery", err);
+            LOGGER.error("Fatal error during recovery", err);
             signalBrokerFailed(err);
             throw new LogNotAvailableException(err);
         } catch (Exception err) {
-            LOGGER.log(Level.SEVERE, "Unknown fatal error during recovery", err);
+            LOGGER.error("Unknown fatal error during recovery", err);
             signalBrokerFailed(err);
             throw new LogNotAvailableException(err);
         }
@@ -732,19 +734,19 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String other_filename = path.getFileName() + "";
                 if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    LOGGER.log(Level.INFO, "Processing snapshot file: " + path);
+                    LOGGER.info("Processing snapshot file: " + path);
                     try {
                         other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
 
                         int pos = other_filename.indexOf('_');
                         if (pos > 0) {
                             if (!snapshotfilename.equals(path)) {
-                                LOGGER.log(Level.INFO, "Deleting old snapshot file: " + path);
+                                LOGGER.info("Deleting old snapshot file: " + path);
                                 Files.delete(path);
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                        LOGGER.error("Error:" + invalidName, invalidName);
                     }
                 }
             }
@@ -759,7 +761,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
         Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
         Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
-        LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
+        LOGGER.info("checkpoint, file:{}", snapshotfilename.toAbsolutePath());
 
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
             BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
@@ -789,31 +791,31 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             if (oldLedgers.isEmpty()) {
                 return;
             }
-            LOGGER.log(Level.INFO, "dropping ledgers before " + new java.sql.Timestamp(min_timestamp) + ", oldLedgers " + oldLedgers + ", currentLedgerId:" + currentLedgerId + ", latestSnapshotLedgerId:" + latestSnapshotPosition.ledgerId);
+            LOGGER.info("dropping ledgers before " + new java.sql.Timestamp(min_timestamp) + ", oldLedgers " + oldLedgers + ", currentLedgerId:" + currentLedgerId + ", latestSnapshotLedgerId:" + latestSnapshotPosition.ledgerId);
             for (long ledgerId : oldLedgers) {
                 if (ledgerId >= latestSnapshotPosition.ledgerId
                     || ledgerId >= currentLedgerId) {
-                    LOGGER.log(Level.SEVERE, "ledger " + ledgerId + " cannot be dropped");
+                    LOGGER.error("ledger " + ledgerId + " cannot be dropped");
                     continue;
                 }
 
                 writeLock.lock();
                 try {
-                    LOGGER.log(Level.INFO, "remove ledger " + ledgerId + " from the actualLedgersList");
+                    LOGGER.info("remove ledger " + ledgerId + " from the actualLedgersList");
                     actualLedgersList.removeLedger(ledgerId);
                     zKClusterManager.saveActualLedgersList(actualLedgersList);
-                    LOGGER.log(Level.INFO, "dropping ledger " + ledgerId + " on BookKeeper");
+                    LOGGER.info("dropping ledger " + ledgerId + " on BookKeeper");
                     try {
                         bookKeeper.deleteLedger(ledgerId);
                     } catch (BKNoSuchLedgerExistsException error) {
-                        LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId + ": " + error, error);
+                        LOGGER.error("error while dropping ledger " + ledgerId + ": " + error, error);
                     }
-                    LOGGER.log(Level.INFO, "dropping ledger {0}, finished", ledgerId);
+                    LOGGER.info("dropping ledger {}, finished", ledgerId);
                 } catch (BKException | InterruptedException error) {
-                    LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                    LOGGER.error("error while dropping ledger " + ledgerId, error);
                     throw new LogNotAvailableException(error);
                 } catch (LogNotAvailableException error) {
-                    LOGGER.log(Level.SEVERE, "error while dropping ledger " + ledgerId, error);
+                    LOGGER.error("error while dropping ledger " + ledgerId, error);
                     throw error;
                 } finally {
                     writeLock.unlock();
@@ -837,9 +839,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             actualLeader = zKClusterManager.getActualMaster();
             if (actualLeader != null && actualLeader.length > 0) {
                 leaderData = BrokerHostData.parseHostdata(actualLeader);
-                LOGGER.log(Level.INFO, "actual leader is at " + leaderData.getHost() + ":" + leaderData.getPort());
+                LOGGER.info("actual leader is at " + leaderData.getHost() + ":" + leaderData.getPort());
             } else {
-                LOGGER.log(Level.SEVERE, "no leader is present");
+                LOGGER.error("no leader is present");
             }
 
         } catch (Exception err) {
@@ -849,7 +851,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             byte[] snapshot;
             try {
                 snapshot = downloadSnapshotFromMaster(leaderData);
-                LOGGER.log(Level.INFO, "downloaded " + snapshot.length + " snapshot data from actual leader");
+                LOGGER.info("downloaded {} snapshot data from actual leader", snapshot.length);
                 try (InputStream in = new ByteArrayInputStream(snapshot);
                     GZIPInputStream gzip = new GZIPInputStream(in)) {
                     BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
@@ -858,7 +860,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                     return result;
                 }
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while reading snapshot from network", err);
+                LOGGER.error("error while reading snapshot from network", err);
             }
 
         }
@@ -868,7 +870,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String filename = path.getFileName() + "";
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    LOGGER.log(Level.INFO, "Processing snapshot file: " + path);
+                    LOGGER.info("Processing snapshot file: {}", path);
                     try {
                         filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
 
@@ -876,7 +878,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                         if (pos > 0) {
                             long ledgerId = Long.parseLong(filename.substring(0, pos));
                             long sequenceNumber = Long.parseLong(filename.substring(pos + 1));
-                            LOGGER.log(Level.INFO, "File " + path + " contains snapshot, ledgerId:" + ledgerId + ",sequenceNumber:" + sequenceNumber);
+                            LOGGER.info("File {} contains snapshot, ledgerId:{},sequenceNumber:{}", path, ledgerId, sequenceNumber);
                             LogSequenceNumber number = new LogSequenceNumber(ledgerId, sequenceNumber);
                             if (latest == null || number.after(latest)) {
                                 latest = number;
@@ -884,7 +886,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                        LOGGER.error("Error:{}", invalidName, invalidName);
                     }
                 }
             }
@@ -892,27 +894,25 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             throw new LogNotAvailableException(err);
         }
         LedgersInfo _actualLedgersList = zKClusterManager.getActualLedgersList();
-        LOGGER.log(Level.INFO, "ActualLedgersList from ZK: " + _actualLedgersList);
+        LOGGER.info("ActualLedgersList from ZK: {}", _actualLedgersList);
 
         if (snapshotfilename != null) {
-            LOGGER.log(Level.INFO, "Loading snapshot from " + snapshotfilename);
+            LOGGER.info("Loading snapshot from {}", snapshotfilename);
             try (InputStream in = Files.newInputStream(snapshotfilename);
                 BufferedInputStream bin = new BufferedInputStream(in);
                 GZIPInputStream gzip = new GZIPInputStream(bin)) {
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
 
-                LOGGER.log(Level.INFO,
-                    "Snapshot has been taken at ledgerId=" + result.getActualLogSequenceNumber().ledgerId + ", sequenceNumber=" + result.getActualLogSequenceNumber().sequenceNumber);
+                LOGGER.info("Snapshot has been taken at ledgerId={}, sequenceNumber={}", result.getActualLogSequenceNumber().ledgerId, result.getActualLogSequenceNumber().sequenceNumber);
                 if (_actualLedgersList.getActiveLedgers()
                     .contains(currentLedgerId)) {
                     return result;
                 }
 
-                LOGGER.log(Level.SEVERE,
-                    "Actually the loaded snapshot is not recoveable given the actual ledgers list. This file cannot be used for recovery");
+                LOGGER.error("Actually the loaded snapshot is not recoveable given the actual ledgers list. This file cannot be used for recovery");
             } catch (IOException err) {
-                LOGGER.log(Level.SEVERE, "error while reading snapshot data", err);
+                LOGGER.error("error while reading snapshot data", err);
                 throw new LogNotAvailableException(err);
             }
         }
@@ -920,13 +920,13 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         currentLedgerId = -1;
 
         if (_actualLedgersList.getFirstLedger() < 0) {
-            LOGGER.log(Level.SEVERE, "No snapshot present and no ledger registered on ZK. Starting with a brand new status");
+            LOGGER.error("No snapshot present and no ledger registered on ZK. Starting with a brand new status");
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else if (_actualLedgersList.getActiveLedgers().contains(_actualLedgersList.getFirstLedger())) {
-            LOGGER.log(Level.SEVERE, "No valid snapshot present, But the first ledger of history " + _actualLedgersList.getFirstLedger() + ", is still present in active ledgers list. I can use an empty snapshot in order to boot");
+            LOGGER.error("No valid snapshot present, But the first ledger of history {}, is still present in active ledgers list. I can use an empty snapshot in order to boot", _actualLedgersList.getFirstLedger());
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
-            LOGGER.log(Level.SEVERE, "No snapshot present, no leader is present, cannot boot");
+            LOGGER.error("No snapshot present, no leader is present, cannot boot");
             throw new LogNotAvailableException(new Exception("No valid snapshot present, no leader is present, cannot boot"));
         }
     }
@@ -949,7 +949,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 }
             }
             closed = true;
-            LOGGER.severe("closed");
+            LOGGER.error("closed");
         } finally {
             writer = null;
             writeLock.unlock();
@@ -963,7 +963,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
             try {
                 writer.close();
             } catch (Exception err) {
-                LOGGER.log(Level.SEVERE, "error while closing ledger", err);
+                LOGGER.error("error while closing ledger", err);
             } finally {
                 writer = null;
             }
@@ -987,7 +987,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         try {
             actualList = zKClusterManager.getActualLedgersList().getActiveLedgers();
         } catch (LogNotAvailableException temporaryError) {
-            LOGGER.log(Level.SEVERE, "temporary error " + temporaryError, temporaryError);
+            LOGGER.error("temporary error {}", temporaryError, temporaryError);
             return;
         }
 
@@ -998,9 +998,9 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
         try {
             long nextEntry = skipPast.sequenceNumber + 1;
-            LOGGER.log(Level.FINE, "followTheLeader skipPast:{0} toRead: {1} actualList:{2}, nextEntry:{3}", new Object[]{skipPast, toRead, actualList, nextEntry});
+            LOGGER.debug("followTheLeader skipPast:{} toRead: {} actualList:{}, nextEntry:{}", skipPast, toRead, actualList, nextEntry);
             for (Long previous : toRead) {
-                //LOGGER.log(Level.SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
+                //LOGGER.log(SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
 
                 List<Map.Entry<Long, StatusEdit>> buffer = new ArrayList<>();
 
@@ -1008,7 +1008,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 try (LedgerHandle lh = bookKeeper.openLedgerNoRecovery(previous,
                     BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));) {
                     long lastAddConfirmed = lh.getLastAddConfirmed();
-                    LOGGER.log(Level.FINE, "followTheLeader openLedger {0} -> lastAddConfirmed:{1}, nextEntry:{2}", new Object[]{previous, lastAddConfirmed, nextEntry});
+                    LOGGER.debug("followTheLeader openLedger {} -> lastAddConfirmed:{}, nextEntry:{}", previous, lastAddConfirmed, nextEntry);
                     if (nextEntry > lastAddConfirmed) {
                         nextEntry = 0;
                         continue;
@@ -1024,10 +1024,10 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                         }
                     }
                 } catch (BKException.BKLedgerRecoveryException | BKBookieHandleNotAvailableException temporaryError) {
-                    LOGGER.log(Level.SEVERE, "temporary error " + temporaryError, temporaryError);
+                    LOGGER.error("temporary error {}", temporaryError, temporaryError);
                     return;
                 } catch (InterruptedException err) {
-                    LOGGER.log(Level.SEVERE, "error while reading ledger " + err, err);
+                    LOGGER.error("error while reading ledger {}", err, err);
                     Thread.currentThread().interrupt();
                     throw err;
                 }
@@ -1036,7 +1036,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 for (Map.Entry<Long, StatusEdit> entry : buffer) {
                     long entryId = entry.getKey();
                     StatusEdit statusEdit = entry.getValue();
-                    LOGGER.log(Level.FINEST, "entry {0},{1} -> {2}", new Object[]{previous, entryId, statusEdit});
+                    LOGGER.debug("entry {},{} -> {}", previous, entryId, statusEdit);
                     LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
                     consumer.accept(number, statusEdit);
                     lastSequenceNumber = number.sequenceNumber;

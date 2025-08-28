@@ -23,16 +23,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import majordodo.network.BrokerRejectedConnectionException;
-import majordodo.network.BrokerNotAvailableException;
-import majordodo.network.BrokerLocator;
-import majordodo.network.ConnectionRequestInfo;
-import majordodo.executors.TaskExecutor;
-import majordodo.executors.TaskExecutorFactory;
-import majordodo.network.Channel;
-import majordodo.network.ChannelEventListener;
-import majordodo.network.Message;
-import majordodo.network.SendResultCallback;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,11 +35,21 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import majordodo.codepools.CodePoolClassloadersManager;
+import majordodo.executors.TaskExecutor;
+import majordodo.executors.TaskExecutorFactory;
+import majordodo.network.BrokerLocator;
+import majordodo.network.BrokerNotAvailableException;
+import majordodo.network.BrokerRejectedConnectionException;
+import majordodo.network.Channel;
+import majordodo.network.ChannelEventListener;
+import majordodo.network.ConnectionRequestInfo;
+import majordodo.network.Message;
 import majordodo.network.ReplyCallback;
+import majordodo.network.SendResultCallback;
 import majordodo.utils.ErrorUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Core of the worker inside the JVM
@@ -58,7 +58,7 @@ import majordodo.utils.ErrorUtils;
  */
 public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, AutoCloseable {
 
-    private static final Logger LOGGER = Logger.getLogger(WorkerCore.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkerCore.class);
 
     private final ExecutorService threadpool;
     private final String processId;
@@ -97,7 +97,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     }
 
     public void die() {
-        LOGGER.log(Level.SEVERE, "Die!");
+        LOGGER.error("Die!");
         if (coreThread != null) {
             coreThread.interrupt();
         }
@@ -124,7 +124,9 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             return new TaskExecutor();
         }
 
-    };
+    }
+
+    ;
     private TaskExecutorFactory executorFactory;
 
     public Map<Long, String> getRunningTasks() {
@@ -174,28 +176,28 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         Channel _channel = channel;
         if (_channel != null) {
             _channel.sendOneWayMessage(Message.WORKER_PING(
-                processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads(), config.getResourcesLimits(),
-                config.getMaxThreadPerUserPerTaskTypePercent()),
-                (Message originalMessage, Throwable error) -> {
-                    if (error != null) {
-                        if (!stopped) {
-                            LOGGER.log(Level.SEVERE, "ping error ", error);
-                            disconnect();
+                            processId, config.getGroups(), config.getExcludedGroups(), config.getMaxThreadsByTaskType(), config.getMaxThreads(), config.getResourcesLimits(),
+                            config.getMaxThreadPerUserPerTaskTypePercent()),
+                    (Message originalMessage, Throwable error) -> {
+                        if (error != null) {
+                            if (!stopped) {
+                                LOGGER.error("ping error ", error);
+                                disconnect();
+                            }
                         }
-                    }
-                });
+                    });
         } else {
-            LOGGER.log(Level.FINER, "ping not connected");
+            LOGGER.debug("ping not connected");
         }
     }
 
     private WorkerCoreConfiguration config;
 
     public WorkerCore(
-        WorkerCoreConfiguration config,
-        String processId,
-        BrokerLocator brokerLocator,
-        WorkerStatusListener listener) {
+            WorkerCoreConfiguration config,
+            String processId,
+            BrokerLocator brokerLocator,
+            WorkerStatusListener listener) {
         this.config = config;
 
         if (listener == null) {
@@ -221,7 +223,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             } else {
                 codePoolsDirectory = Paths.get(config.getCodePoolsDirectory()).toAbsolutePath();
             }
-            LOGGER.log(Level.INFO, "CodePools Working directory {0}", codePoolsDirectory);
+            LOGGER.info("CodePools Working directory {}", codePoolsDirectory);
             try {
                 this.classloadersManager = new CodePoolClassloadersManager(codePoolsDirectory, this);
             } catch (IOException err) {
@@ -237,13 +239,13 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
         if (executorFactory == null) {
             if (codePoolsDirectory == null) {
                 executorFactory = new TaskModeAwareExecutorFactory(
-                    new NotImplementedTaskExecutorFactory()
+                        new NotImplementedTaskExecutorFactory()
                 );
             } else {
                 executorFactory = new CodePoolAwareExecutorFactory(
-                    new TaskModeAwareExecutorFactory(
-                        new NotImplementedTaskExecutorFactory()
-                    ), classloadersManager);
+                        new TaskModeAwareExecutorFactory(
+                                new NotImplementedTaskExecutorFactory()
+                        ), classloadersManager);
             }
         }
         this.coreThread.start();
@@ -252,7 +254,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void messageReceived(Message message) {
-        LOGGER.log(Level.FINEST, "received {0}", new Object[]{message});
+        LOGGER.debug("received {}", message);
         if (message.type == Message.TYPE_KILL_WORKER) {
             killWorkerHandler.killWorker(this);
             return;
@@ -264,7 +266,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.FINE, "channel closed");
+        LOGGER.debug("channel closed");
         disconnect();
         brokerLocator.brokerDisconnected();
     }
@@ -276,7 +278,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
     ExecutorRunnable.TaskExecutionCallback executionCallback = new ExecutorRunnable.TaskExecutionCallback() {
         @Override
         public void taskStatusChanged(long taskId, Map<String, Object> parameters, String finalStatus, String results, Throwable error) {
-            LOGGER.log(Level.FINEST, "taskStatusChanged {0} {1} {2} {3} {4}", new Object[]{taskId, parameters, finalStatus, results, error});
+            LOGGER.debug("taskStatusChanged {} {} {} {} {}", taskId, parameters, finalStatus, results, error);
             switch (finalStatus) {
                 case TaskExecutorStatus.ERROR:
                 case TaskExecutorStatus.FINISHED:
@@ -297,7 +299,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
 
     private void notifyTasksFinished(List<FinishedTaskNotification> notifications) {
         listener.beforeNotifyTasksFinished(notifications, this);
-        LOGGER.log(Level.FINEST, "notifyTasksFinished {0}", notifications);
+        LOGGER.debug("notifyTasksFinished {}", notifications);
         Channel _channel = channel;
         if (_channel != null) {
             List<Map<String, Object>> tasksData = new ArrayList<>();
@@ -308,7 +310,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 params.put("result", not.results);
                 if (not.error != null) {
                     params.put("error", ErrorUtils.stacktrace(not.error));
-                    LOGGER.log(Level.SEVERE, "notifyTaskFinished " + params, not.error);
+                    LOGGER.error("notifyTaskFinished " + params, not.error);
                 }
                 tasksData.add(params);
             });
@@ -318,16 +320,16 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 @Override
                 public void replyReceived(Message originalMessage, Message msg, Throwable error) {
                     if (error != null) {
-                        LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker comunication failure", error);
+                        LOGGER.error("re-enqueing notification of task finish, due to broker comunication failure", error);
                         pendingFinishedTaskNotifications.addAll(notifications);
                     } else if (msg.type != Message.TYPE_ACK) {
-                        LOGGER.log(Level.SEVERE, "re-enqueing notification of task finish, due to broker error anwser {0}", msg);
+                        LOGGER.error("re-enqueing notification of task finish, due to broker error anwser {}", msg);
                         pendingFinishedTaskNotifications.addAll(notifications);
                     }
                 }
             });
         } else {
-            LOGGER.log(Level.INFO, "re-enqueing notification of task finish, due to broker connection failure");
+            LOGGER.info("re-enqueing notification of task finish, due to broker connection failure");
             pendingFinishedTaskNotifications.addAll(notifications);
         }
     }
@@ -378,18 +380,18 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                             connect();
                         }
                     } catch (InterruptedException exit) {
-                        LOGGER.log(Level.SEVERE, "exit loop " + exit);
+                        LOGGER.error("exit loop " + exit);
                         break;
                     } catch (BrokerNotAvailableException | BrokerRejectedConnectionException retry) {
-                        LOGGER.log(Level.SEVERE, "no broker available:" + retry);
+                        LOGGER.error("no broker available:" + retry);
                     }
 
                     if (channel == null) {
                         try {
-                            LOGGER.log(Level.FINEST, "not connected, waiting 5000 ms");
+                            LOGGER.debug("not connected, waiting 5000 ms");
                             Thread.sleep(5000);
                         } catch (InterruptedException exit) {
-                            LOGGER.log(Level.SEVERE, "exit loop " + exit);
+                            LOGGER.error("exit loop " + exit);
                             break;
                         }
                         continue;
@@ -398,7 +400,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                     try {
                         sendPendingNotifications(false);
                     } catch (InterruptedException exit) {
-                        LOGGER.log(Level.SEVERE, "exit loop " + exit);
+                        LOGGER.error("exit loop " + exit);
                         break;
                     }
 
@@ -413,10 +415,10 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                         }
                     }
                 } catch (Throwable error) {
-                    LOGGER.log(Level.SEVERE, "error on main WorkerCore loop:" + error, error);
+                    LOGGER.error("error on main WorkerCore loop:" + error, error);
                 }
             }
-            LOGGER.log(Level.FINE, "shutting down {0}", processId);
+            LOGGER.debug("shutting down {}", processId);
 
             Channel _channel = channel;
             if (_channel != null) {
@@ -441,7 +443,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             long delta = now - lastFinishedTaskNotificationSent;
             int count = pendingFinishedTaskNotifications.size();
             if (!force && (count < config.getMaxPendingFinishedTaskNotifications() && delta < config.getMaxWaitPendingFinishedTaskNotifications())) {
-                LOGGER.log(Level.FINEST, "sendPendingNotifications count {0} elapsed {1}", new Object[]{count, delta + " ms"});
+                LOGGER.debug("sendPendingNotifications count {} elapsed {}", count, delta + " ms");
                 Thread.sleep(100);
                 return;
             }
@@ -462,7 +464,7 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
             long _start = System.currentTimeMillis();
             notifyTasksFinished(batch);
             long _stop = System.currentTimeMillis();
-            LOGGER.log(Level.FINE, "pending notifications sent {0} remaining {1}, {2} ms", new Object[]{batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start});
+            LOGGER.debug("pending notifications sent {} remaining {}, {} ms", batch.size(), pendingFinishedTaskNotifications.size(), _stop - _start);
         }
     }
 
@@ -474,11 +476,11 @@ public class WorkerCore implements ChannelEventListener, ConnectionRequestInfo, 
                 channel = null;
             }
         }
-        LOGGER.log(Level.INFO, "connecting, location={0} processId={1} workerid={2}", new Object[]{this.location, this.processId, this.workerId});
+        LOGGER.info("connecting, location={} processId={} workerid={}", this.location, this.processId, this.workerId);
         disconnect();
         try {
             channel = brokerLocator.connect(this, this);
-            LOGGER.log(Level.FINE, "connected, channel:{0}", channel);
+            LOGGER.debug("connected, channel:{}", channel);
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTED, this);
         } catch (BrokerRejectedConnectionException | BrokerNotAvailableException error) {
             listener.connectionEvent(WorkerStatusListener.EVENT_CONNECTION_ERROR, this);

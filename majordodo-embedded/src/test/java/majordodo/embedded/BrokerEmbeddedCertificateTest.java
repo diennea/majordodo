@@ -22,6 +22,9 @@ package majordodo.embedded;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.ConsoleAppender;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -34,11 +37,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import majordodo.broker.StandaloneHttpAPIServlet;
 import majordodo.client.BrokerAddress;
 import majordodo.client.ClientConnection;
@@ -61,6 +59,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 public class BrokerEmbeddedCertificateTest {
 
@@ -70,7 +69,7 @@ public class BrokerEmbeddedCertificateTest {
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private static final Logger NETTY_LOGGER = Logger.getLogger(NettyChannelAcceptor.class.getName());
+    private static final ch.qos.logback.classic.Logger NETTY_LOGGER = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(NettyChannelAcceptor.class);
     private static List<String> logMessages = new ArrayList<>();
 
     @BeforeClass
@@ -239,14 +238,14 @@ public class BrokerEmbeddedCertificateTest {
     private static List<String> interceptNettyLogs() {
         NETTY_LOGGER.setLevel(Level.ALL);
         List<String> logMessages = new ArrayList<>();
-        Handler handler = new ConsoleHandler() {
+        Appender handler = new ConsoleAppender() {
             @Override
-            public void publish(LogRecord record) {
+            protected void append(Object eventObject) {
                 System.out.println("handler called");
-                logMessages.add(record.getMessage());
+                logMessages.add(eventObject.toString());
             }
         };
-        NETTY_LOGGER.addHandler(handler);
+        NETTY_LOGGER.addAppender(handler);
 
         return logMessages;
     }

@@ -19,10 +19,8 @@
  */
 package majordodo.task;
 
-import majordodo.executors.TaskExecutor;
-import majordodo.worker.WorkerCore;
-import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,14 +30,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.SubmitTaskResult;
-import static org.junit.Assert.assertEquals;
+import majordodo.executors.TaskExecutor;
+import majordodo.worker.WorkerCore;
+import majordodo.worker.WorkerCoreConfiguration;
+import majordodo.worker.WorkerStatusListener;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertTrue;
 
 public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
@@ -166,12 +164,6 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
     @Test
     public void manyTasks_max10() throws Exception {
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         for (int i = 0; i < 10; i++) {
@@ -230,12 +222,6 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
     @Test
     public void manyTasks_max10_batch() throws Exception {
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         List<AddTaskRequest> requests = new ArrayList<>();
@@ -301,12 +287,6 @@ public abstract class SimpleBrokerSuite extends BasicBrokerEnv {
 
     @Test
     public void manyTasks_max10_batch_transaction() throws Exception {
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").setLevel(Level.ALL);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-
         // submit 10 tasks
         Set<Long> todo = new ConcurrentSkipListSet<>();
         List<AddTaskRequest> requests = new ArrayList<>();
