@@ -51,8 +51,8 @@
         <url>https://github.com/diennea/majordodo/issues</url>
     </issueManagement>
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
         <libs.spotbugs>4.8.6</libs.spotbugs>
         <libs.jcipi-annotations>1.0</libs.jcipi-annotations>
