@@ -19,12 +19,8 @@
  */
 package majordodo.task;
 
-import majordodo.executors.TaskExecutor;
-import majordodo.network.netty.NettyBrokerLocator;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.worker.WorkerCore;
-import majordodo.worker.WorkerCoreConfiguration;
-import majordodo.worker.WorkerStatusListener;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -37,13 +33,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
+import majordodo.executors.TaskExecutor;
+import majordodo.network.netty.NettyBrokerLocator;
+import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.worker.WorkerCore;
+import majordodo.worker.WorkerCoreConfiguration;
+import majordodo.worker.WorkerStatusListener;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -88,26 +85,6 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
 
     }
 
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.SEVERE;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
-
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
@@ -132,7 +109,7 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
 
         Path mavenTargetDir = Paths.get("target").toAbsolutePath();
         workDir = Files.createTempDirectory(mavenTargetDir, "test" + System.nanoTime());
-        
+
         long taskId;
         String workerId = "abc";
         String taskParams = "param";
@@ -179,16 +156,16 @@ public class TaskExecutionRecoveryOnWorkerConnectionResetTest {
                         core.start();
                         core.setExecutorFactory(
                                 (String tasktype, Map<String, Object> parameters) -> new TaskExecutor() {
-                            @Override
-                            public String executeTask(Map<String, Object> parameters) throws Exception {
-                                taskStartedLatch.countDown();
-                                System.out.println("executeTask: " + parameters);
-                                core.disconnect();
-                                disconnectedLatch.await(10000, TimeUnit.MILLISECONDS);
-                                return "theresult";
-                            }
+                                    @Override
+                                    public String executeTask(Map<String, Object> parameters) throws Exception {
+                                        taskStartedLatch.countDown();
+                                        System.out.println("executeTask: " + parameters);
+                                        core.disconnect();
+                                        disconnectedLatch.await(10000, TimeUnit.MILLISECONDS);
+                                        return "theresult";
+                                    }
 
-                        }
+                                }
                         );
 
                         assertTrue(taskStartedLatch.await(30, TimeUnit.SECONDS));

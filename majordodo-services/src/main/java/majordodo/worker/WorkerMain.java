@@ -36,8 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.daemons.PidFileLocker;
 import majordodo.replication.ZKBrokerLocator;
 
@@ -214,7 +215,7 @@ public class WorkerMain implements AutoCloseable {
             try {
                 workerCore.stop();
             } catch (Exception ex) {
-                Logger.getLogger(WorkerMain.class.getName()).log(Level.SEVERE, null, ex);
+                LoggerFactory.getLogger(WorkerMain.class).error(null, ex);
             } finally {
                 workerCore = null;
             }

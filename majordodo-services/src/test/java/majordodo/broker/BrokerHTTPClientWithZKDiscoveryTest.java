@@ -8,9 +8,6 @@ package majordodo.broker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 import majordodo.client.ClientConnection;
 import majordodo.client.SubmitTaskRequest;
 import majordodo.client.SubmitTaskResponse;
@@ -27,27 +24,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 public class BrokerHTTPClientWithZKDiscoveryTest {
-
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.SEVERE;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
     @Rule
     public TemporaryFolder folderZk = new TemporaryFolder();
     @Rule

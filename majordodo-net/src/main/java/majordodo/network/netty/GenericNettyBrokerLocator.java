@@ -28,8 +28,9 @@ import majordodo.network.ConnectionRequestInfo;
 import majordodo.network.Message;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.network.BrokerHostData;
 import static majordodo.security.sasl.ClientAuthenticationUtils.performAuthentication;
 
@@ -58,7 +59,7 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
         NettyConnector connector = new NettyConnector(messageReceiver);
         try {
             BrokerHostData broker = getServer();
-            LOGGER.log(Level.SEVERE, "connect to broker {0}", broker);
+            LOGGER.error("connect to broker {}", broker);
             if (broker == null) {
                 throw new BrokerNotAvailableException(new Exception("no broker available"));
             }
@@ -106,6 +107,6 @@ public abstract class GenericNettyBrokerLocator implements BrokerLocator {
         }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(GenericNettyBrokerLocator.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(GenericNettyBrokerLocator.class);
 
 }

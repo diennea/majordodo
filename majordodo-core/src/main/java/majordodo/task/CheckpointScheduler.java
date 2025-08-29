@@ -25,8 +25,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Schedules checkpoints
@@ -38,7 +39,7 @@ public class CheckpointScheduler {
     private final BrokerConfiguration configuration;
     private final ScheduledExecutorService timer;
     private final Broker broker;
-    private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(Broker.class);
 
     public CheckpointScheduler(BrokerConfiguration configuration, Broker broker) {
         this.configuration = configuration;
@@ -60,7 +61,7 @@ public class CheckpointScheduler {
             try {
                 broker.checkpoint();
             } catch (LogNotAvailableException error) {
-                LOGGER.log(Level.SEVERE, "fatal error during checkpoint", error);
+                LOGGER.error("fatal error during checkpoint", error);
             }
         }
 

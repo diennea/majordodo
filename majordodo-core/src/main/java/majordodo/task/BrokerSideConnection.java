@@ -33,8 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.zip.GZIPOutputStream;
 import majordodo.codepools.CodePool;
 import majordodo.network.ConnectionRequestInfo;
@@ -47,7 +48,7 @@ import majordodo.security.sasl.SaslNettyServer;
  */
 public class BrokerSideConnection implements ChannelEventListener, ServerSideConnection {
 
-    private static final Logger LOGGER = Logger.getLogger(BrokerSideConnection.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrokerSideConnection.class);
 
     private String clientId;
     private String workerProcessId;
@@ -139,10 +140,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
         lastReceivedMessageTs = System.currentTimeMillis();
         Channel _channel = channel;
         if (_channel == null) {
-            LOGGER.log(Level.SEVERE, "receivedMessageFromWorker {0}, but channel is closed", message);
+            LOGGER.error("receivedMessageFromWorker {}, but channel is closed", message);
             return;
         }
-        LOGGER.log(Level.FINER, "receivedMessageFromWorker {0}", message);
+        LOGGER.trace("receivedMessageFromWorker {}", message);
         switch (message.type) {
             case Message.TYPE_SASL_TOKEN_MESSAGE_REQUEST: {
                 try {
@@ -177,13 +178,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     if (saslNettyServer.isComplete()) {
                         username = saslNettyServer.getUserName();
                         authenticated = true;
-                        LOGGER.log(Level.FINE, "client {0} completed SASL authentication as {1}", new Object[]{channel, username});
+                        LOGGER.debug("client {} completed SASL authentication as {}", channel, username);
                         saslNettyServer = null;
                     }
                     _channel.sendReplyMessage(message, tokenChallenge);
                 } catch (Exception err) {
                     if (err instanceof javax.security.sasl.SaslException) {
-                        LOGGER.log(Level.SEVERE, "SASL error " + err, err);
+                        LOGGER.error("SASL error " + err, err);
                         Message error = Message.ERROR(null, new Exception("Authentication failed (SASL error)"));
                         _channel.sendReplyMessage(message, error);
                     } else {
@@ -194,7 +195,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 break;
             }
             case Message.TYPE_CONNECTION_REQUEST: {
-                LOGGER.log(Level.INFO, "connection request {0}", message);
+                LOGGER.info("connection request {}", message);
                 String clientType = (String) message.parameters.get("clientType");
                 if (clientType == null) {
                     // legacy workers
@@ -250,12 +251,12 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 this.location = (String) message.parameters.get("location");
                 this.workerProcessId = (String) message.parameters.get("processId");
                 if (isWorker) {
-                    LOGGER.log(Level.INFO, "registering worker connection {0}, workerId:{1}, processId={2}, location={3}", new Object[]{connectionId, _clientId, message.parameters.get("processId"), message.parameters.get("location")});
+                    LOGGER.info("registering worker connection {}, workerId:{}, processId={}, location={}", connectionId, _clientId, message.parameters.get("processId"), message.parameters.get("location"));
                     BrokerSideConnection actual = this.broker.getAcceptor().getActualConnectionFromWorker(_clientId);
                     if (actual != null) {
-                        LOGGER.log(Level.SEVERE, "there is already a connection id: {0}, workerId:{1}, {2}", new Object[]{actual.getConnectionId(), _clientId, actual});
+                        LOGGER.error("there is already a connection id: {}, workerId:{}, {}", actual.getConnectionId(), _clientId, actual);
                         if (!actual.validate()) {
-                            LOGGER.log(Level.SEVERE, "connection id: {0}, is no more valid", actual.getConnectionId());
+                            LOGGER.error("connection id: {}, is no more valid", actual.getConnectionId());
                             actual.close();
                         } else {
                             answerConnectionNotAcceptedAndClose(message, new Exception("already connected from " + _clientId + ", processId " + actual.workerProcessId + ", location:" + actual.location + ", connectionId " + actual.connectionId + " channel " + actual.channel));
@@ -269,7 +270,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                         return;
                     }
                 } else {
-                    LOGGER.log(Level.INFO, "registering broker peer connection {0}, processId={1}, location={2}", new Object[]{connectionId, message.parameters.get("processId"), message.parameters.get("location")});
+                    LOGGER.info("registering broker peer connection {}, processId={}, location={}", connectionId, message.parameters.get("processId"), message.parameters.get("location"));
                 }
                 channel.setName(clientId);
                 channel.setRemoteHost(location);
@@ -295,7 +296,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     break;
                 }
                 List<Map<String, Object>> tasksData = (List<Map<String, Object>>) message.parameters.get("tasksData");
-                LOGGER.log(Level.FINEST, "tasksFinished {0} {1}", new Object[]{tasksData, message.parameters});
+                LOGGER.trace("tasksFinished {} {}", tasksData, message.parameters);
                 List<TaskFinishedData> finishedTasksInfo = new ArrayList<>(tasksData.size());
                 for (Map<String, Object> task : tasksData) {
                     long taskid = (Long) task.get("taskid");
@@ -311,7 +312,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     _channel.sendReplyMessage(message, Message.ACK(workerProcessId));
                 } catch (LogNotAvailableException error) {
                     _channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
-                    LOGGER.log(Level.SEVERE, "error", error);
+                    LOGGER.error("error", error);
                 }
                 break;
             case Message.TYPE_WORKER_PING:
@@ -332,7 +333,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                 List<Integer> groups = (List<Integer>) message.parameters.getOrDefault("groups", Collections.emptyList());
                 Set<Integer> excludedGroups = (Set<Integer>) message.parameters.getOrDefault("excludedGroups", Collections.emptySet());
                 Map<String, Integer> resourceLimits = (Map<String, Integer>) message.parameters.getOrDefault("resources", Collections.emptyMap());
-                LOGGER.log(Level.FINE, "ping connection {0}, workerId:{1}, processId={2}, location={3}", new Object[]{connectionId, clientId, message.parameters.get("processId"), message.parameters.get("location")});
+                LOGGER.debug("ping connection {}, workerId:{}, processId={}, location={}", connectionId, clientId, message.parameters.get("processId"), message.parameters.get("location"));
                 if (workerProcessId != null && !message.workerProcessId.equals(processId)) {
                     // worker process is not the same as the one we expect, send a "die" message and close the channel
                     Message killWorkerMessage = Message.KILL_WORKER(workerProcessId);
@@ -356,7 +357,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     _channel.sendReplyMessage(message, error);
                     break;
                 }
-                LOGGER.log(Level.INFO, "worker {0} at {1}, processid {2} sent shutdown message", new Object[]{clientId, location, workerProcessId});
+                LOGGER.info("worker {} at {}, processid {} sent shutdown message", clientId, location, workerProcessId);
                 /// ignore
                 break;
             case Message.TYPE_SNAPSHOT_DOWNLOAD_REQUEST:
@@ -370,7 +371,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     _channel.sendReplyMessage(message, error);
                     break;
                 }
-                LOGGER.log(Level.INFO, "creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from {0}", this.channel);
+                LOGGER.info("creating snapshot in reponse to a SNAPSHOT_DOWNLOAD_REQUEST from {}", this.channel);
                 try {
                     BrokerStatusSnapshot snapshot = broker.getBrokerStatus().createSnapshot();
 
@@ -383,10 +384,10 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     } catch (IOException err) {
                         throw new LogNotAvailableException(err);
                     }
-                    LOGGER.log(Level.INFO, "sending snapshot data... {0} bytes", data.length);
+                    LOGGER.info("sending snapshot data... {} bytes", data.length);
                     channel.sendReplyMessage(message, Message.SNAPSHOT_DOWNLOAD_RESPONSE(data));
                 } catch (Exception error) {
-                    LOGGER.log(Level.SEVERE, "Error", error);
+                    LOGGER.error("Error", error);
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
@@ -402,7 +403,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     break;
                 }
                 String codePoolId = (String) message.parameters.get("codePoolId");
-                LOGGER.log(Level.INFO, "serving codepool {0}", codePoolId);
+                LOGGER.info("serving codepool {}", codePoolId);
                 try {
                     CodePool codePool = broker.getBrokerStatus().getCodePool(codePoolId);
                     if (codePool == null) {
@@ -411,13 +412,13 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                         channel.sendReplyMessage(message, Message.DOWNLOAD_CODEPOOL_RESPONSE(codePool.getCodePoolData()));
                     }
                 } catch (Exception error) {
-                    LOGGER.log(Level.SEVERE, "Error", error);
+                    LOGGER.error("Error", error);
                     channel.sendReplyMessage(message, Message.ERROR(workerProcessId, error));
                 }
                 break;
 
             default:
-                LOGGER.log(Level.SEVERE, "worker {0} at {1}, processid {2} sent unknown message {3}", new Object[]{clientId, location, workerProcessId, message});
+                LOGGER.error("worker {} at {}, processid {} sent unknown message {}", clientId, location, workerProcessId, message);
                 channel.sendReplyMessage(message, Message.ERROR(workerProcessId, new Exception("invalid message type:" + message.type)));
 
         }
@@ -426,7 +427,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
 
     @Override
     public void channelClosed() {
-        LOGGER.log(Level.INFO, "client {0} connection {1} closed", new Object[]{clientId, this});
+        LOGGER.info("client {} connection {} closed", clientId, this);
         channel = null;
         if (clientId != null) {
             WorkerManager workerManager = broker.getWorkers().getWorkerManagerNoCreate(clientId);
@@ -485,7 +486,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
     }
 
     public void workerDied() {
-        LOGGER.log(Level.SEVERE, "worker {0} connection {1}: workerDied", new Object[]{clientId, this});
+        LOGGER.error("worker {} connection {}: workerDied", clientId, this);
         if (channel != null) {
             channel.sendOneWayMessage(Message.KILL_WORKER(workerProcessId), new SendResultCallback() {
                 @Override

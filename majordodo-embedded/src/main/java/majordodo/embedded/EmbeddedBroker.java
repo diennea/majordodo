@@ -132,7 +132,7 @@ public class EmbeddedBroker implements AutoCloseable {
         }
         String host = configuration.getStringProperty(EmbeddedBrokerConfiguration.KEY_HOST, "localhost");
         int workerthreads = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_BROKERWORKERTHREADS, 16);
-        int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7862);
+        int port = configuration.getIntProperty(EmbeddedBrokerConfiguration.KEY_PORT, 7404);
         boolean ssl = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL, false);
         boolean sslunsecure = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_SSL_UNSECURE, false);
         boolean requireAuthentication = configuration.getBooleanProperty(EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION, EmbeddedBrokerConfiguration.KEY_REQUIREAUTHENTICATION_DEFAULT);

@@ -45,11 +45,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import majordodo.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 /**
  * Log data and snapshots are stored on the local disk. Suitable for single broker setups
@@ -60,7 +61,7 @@ import majordodo.utils.FileUtils;
         justification = "https://github.com/spotbugs/spotbugs/issues/756")
 public class FileCommitLog extends StatusChangesLog {
 
-    private static final Logger LOGGER = Logger.getLogger(FileCommitLog.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileCommitLog.class);
 
     private final Path snapshotsDirectory;
     private final Path logDirectory;
@@ -97,16 +98,16 @@ public class FileCommitLog extends StatusChangesLog {
             this.sequenceNumber = sequenceNumber;
             filename = logDirectory.resolve(String.format("%016x", ledgerId) + LOGFILEEXTENSION).toAbsolutePath();
             // in case of IOException the stream is not opened, not need to close it
-            LOGGER.log(Level.INFO, "starting new file {0} ", filename);
+            LOGGER.info("starting new file {} ", filename);
             File file = filename.toFile();
             if (file.isFile()) {
                 throw new IOException("File " + file.getAbsolutePath() + " already exists");
             }
             this.fOut = new FileOutputStream(file);
             this.out = new DataOutputStream(
-                new BufferedOutputStream(
-                    this.fOut
-                )
+                    new BufferedOutputStream(
+                            this.fOut
+                    )
             );
             writtenBytes = 0;
         }
@@ -140,7 +141,7 @@ public class FileCommitLog extends StatusChangesLog {
     protected Path getCurrentLedgerFilePath() {
         return writer.filename;
     }
-    
+
     private static final class StatusEditWithSequenceNumber {
 
         LogSequenceNumber logSequenceNumber;
@@ -194,7 +195,7 @@ public class FileCommitLog extends StatusChangesLog {
                 // if we hit EOF the entry has not been written, and so not acked, we can ignore it and say that the file is finished
                 // it is important that this is the last file in the set
                 if (lastFile) {
-                    LOGGER.log(Level.SEVERE, "found unfinished entry in file " + this.ledgerId + ". entry was not acked. ignoring " + truncatedLog);
+                    LOGGER.error("found unfinished entry in file " + this.ledgerId + ". entry was not acked. ignoring " + truncatedLog);
                     return null;
                 } else {
                     throw truncatedLog;
@@ -211,7 +212,7 @@ public class FileCommitLog extends StatusChangesLog {
 
         try {
             if (writer != null) {
-                LOGGER.log(Level.SEVERE, "closing actual file {0}", writer.filename);
+                LOGGER.error("closing actual file {}", writer.filename);
                 writer.close();
             }
             ensureDirectories();
@@ -229,7 +230,7 @@ public class FileCommitLog extends StatusChangesLog {
         this.logDirectory = logDirectory.toAbsolutePath();
         this.spool = new Thread(new SpoolTask(), "commitlog-" + logDirectory);
         this.spool.setDaemon(true);
-        LOGGER.log(Level.SEVERE, "snapshotdirectory:{0}, logdirectory:{1},maxLogFileSize {2} bytes", new Object[]{snapshotsDirectory, logDirectory, maxLogFileSize});
+        LOGGER.error("snapshotdirectory:{}, logdirectory:{},maxLogFileSize {} bytes", snapshotsDirectory, logDirectory, maxLogFileSize);
     }
 
     private class SpoolTask implements Runnable {
@@ -265,7 +266,7 @@ public class FileCommitLog extends StatusChangesLog {
                     }
                 }
             } catch (Throwable t) {
-                LOGGER.log(Level.SEVERE, "general commit log failure on " + FileCommitLog.this.logDirectory);
+                LOGGER.error("general commit log failure on " + FileCommitLog.this.logDirectory);
             }
         }
 
@@ -346,8 +347,8 @@ public class FileCommitLog extends StatusChangesLog {
 
     private LogSequenceNumber logStatusEdit(StatusEdit edit, boolean synch) throws LogNotAvailableException {
 
-        if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.log(Level.FINEST, "log {0}", edit);
+        if (LOGGER.isEnabledForLevel(Level.TRACE)) {
+            LOGGER.trace("log {}", edit);
         }
         StatusEditHolderFuture future = new StatusEditHolderFuture(edit, synch);
         try {
@@ -379,13 +380,13 @@ public class FileCommitLog extends StatusChangesLog {
 
     @Override
     public void recovery(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, boolean fencing) throws LogNotAvailableException {
-        LOGGER.log(Level.SEVERE, "recovery, snapshotSequenceNumber: {0}", snapshotSequenceNumber);
+        LOGGER.error("recovery, snapshotSequenceNumber: {}", snapshotSequenceNumber);
         // no lock is needed, we are at boot time
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(logDirectory)) {
             List<Path> names = new ArrayList<>();
             for (Path path : stream) {
                 if (Files.isRegularFile(path)
-                    && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
+                        && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
                     names.add(path);
                 }
             }
@@ -395,7 +396,7 @@ public class FileCommitLog extends StatusChangesLog {
             for (Path p : names) {
                 boolean lastFile = p.equals(last);
 
-                LOGGER.log(Level.SEVERE, "logfile is {0}, lastFile {1}", new Object[]{p.toAbsolutePath(), lastFile});
+                LOGGER.error("logfile is {}, lastFile {}", p.toAbsolutePath(), lastFile);
 
                 String name = (p.getFileName() + "").replace(LOGFILEEXTENSION, "");
                 long ledgerId = Long.parseLong(name, 16);
@@ -407,16 +408,16 @@ public class FileCommitLog extends StatusChangesLog {
                     while (n != null) {
 
                         if (n.logSequenceNumber.after(snapshotSequenceNumber)) {
-                            LOGGER.log(Level.FINE, "RECOVER ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
+                            LOGGER.debug("RECOVER ENTRY {}, {}", n.logSequenceNumber, n.statusEdit);
                             consumer.accept(n.logSequenceNumber, n.statusEdit);
                         } else {
-                            LOGGER.log(Level.FINE, "SKIP ENTRY {0}, {1}", new Object[]{n.logSequenceNumber, n.statusEdit});
+                            LOGGER.debug("SKIP ENTRY {}, {}", n.logSequenceNumber, n.statusEdit);
                         }
                         n = reader.nextEntry();
                     }
                 }
             }
-            LOGGER.log(Level.SEVERE, "Max ledgerId is {0}", new Object[]{currentLedgerId});
+            LOGGER.error("Max ledgerId is {}", currentLedgerId);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
         }
@@ -443,7 +444,7 @@ public class FileCommitLog extends StatusChangesLog {
     private void ensureDirectories() throws LogNotAvailableException {
         try {
             if (!Files.isDirectory(snapshotsDirectory)) {
-                LOGGER.log(Level.SEVERE, "directory " + snapshotsDirectory + " does not exist. creating");
+                LOGGER.error("directory " + snapshotsDirectory + " does not exist. creating");
                 Files.createDirectories(snapshotsDirectory);
             }
         } catch (IOException err) {
@@ -451,7 +452,7 @@ public class FileCommitLog extends StatusChangesLog {
         }
         try {
             if (!Files.isDirectory(logDirectory)) {
-                LOGGER.log(Level.SEVERE, "directory " + logDirectory + " does not exist. creating");
+                LOGGER.error("directory " + logDirectory + " does not exist. creating");
                 Files.createDirectories(logDirectory);
             }
         } catch (IOException err) {
@@ -467,11 +468,11 @@ public class FileCommitLog extends StatusChangesLog {
         String filename = actualLogSequenceNumber.ledgerId + "_" + actualLogSequenceNumber.sequenceNumber;
         Path snapshotfilename_tmp = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION + ".tmp");
         Path snapshotfilename = snapshotsDirectory.resolve(filename + SNAPSHOTFILEXTENSION);
-        LOGGER.log(Level.INFO, "checkpoint, file:{0}", snapshotfilename.toAbsolutePath());
+        LOGGER.info("checkpoint, file:{}", snapshotfilename.toAbsolutePath());
 
         try (OutputStream out = Files.newOutputStream(snapshotfilename_tmp);
-            BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
-            GZIPOutputStream zout = new GZIPOutputStream(bout)) {
+             BufferedOutputStream bout = new BufferedOutputStream(out, 64 * 1024);
+             GZIPOutputStream zout = new GZIPOutputStream(bout)) {
             BrokerStatusSnapshot.serializeSnapshot(snapshotData, zout);
         } catch (IOException err) {
             throw new LogNotAvailableException(err);
@@ -489,19 +490,19 @@ public class FileCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String other_filename = (path.getFileName() + "").toString();
                 if (other_filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    LOGGER.log(Level.SEVERE, "Processing snapshot file: " + path);
+                    LOGGER.error("Processing snapshot file: " + path);
                     try {
                         other_filename = other_filename.substring(0, other_filename.length() - SNAPSHOTFILEXTENSION.length());
 
                         int pos = other_filename.indexOf('_');
                         if (pos > 0) {
                             if (!snapshotfilename.equals(path)) {
-                                LOGGER.log(Level.SEVERE, "Deleting old snapshot file: " + path);
+                                LOGGER.error("Deleting old snapshot file: " + path);
                                 Files.delete(path);
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        LOGGER.log(Level.SEVERE, "Error:" + invalidName, invalidName);
+                        LOGGER.error("Error:" + invalidName, invalidName);
                     }
                 }
             }
@@ -523,7 +524,7 @@ public class FileCommitLog extends StatusChangesLog {
                 List<Path> names = new ArrayList<>();
                 for (Path path : stream) {
                     if (Files.isRegularFile(path)
-                        && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
+                            && (path.getFileName() + "").endsWith(LOGFILEEXTENSION)) {
                         names.add(path);
                     }
                 }
@@ -534,11 +535,11 @@ public class FileCommitLog extends StatusChangesLog {
                     long ledgerId = Long.parseLong(name, 16);
 
                     if (ledgerId < snapshotData.actualLogSequenceNumber.ledgerId
-                        && ledgerId < currentLedgerId) {
-                        LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be removed (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                            && ledgerId < currentLedgerId) {
+                        LOGGER.error("snapshot, logfile is {}, ledgerId {}. to be removed (snapshot ledger id is {})", p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId);
                         Files.deleteIfExists(p);
                     } else {
-                        LOGGER.log(Level.SEVERE, "snapshot, logfile is {0}, ledgerId {1}. to be kept (snapshot ledger id is {2})", new Object[]{p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId});
+                        LOGGER.error("snapshot, logfile is {}, ledgerId {}. to be kept (snapshot ledger id is {})", p.toAbsolutePath(), ledgerId, snapshotData.actualLogSequenceNumber.ledgerId);
                     }
                 }
             } catch (IOException err) {
@@ -562,7 +563,7 @@ public class FileCommitLog extends StatusChangesLog {
             for (Path path : allfiles) {
                 String filename = path.getFileName() + "";
                 if (filename.endsWith(SNAPSHOTFILEXTENSION)) {
-                    LOGGER.severe("Processing snapshot file: " + path);
+                    LOGGER.error("Processing snapshot file: " + path);
                     try {
                         filename = filename.substring(0, filename.length() - SNAPSHOTFILEXTENSION.length());
 
@@ -577,7 +578,7 @@ public class FileCommitLog extends StatusChangesLog {
                             }
                         }
                     } catch (NumberFormatException invalidName) {
-                        LOGGER.severe("Error:" + invalidName);
+                        LOGGER.error("Error:" + invalidName);
                         invalidName.printStackTrace();
                     }
                 }
@@ -586,14 +587,14 @@ public class FileCommitLog extends StatusChangesLog {
             throw new LogNotAvailableException(err);
         }
         if (snapshotfilename == null) {
-            LOGGER.severe("No snapshot available Starting with a brand new status");
+            LOGGER.error("No snapshot available Starting with a brand new status");
             currentLedgerId = 0;
             return new BrokerStatusSnapshot(0, 0, new LogSequenceNumber(-1, -1));
         } else {
 
             try (InputStream in = Files.newInputStream(snapshotfilename);
-                BufferedInputStream bin = new BufferedInputStream(in);
-                GZIPInputStream gzip = new GZIPInputStream(bin)) {
+                 BufferedInputStream bin = new BufferedInputStream(in);
+                 GZIPInputStream gzip = new GZIPInputStream(bin)) {
                 BrokerStatusSnapshot result = BrokerStatusSnapshot.deserializeSnapshot(gzip);
                 currentLedgerId = result.getActualLogSequenceNumber().ledgerId;
                 return result;
@@ -602,6 +603,7 @@ public class FileCommitLog extends StatusChangesLog {
             }
         }
     }
+
     private volatile boolean closed = false;
 
     @Override

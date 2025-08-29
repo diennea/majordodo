@@ -35,8 +35,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Channel implemented on Netty
@@ -47,7 +48,7 @@ public class NettyChannel extends Channel {
 
     private static final boolean DISCONNECT_ON_PENDING_REPLY_TIMEOUT = Boolean.parseBoolean(System.getProperty("blazingcache.nettychannel.disconnectonpendingreplytimeout", "true"));
     volatile SocketChannel socket;
-    private static final Logger LOGGER = Logger.getLogger(NettyChannel.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyChannel.class);
     private static final AtomicLong idGenerator = new AtomicLong();
 
     private final Map<String, ReplyCallback> pendingReplyMessages = new ConcurrentHashMap<>();
@@ -80,7 +81,7 @@ public class NettyChannel extends Channel {
                 try {
                     messagesReceiver.messageReceived(message);
                 } catch (Throwable t) {
-                    LOGGER.log(Level.SEVERE, this + ": error " + t, t);
+                    LOGGER.error(this + ": error " + t, t);
                     close();
                 }
             });
@@ -116,7 +117,7 @@ public class NettyChannel extends Channel {
                 if (future.isSuccess()) {
                     callback.messageSent(message, null);
                 } else {
-                    LOGGER.log(Level.SEVERE, this + ": error " + future.cause(), future.cause());
+                    LOGGER.error(this + ": error " + future.cause(), future.cause());
                     callback.messageSent(message, future.cause());
                     close();
                 }
@@ -131,7 +132,7 @@ public class NettyChannel extends Channel {
             message.setMessageId(UUID.randomUUID().toString());
         }
         if (this.socket == null) {
-            LOGGER.log(Level.SEVERE, this + " channel not active, discarding reply message " + message);
+            LOGGER.error(this + " channel not active, discarding reply message " + message);
             return;
         }
         message.setReplyMessageId(inAnswerTo.messageId);
@@ -140,7 +141,7 @@ public class NettyChannel extends Channel {
             @Override
             public void messageSent(Message originalMessage, Throwable error) {
                 if (error != null) {
-                    LOGGER.log(Level.SEVERE, this + " error:" + error, error);
+                    LOGGER.error(this + " error:" + error, error);
                 }
             }
         });
@@ -158,10 +159,10 @@ public class NettyChannel extends Channel {
             return;
         }
         if (DISCONNECT_ON_PENDING_REPLY_TIMEOUT && disconnectOnReplyTimeout) {
-            LOGGER.log(Level.SEVERE, this + " found " + messagesWithNoReply.size() + " without reply, channel will be closed");
+            LOGGER.error(this + " found " + messagesWithNoReply.size() + " without reply, channel will be closed");
             ioErrors = true;
         } else {
-            LOGGER.log(Level.SEVERE, this + " found " + messagesWithNoReply.size() + " without reply");
+            LOGGER.error(this + " found " + messagesWithNoReply.size() + " without reply");
         }
         for (String messageId : messagesWithNoReply) {
             Message original = pendingReplyMessagesSource.remove(messageId);
@@ -197,7 +198,7 @@ public class NettyChannel extends Channel {
             @Override
             public void messageSent(Message originalMessage, Throwable error) {
                 if (error != null) {
-                    LOGGER.log(Level.SEVERE, this + ": error while sending reply message to " + originalMessage, error);
+                    LOGGER.error(this + ": error while sending reply message to " + originalMessage, error);
                     submitCallback(() -> {
                         callback.replyReceived(message, null, new Exception(this + ": error while sending reply message to " + originalMessage, error));
                     });
@@ -220,7 +221,7 @@ public class NettyChannel extends Channel {
             return;
         }
         closed = true;
-        LOGGER.log(Level.SEVERE, this + ": closing");
+        LOGGER.error(this + ": closing");
         String socketDescription = socket + "";
         if (socket != null) {
             try {
@@ -234,7 +235,7 @@ public class NettyChannel extends Channel {
 
         pendingReplyMessages.forEach((key, callback) -> {
             Message original = pendingReplyMessagesSource.remove(key);
-            LOGGER.log(Level.SEVERE, this + " message " + key + " was not replied (" + original + ") callback:" + callback);
+            LOGGER.error(this + " message " + key + " was not replied (" + original + ") callback:" + callback);
             if (original != null) {
                 submitCallback(() -> {
                     callback.replyReceived(original, null, new IOException("comunication channel is closed. Cannot wait for pending messages, socket=" + socketDescription));
@@ -251,7 +252,7 @@ public class NettyChannel extends Channel {
     }
 
     void exceptionCaught(Throwable cause) {
-        LOGGER.log(Level.SEVERE, this + " io-error " + cause, cause);
+        LOGGER.error(this + " io-error " + cause, cause);
         ioErrors = true;
     }
 
@@ -268,19 +269,19 @@ public class NettyChannel extends Channel {
             callbackexecutor.submit(runnable);
         } catch (RejectedExecutionException stopped) {
             if (!callbackexecutor.isTerminated()) {
-                LOGGER.log(Level.SEVERE, this + " rejected runnable " + runnable, stopped);
+                LOGGER.error(this + " rejected runnable " + runnable, stopped);
             }
             try {
                 runnable.run();
             } catch (Throwable error) {
-                LOGGER.log(Level.SEVERE, this + " error on rejected runnable " + runnable + ":" + error);
+                LOGGER.error(this + " error on rejected runnable " + runnable + ":" + error);
             }
         }
     }
 
     @Override
     public void channelIdle() {
-        LOGGER.log(Level.FINEST, "{0} channelIdle", this);
+        LOGGER.debug("{} channelIdle", this);
         processPendingReplyMessagesDeadline();
     }
 

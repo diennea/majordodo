@@ -45,7 +45,6 @@ import org.junit.Test;
  * @author enrico.olivelli
  */
 @BrokerTestUtils.StartReplicatedBrokers
-@BrokerTestUtils.LogLevel(level="SEVERE")
 public class DeadWorkerResourceCountersAtFollowerPromotionTest extends BrokerTestUtils {
     
     @Before

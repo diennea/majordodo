@@ -36,8 +36,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.daemons.PidFileLocker;
@@ -55,6 +55,8 @@ import org.eclipse.jetty.webapp.WebAppContext;
  */
 public class BrokerMain implements AutoCloseable {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrokerMain.class);
+    
     private Broker broker;
     private Server httpserver;
     private NettyChannelAcceptor server;
@@ -79,7 +81,7 @@ public class BrokerMain implements AutoCloseable {
             try {
                 server.close();
             } catch (Exception ex) {
-                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+                LOGGER.error("Error closing server", ex);
             } finally {
                 server = null;
             }
@@ -89,7 +91,7 @@ public class BrokerMain implements AutoCloseable {
                 httpserver.stop();
                 httpserver.join();
             } catch (Exception ex) {
-                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+                LOGGER.error("Error stopping HTTP server", ex);
             } finally {
                 httpserver = null;
             }
@@ -98,7 +100,7 @@ public class BrokerMain implements AutoCloseable {
             try {
                 broker.stop();
             } catch (Exception ex) {
-                Logger.getLogger(BrokerMain.class.getName()).log(Level.SEVERE, null, ex);
+                LOGGER.error("Error stopping broker", ex);
             } finally {
                 broker = null;
             }

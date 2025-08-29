@@ -40,7 +40,6 @@ import org.junit.Test;
  * @author francesco.caliumi
  */
 @BrokerTestUtils.StartBroker
-@BrokerTestUtils.LogLevel(level = "SEVERE")
 public class ScheduledTaskTest extends BrokerTestUtils {
 
     @Before

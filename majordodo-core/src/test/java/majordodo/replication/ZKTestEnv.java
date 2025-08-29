@@ -23,7 +23,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.common.component.Lifecycle;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -84,18 +85,18 @@ public class ZKTestEnv implements AutoCloseable {
 
         embeddedServer.getLifecycleComponentStack().start();
         if (!waitForBookieServiceState(Lifecycle.State.STARTED)) {
-            LOG.warning("bookie start timed out");
+            LOG.warn("bookie start timed out");
         }
 
         long _stop = System.currentTimeMillis();
         LOG.info("Booting Apache Bookkeeper finished. Time " + (_stop - _start) + " ms");
     }
-    private static final Logger LOG = Logger.getLogger(ZKTestEnv.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ZKTestEnv.class);
 
     public void stopBookie() throws InterruptedException {
         embeddedServer.getLifecycleComponentStack().close();
         if (!waitForBookieServiceState(Lifecycle.State.CLOSED)) {
-            LOG.warning("bookie stop timed out");
+            LOG.warn("bookie stop timed out");
         }
     }
 
@@ -117,7 +118,7 @@ public class ZKTestEnv implements AutoCloseable {
             if (embeddedServer != null) {
                 embeddedServer.getLifecycleComponentStack().close();
                 if (!waitForBookieServiceState(Lifecycle.State.CLOSED)) {
-                    LOG.warning("bookie stop timed out");
+                    LOG.warn("bookie stop timed out");
                 }
             }
         } catch (Throwable t) {

@@ -19,39 +19,35 @@
  */
 package majordodo.task;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.junit.After;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Formatter;
-import java.util.logging.LogRecord;
+import java.util.Map;
 import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.replication.ReplicatedCommitLog;
 import majordodo.replication.ZKBrokerLocator;
 import majordodo.replication.ZKTestEnv;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -60,15 +56,12 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 
-
-
 /**
  *
  * @author francesco.caliumi
  */
 public abstract class BrokerTestUtils {
 
-    protected static Level logLevel = Level.SEVERE;
 
     protected static final String TASKTYPE_MYTYPE = "mytype";
     protected static final String userId = "queue1";
@@ -129,18 +122,12 @@ public abstract class BrokerTestUtils {
 
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.TYPE)
-    public static @interface LogLevel {
-        String level() default "SEVERE";
-    }
-
     @ClassRule
     public static TestRule testStarter = new TestRule() {
         @Override
         public org.junit.runners.model.Statement apply(org.junit.runners.model.Statement base, Description description) {
             try {
-//                System.out.println("starting test class " + description.getClassName());
+                //                System.out.println("starting test class " + description.getClassName());
                 Class clazz = Class.forName(description.getClassName(), false, Thread.currentThread().getContextClassLoader());
 
                 if (clazz.isAnnotationPresent(StartBroker.class)) {
@@ -153,11 +140,6 @@ public abstract class BrokerTestUtils {
 
                 if (clazz.isAnnotationPresent(IgnoreUnhandledExceptions.class)) {
                     ignoreUnhandledExceptions = true;
-                }
-
-                if (clazz.isAnnotationPresent(LogLevel.class)) {
-                    LogLevel l = (LogLevel) clazz.getAnnotation(LogLevel.class);
-                    logLevel = Level.parse(l.level());
                 }
 
                 return base;
@@ -191,20 +173,6 @@ public abstract class BrokerTestUtils {
             }
         });
 
-        // Setup Logger
-        System.out.println("Setup logger to level "+logLevel.getName());
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(logLevel);
-        ch.setFormatter(new Formatter() {
-            @Override
-            public String format(LogRecord record) {
-                return "" + new java.sql.Timestamp(record.getMillis()) + " " + record.getLevel() + " [" + getThreadName(record.getThreadID()) + "<" + record.getThreadID() + ">] " + record.getLoggerName() + ": " + formatMessage(record) + "\n";
-            }
-        });
-        java.util.logging.Logger.getLogger("").setLevel(logLevel);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-
         // Initialize groupsMap
         groupsMap.clear();
         groupsMap.put(userId, group);
@@ -230,13 +198,13 @@ public abstract class BrokerTestUtils {
 
             // Broker 1
             broker1 = new Broker(
-                broker1Config,
-                new ReplicatedCommitLog(
-                    zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
-                    folderSnapshots.newFolder().toPath(),
-                    BrokerHostData.formatHostdata(new BrokerHostData(broker1Host, broker1Port, "", false, null)),
-                    false),
-                new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                    broker1Config,
+                    new ReplicatedCommitLog(
+                            zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
+                            folderSnapshots.newFolder().toPath(),
+                            BrokerHostData.formatHostdata(new BrokerHostData(broker1Host, broker1Port, "", false, null)),
+                            false),
+                    new TasksHeap(1000, createTaskPropertiesMapperFunction()));
 
             broker1.startAsWritable();
 
@@ -245,13 +213,13 @@ public abstract class BrokerTestUtils {
 
             // Broker 2
             broker2 = new Broker(
-                broker2Config,
-                new ReplicatedCommitLog(
-                    zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
-                    folderSnapshots.newFolder().toPath(),
-                    BrokerHostData.formatHostdata(new BrokerHostData(broker2Host, broker2Port, "", false, null)),
-                    false),
-                new TasksHeap(1000, createTaskPropertiesMapperFunction()));
+                    broker2Config,
+                    new ReplicatedCommitLog(
+                            zkServer.getAddress(), zkServer.getTimeout(), zkServer.getPath(),
+                            folderSnapshots.newFolder().toPath(),
+                            BrokerHostData.formatHostdata(new BrokerHostData(broker2Host, broker2Port, "", false, null)),
+                            false),
+                    new TasksHeap(1000, createTaskPropertiesMapperFunction()));
 
             broker2.start();
 
@@ -326,10 +294,10 @@ public abstract class BrokerTestUtils {
 
         if (!ignoreUnhandledExceptions && !unhandledExceptions.isEmpty()) {
             System.out.println("Errors occurred during excecution:");
-            for (Throwable e: unhandledExceptions) {
+            for (Throwable e : unhandledExceptions) {
                 System.out.println("\n" + ExceptionUtils.getStackTrace(e) + "\n");
             }
-            fail("There are "+unhandledExceptions.size()+" unhandled exceptions!");
+            fail("There are " + unhandledExceptions.size() + " unhandled exceptions!");
         }
     }
 
@@ -394,9 +362,9 @@ public abstract class BrokerTestUtils {
             broker.getWorkers().getWorkerManager(workerId).getResourceUsageCounters().updateResourceCounters();
 
             Map<String, Integer> countersWorker = broker.getWorkers().getWorkerManager(workerId)
-                .getResourceUsageCounters().getCountersView();
+                    .getResourceUsageCounters().getCountersView();
             for (String resource : Arrays.asList(resources)) {
-                System.out.println("Worker "+workerId+" counter resource=" + resource + "; counter=" + countersWorker.get(resource));
+                System.out.println("Worker " + workerId + " counter resource=" + resource + "; counter=" + countersWorker.get(resource));
                 if (expectedVal > 0) {
                     assertNotNull(countersWorker.get(resource));
                 }

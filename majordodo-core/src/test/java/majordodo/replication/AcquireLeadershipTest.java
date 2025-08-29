@@ -19,24 +19,21 @@
  */
 package majordodo.replication;
 
-import majordodo.task.TasksHeap;
-import majordodo.task.Broker;
-import majordodo.task.BrokerConfiguration;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.network.BrokerHostData;
 import majordodo.network.netty.NettyChannelAcceptor;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
 import majordodo.task.TaskProperties;
 import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
 import majordodo.utils.TestUtils;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -48,27 +45,6 @@ import org.junit.rules.TemporaryFolder;
  * @author enrico.olivelli
  */
 public class AcquireLeadershipTest {
-
-    @Before
-    public void setupLogger() throws Exception {
-        Level level = Level.SEVERE;
-        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("uncaughtException from thread " + t.getName() + ": " + e);
-                e.printStackTrace();
-            }
-        });
-        java.util.logging.LogManager.getLogManager().reset();
-        ConsoleHandler ch = new ConsoleHandler();
-        ch.setLevel(level);
-        SimpleFormatter f = new SimpleFormatter();
-        ch.setFormatter(f);
-        java.util.logging.Logger.getLogger("").setLevel(level);
-        java.util.logging.Logger.getLogger("").addHandler(ch);
-    }
-
     protected TaskPropertiesMapperFunction createTaskPropertiesMapperFunction() {
         return (long taskid, String taskType, String userid) -> {
             int group1 = groupsMap.getOrDefault(userid, 0);
@@ -224,14 +200,14 @@ public class AcquireLeadershipTest {
                 });
                 System.out.println("SETTING DATA AT " + zkServer.getPath() + "/leader");
                 log.getClusterManager().getZooKeeper().setData(
-                    zkServer.getPath() + "/leader", "changed".getBytes("ASCII"), -1);
-//                log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
+                        zkServer.getPath() + "/leader", "changed".getBytes("ASCII"), -1);
+                //                log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
                 System.out.println("SET DATA AT " + zkServer.getPath() + "/leader");
 
 
                 try {
                     broker1.getClient()
-                        .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+                            .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
                 } catch (Exception maybe) {
                 }
 
@@ -265,9 +241,9 @@ public class AcquireLeadershipTest {
                 log.getClusterManager().getZooKeeper().delete(zkServer.getPath() + "/leader", -1);
 
                 broker1.getClient()
-                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+                        .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
                 broker1.getClient()
-                    .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
+                        .submitTask(new AddTaskRequest(0, TASKTYPE_MYTYPE, userId, taskParams, 0, 0, 0, null, 0, null, null)).getTaskId();
             }
         }
     }

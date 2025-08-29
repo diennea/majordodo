@@ -1,4 +1,3 @@
-
 /*
  Licensed to Diennea S.r.l. under one
  or more contributor license agreements. See the NOTICE file
@@ -20,9 +19,6 @@
  */
 package majordodo.task;
 
-import majordodo.clientfacade.ClientFacade;
-import majordodo.network.jvm.JVMBrokerSupportInterface;
-import majordodo.network.jvm.JVMBrokersRegistry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,23 +31,27 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import majordodo.clientfacade.AddTaskRequest;
 import majordodo.clientfacade.AuthenticationManager;
 import majordodo.clientfacade.BrokerStatusView;
+import majordodo.clientfacade.ClientFacade;
 import majordodo.clientfacade.CodePoolView;
 import majordodo.clientfacade.CreateCodePoolRequest;
 import majordodo.clientfacade.CreateCodePoolResult;
 import majordodo.clientfacade.DelayedTasksQueueView;
-import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.HeapStatusView;
 import majordodo.clientfacade.HeapStatusView.TaskStatus;
+import majordodo.clientfacade.ResourceStatusView;
 import majordodo.clientfacade.SlotsStatusView;
-import majordodo.clientfacade.TransactionsStatusView;
 import majordodo.clientfacade.TransactionStatus;
+import majordodo.clientfacade.TransactionsStatusView;
+import majordodo.network.jvm.JVMBrokerSupportInterface;
+import majordodo.network.jvm.JVMBrokersRegistry;
 import majordodo.utils.IntCounter;
 import majordodo.utils.Version;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 /**
  * Global status of the broker
@@ -62,7 +62,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     public static final int MAX_SIMULTANEOUS_RESUMED_TASKS = 1000;
 
-    private static final Logger LOGGER = Logger.getLogger(Broker.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(Broker.class);
     private String brokerId = UUID.randomUUID().toString();
     private Callable<Void> externalProcessChecker; // PIDFILECHECKER
     private Runnable brokerDiedCallback;
@@ -103,7 +103,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                 try {
                     brokerDiedCallback.run();
                 } catch (Throwable t) {
-                    LOGGER.log(Level.SEVERE, "BrokerDiedCallback error", t);
+                    LOGGER.error("BrokerDiedCallback error", t);
                 }
             };
         }
@@ -198,20 +198,20 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         this.log.setSharedSecret(configuration.getSharedSecret());
         this.log.setSslUnsecure(configuration.isSslUnsecure());
 
-        LOGGER.log(Level.INFO, "requireAuthentication is set to " + configuration.isRequireAuthentication());
+        LOGGER.info("requireAuthentication is set to " + configuration.isRequireAuthentication());
         this.globalResourceUsageCounters = new ResourceUsageCounters("global-" + brokerId);
     }
 
     private boolean recoveryInProgress = false;
 
     public void start() {
-        LOGGER.log(Level.SEVERE, "Booting Majordodo Broker, version {0}", VERSION());
+        LOGGER.error("Booting Majordodo Broker, version {}", VERSION());
         JVMBrokersRegistry.registerBroker(brokerId, this);
         if (configuration.isClearStatusAtBoot()) {
             try {
                 this.log.clear();
             } catch (LogNotAvailableException error) {
-                LOGGER.log(Level.SEVERE, "Could not clear status at boot", error);
+                LOGGER.error("Could not clear status at boot", error);
                 throw new RuntimeException(error);
             }
         }
@@ -235,7 +235,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public void die() throws LogNotAvailableException {
-        LOGGER.log(Level.SEVERE, "Die!");
+        LOGGER.error("Die!");
         this.log.close(); // This should prevent any other communication with other brokers
         this.brokerLifeThread.interrupt();
         this.stop();
@@ -243,103 +243,6 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "MS_SHOULD_BE_FINAL")
     public static boolean PERFORM_CHECKPOINT_AT_LEADERSHIP = true;
-
-    private final Runnable brokerLife = new Runnable() {
-
-        @Override
-        @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "RV_RETURN_VALUE_IGNORED")
-        public void run() {
-            try {
-                brokerStatusMonitor.start();
-                LOGGER.log(Level.INFO, "Waiting to become leader...");
-                finishedTaskCollectorScheduler.start();
-                brokerStatus.followTheLeader();
-                if (stopped || failed) {
-                    return;
-                }
-                LOGGER.log(Level.INFO, "Starting as leader, brokerId:{0}", brokerId);
-                brokerStatus.recoverForLeadership();
-
-                brokerStatus.setReadonly(true);
-                Map<String, Long> busySlots = new HashMap<>();
-                Collection<Task> tasksAtBoot = brokerStatus.getTasksAtBoot();
-                for (Task task : tasksAtBoot) {
-                    switch (task.getStatus()) {
-                        case Task.STATUS_WAITING:
-                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=waiting)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
-                            tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
-                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.put(task.getSlot(), task.getTaskId());
-                            }
-                            break;
-                        case Task.STATUS_DELAYED:
-                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is to be scheduled (status=delayed)", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
-                            delayedTasksQueue.add(task);
-                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.put(task.getSlot(), task.getTaskId());
-                            }
-                            break;
-                        case Task.STATUS_RUNNING:
-                            LOGGER.log(Level.INFO, "Task {0}, {1}, user={2}, slot={3} is in running status", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
-                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.put(task.getSlot(), task.getTaskId());
-                            }
-                            break;
-                        default:
-                            // not interesting
-                            break;
-
-                    }
-                }
-                for (Transaction t : brokerStatus.getTransactionsAtBoot()) {
-                    if (t.getPreparedTasks() != null) {
-                        for (Task task : t.getPreparedTasks()) {
-                            LOGGER.log(Level.SEVERE, "Uncommitted transaction {0} holds Task {1}, {2}, user={3}, slot={4}", new Object[]{t.getTransactionId(), task.getTaskId(), task.getType(), task.getUserId(), task.getSlot()});
-                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
-                                busySlots.put(task.getSlot(), task.getTaskId());
-                            }
-                        }
-                    }
-                }
-                Collection<WorkerStatus> workersAtBoot = brokerStatus.getWorkersAtBoot();
-                brokerStatus.setReadonly(false);
-                brokerStatus.reloadBusySlotsAtBoot(busySlots);
-                brokerStatus.startWriting();
-                Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
-                List<String> workersConnectedAtBoot = new ArrayList<>();
-                workers.start(brokerStatus, deadWorkerTasks,
-                    workersConnectedAtBoot, globalResourceUsageCounters, tasksAtBoot, workersAtBoot);
-                started = true;
-                for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
-                    tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
-                }
-                if (PERFORM_CHECKPOINT_AT_LEADERSHIP) {
-                    checkpoint();
-                }
-                try {
-                    while (!stopped && !failed) {
-                        if (!suspendLogFlush) {
-                            // write something to log, this simple action detects fencing and forces flushes 
-                            // to other follower brokers
-                            noop();
-                        }
-                        resumeDelayedTasks();
-                        if (externalProcessChecker != null) {
-                            externalProcessChecker.call();
-                        }
-                        stopperLatch.await(10, TimeUnit.SECONDS
-                        );
-                    }
-                } catch (InterruptedException exit) {
-                }
-            } catch (Throwable uncaught) {
-                LOGGER.log(Level.SEVERE, "fatal error", uncaught);
-                uncaught.printStackTrace();
-                shutdown();
-            }
-        }
-
-    };
 
     public void resumeDelayedTasks() throws LogNotAvailableException {
         List<Task> tasksToResume = new ArrayList<>();
@@ -353,9 +256,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         for (BrokerStatus.ModificationResult mod : results) {
             Task task = tasksToResume.get(i++);
             if (mod.error == null) {
-                LOGGER.log(Level.FINER, "task {0} resumed", task.getTaskId());
+                LOGGER.trace("task {} resumed", task.getTaskId());
             } else {
-                //LOGGER.log(Level.SEVERE, String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
+                //LOGGER.error(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
                 throw new IllegalStateException(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
             }
             tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
@@ -372,7 +275,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         try {
             checkpoint(false);
         } catch (LogNotAvailableException cannotCheckpoint) {
-            LOGGER.log(Level.SEVERE, "checkpoint on shutdown failed", cannotCheckpoint);
+            LOGGER.error("checkpoint on shutdown failed", cannotCheckpoint);
         }
 
         JVMBrokersRegistry.unregisterBroker(brokerId);
@@ -419,23 +322,23 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
     }
 
     public List<AssignedTask> assignTasksToWorker(int max, Map<String, Integer> availableSpace,
-        List<Integer> groups, Set<Integer> excludedGroups, String workerId, Map<String, Integer> workerResourceLimits,
-        ResourceUsageCounters workerResourceUsageCounters, int maxThreadPerUserPerTaskTypePercent) throws LogNotAvailableException {
+                                                  List<Integer> groups, Set<Integer> excludedGroups, String workerId, Map<String, Integer> workerResourceLimits,
+                                                  ResourceUsageCounters workerResourceUsageCounters, int maxThreadPerUserPerTaskTypePercent) throws LogNotAvailableException {
         if (!started) {
             return Collections.emptyList();
         }
         Map<TaskTypeUser, IntCounter> availableSpacePerUser;
         if (maxThreadPerUserPerTaskTypePercent > 0) {
             availableSpacePerUser = this.brokerStatus
-                .collectMaxAvailableSpacePerUserOnWorker(workerId, maxThreadPerUserPerTaskTypePercent, availableSpace);
+                    .collectMaxAvailableSpacePerUserOnWorker(workerId, maxThreadPerUserPerTaskTypePercent, availableSpace);
         } else {
             availableSpacePerUser = null;
         }
         Map<String, Integer> globalResourceLimits = globalResourceLimitsConfiguration.getGlobalResourceLimits();
         long start = System.currentTimeMillis();
         List<AssignedTask> tasks = tasksHeap.takeTasks(max, groups, excludedGroups, availableSpace,
-            workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
-            availableSpacePerUser, maxThreadPerUserPerTaskTypePercent
+                workerResourceLimits, workerResourceUsageCounters, globalResourceLimits, globalResourceUsageCounters,
+                availableSpacePerUser, maxThreadPerUserPerTaskTypePercent
         );
 
         long now = System.currentTimeMillis();
@@ -465,7 +368,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
 
         long end = System.currentTimeMillis();
-        LOGGER.log(Level.FINER, "assignTaskToWorker count {3} take: {0}, assign:{1}, total:{2}", new Object[]{now - start, end - now, end - start, (tasks.size())});
+        LOGGER.trace("assignTaskToWorker count {} take: {}, assign:{}, total:{}", now - start, end - now, end - start, (tasks.size()));
         return tasks;
     }
 
@@ -492,7 +395,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             this.tasksHeap.removeExpiredTasks(expired);
             this.brokerStatus.applyModifications(expirededits);
         } catch (LogNotAvailableException logNotAvailableException) {
-            LOGGER.log(Level.SEVERE, "error while expiring tasks " + expired, logNotAvailableException);
+            LOGGER.error("error while expiring tasks " + expired, logNotAvailableException);
         }
     }
 
@@ -500,7 +403,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         try {
             tasksHeap.recomputeGroups();
         } catch (Throwable t) {
-            LOGGER.log(Level.SEVERE, "error during group mapping recomputation", t);
+            LOGGER.error("error during group mapping recomputation", t);
         }
     }
 
@@ -752,9 +655,9 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             }
         }
         List<BrokerStatus.ModificationResult> batch = this.brokerStatus.applyModifications(edits);
-        if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.log(Level.FINEST, "addTasks {0}", requests);
-            LOGGER.log(Level.FINEST, "addTasks results {0}", batch);
+        if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
+            LOGGER.trace("addTasks {}", requests);
+            LOGGER.trace("addTasks results {}", batch);
         }
         for (int i = 0; i < size; i++) {
             StatusEdit addTask = edits.get(i);
@@ -788,24 +691,24 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
         List<TaskFinishedData> data = new ArrayList<>();
         tasksId.forEach(
-            taskId -> {
-                Task task = brokerStatus.getTask(taskId);
-                if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
-                    data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
-                    LOGGER.log(Level.SEVERE, "task {0} is in {1} status. and the worker {2} died", new Object[]{task, Task.statusToString(task.getStatus()), workerId});
-                } else if (task != null) {
-                    LOGGER.log(Level.SEVERE, "task {0} is in {1} status. no real need to recovery", new Object[]{task, Task.statusToString(task.getStatus())});
-                } else {
-                    LOGGER.log(Level.SEVERE, "task {0} no more exists, no real need to recovery", new Object[]{taskId});
+                taskId -> {
+                    Task task = brokerStatus.getTask(taskId);
+                    if (task != null && task.getStatus() == Task.STATUS_RUNNING) {
+                        data.add(new TaskFinishedData(taskId, "worker " + workerId + " died", Task.STATUS_ERROR));
+                        LOGGER.error("task {0} is in {1} status. and the worker {2} died", new Object[]{task, Task.statusToString(task.getStatus()), workerId});
+                    } else if (task != null) {
+                        LOGGER.error("task {} is in {} status. no real need to recovery", task, Task.statusToString(task.getStatus()));
+                    } else {
+                        LOGGER.error("task {} no more exists, no real need to recovery", taskId);
+                    }
                 }
-            }
         );
         tasksFinished(workerId, data);
     }
 
     public void tasksFinished(String workerId, List<TaskFinishedData> tasks) throws LogNotAvailableException {
         assertBrokerAvailableForClients();
-        LOGGER.log(Level.FINE, "tasksFinished worker {0}, num: {1}", new Object[]{workerId, tasks.size()});
+        LOGGER.debug("tasksFinished worker {}, num: {}", workerId, tasks.size());
         List<StatusEdit> edits = new ArrayList<>();
         List<Task> toSchedule = new ArrayList<>();
         Map<Long, String[]> resourcesByTaskId = new HashMap<>();
@@ -816,7 +719,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             String result = taskData.result;
             Task task = this.brokerStatus.getTask(taskId);
             if (task == null) {
-                LOGGER.log(Level.SEVERE, "taskFinished {0}, task does not exist", taskId);
+                LOGGER.error("taskFinished {}, task does not exist", taskId);
                 continue;
             }
             String resources = task.getResources();
@@ -829,7 +732,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
             workers.getWorkerManager(workerId).taskFinished(taskId);
 
             if (task.getStatus() != Task.STATUS_RUNNING) {
-                LOGGER.log(Level.SEVERE, "taskFinished {0}, task already in status {1}", new Object[]{taskId, Task.statusToString(task.getStatus())});
+                LOGGER.error("taskFinished {}, task already in status {}", taskId, Task.statusToString(task.getStatus()));
                 continue;
             }
             switch (finalstatus) {
@@ -844,18 +747,18 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
                     long deadline = task.getExecutionDeadline();
                     if (maxAttepts > 0 && attempt >= maxAttepts) {
                         // too many attempts
-                        LOGGER.log(Level.SEVERE, "taskFinished {0} {4}, too many attempts {1}/{2} ({3})", new Object[]{taskId, attempt, maxAttepts, task.getResult() + "", Task.statusToString(task.getStatus())});
+                        LOGGER.error("taskFinished {} {}, too many attempts {}/{} ({})", taskId, attempt, maxAttepts, task.getResult() + "", Task.statusToString(task.getStatus()));
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
                         edits.add(edit);
 
                     } else if (deadline > 0 && deadline < System.currentTimeMillis()) {
                         // deadline expired
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}, deadline expired {1} ({2})", new Object[]{taskId, new java.sql.Timestamp(deadline), task.getResult() + ""});
+                        LOGGER.error("taskFinished {}, deadline expired {} ({})", taskId, new java.sql.Timestamp(deadline), task.getResult() + "");
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_ERROR, result);
                         edits.add(edit);
                     } else {
                         // submit for new execution
-                        LOGGER.log(Level.SEVERE, "taskFinished {0}  {4}, attempts {1}/{2}, scheduling for retry ({3})", new Object[]{taskId, attempt, maxAttepts, task.getResult() + "", Task.statusToString(task.getStatus())});
+                        LOGGER.error("taskFinished {}  {}, attempts {}/{}, scheduling for retry ({})", taskId, attempt, maxAttepts, task.getResult() + "", Task.statusToString(task.getStatus()));
                         StatusEdit edit = StatusEdit.TASK_STATUS_CHANGE(taskId, workerId, Task.STATUS_WAITING, result);
                         edits.add(edit);
                         toSchedule.add(task);
@@ -883,7 +786,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
 
         for (Task task : toSchedule) {
-            LOGGER.log(Level.INFO, "Schedule task for recovery {0} {1} {2} ({3})", new Object[]{task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + ""});
+            LOGGER.info("Schedule task for recovery {} {} {} ({})", task.getTaskId(), task.getType(), task.getUserId(), task.getResult() + "");
             this.tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
         }
 
@@ -895,7 +798,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
 
         List<Long> tasksActuallyAssigned = brokerStatus.getRunningTasksAssignedToWorker(workerId);
         if (!tasksActuallyAssigned.isEmpty() || !edit.actualRunningTasks.isEmpty()) {
-            LOGGER.log(Level.INFO, "tasks assigned to worker {0}, actuallyRunning {1} ", new Object[]{tasksActuallyAssigned, edit.actualRunningTasks});
+            LOGGER.info("tasks assigned to worker {}, actuallyRunning {} ", tasksActuallyAssigned, edit.actualRunningTasks);
         }
         tasksActuallyAssigned.removeAll(edit.actualRunningTasks);
         tasksNeedsRecoveryDueToWorkerDeath(tasksActuallyAssigned, workerId);
@@ -914,12 +817,107 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         StatusEdit edit = StatusEdit.WORKER_DIED(workerId, timestamp);
         this.brokerStatus.applyModification(edit);
     }
-
     private volatile boolean failed;
+    private final Runnable brokerLife = new Runnable() {
+
+        @Override
+        @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "RV_RETURN_VALUE_IGNORED")
+        public void run() {
+            try {
+                brokerStatusMonitor.start();
+                LOGGER.info("Waiting to become leader...");
+                finishedTaskCollectorScheduler.start();
+                brokerStatus.followTheLeader();
+                if (stopped || failed) {
+                    return;
+                }
+                LOGGER.info("Starting as leader, brokerId:{}", brokerId);
+                brokerStatus.recoverForLeadership();
+
+                brokerStatus.setReadonly(true);
+                Map<String, Long> busySlots = new HashMap<>();
+                Collection<Task> tasksAtBoot = brokerStatus.getTasksAtBoot();
+                for (Task task : tasksAtBoot) {
+                    switch (task.getStatus()) {
+                        case Task.STATUS_WAITING:
+                            LOGGER.info("Task {}, {}, user={}, slot={} is to be scheduled (status=waiting)", task.getTaskId(), task.getType(), task.getUserId(), task.getSlot());
+                            tasksHeap.insertTask(task.getTaskId(), task.getType(), task.getUserId());
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.put(task.getSlot(), task.getTaskId());
+                            }
+                            break;
+                        case Task.STATUS_DELAYED:
+                            LOGGER.info("Task {}, {}, user={}, slot={} is to be scheduled (status=delayed)", task.getTaskId(), task.getType(), task.getUserId(), task.getSlot());
+                            delayedTasksQueue.add(task);
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.put(task.getSlot(), task.getTaskId());
+                            }
+                            break;
+                        case Task.STATUS_RUNNING:
+                            LOGGER.info("Task {}, {}, user={}, slot={} is in running status", task.getTaskId(), task.getType(), task.getUserId(), task.getSlot());
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.put(task.getSlot(), task.getTaskId());
+                            }
+                            break;
+                        default:
+                            // not interesting
+                            break;
+
+                    }
+                }
+                for (Transaction t : brokerStatus.getTransactionsAtBoot()) {
+                    if (t.getPreparedTasks() != null) {
+                        for (Task task : t.getPreparedTasks()) {
+                            LOGGER.error("Uncommitted transaction {} holds Task {}, {}, user={}, slot={}", t.getTransactionId(), task.getTaskId(), task.getType(), task.getUserId(), task.getSlot());
+                            if (task.getSlot() != null && !task.getSlot().isEmpty()) {
+                                busySlots.put(task.getSlot(), task.getTaskId());
+                            }
+                        }
+                    }
+                }
+                Collection<WorkerStatus> workersAtBoot = brokerStatus.getWorkersAtBoot();
+                brokerStatus.setReadonly(false);
+                brokerStatus.reloadBusySlotsAtBoot(busySlots);
+                brokerStatus.startWriting();
+                Map<String, Collection<Long>> deadWorkerTasks = new HashMap<>();
+                List<String> workersConnectedAtBoot = new ArrayList<>();
+                workers.start(brokerStatus, deadWorkerTasks,
+                        workersConnectedAtBoot, globalResourceUsageCounters, tasksAtBoot, workersAtBoot);
+                started = true;
+                for (Map.Entry<String, Collection<Long>> workerTasksToRecovery : deadWorkerTasks.entrySet()) {
+                    tasksNeedsRecoveryDueToWorkerDeath(workerTasksToRecovery.getValue(), workerTasksToRecovery.getKey());
+                }
+                if (PERFORM_CHECKPOINT_AT_LEADERSHIP) {
+                    checkpoint();
+                }
+                try {
+                    while (!stopped && !failed) {
+                        if (!suspendLogFlush) {
+                            // write something to log, this simple action detects fencing and forces flushes
+                            // to other follower brokers
+                            noop();
+                        }
+                        resumeDelayedTasks();
+                        if (externalProcessChecker != null) {
+                            externalProcessChecker.call();
+                        }
+                        stopperLatch.await(10, TimeUnit.SECONDS
+                        );
+                    }
+                } catch (InterruptedException exit) {
+                }
+            } catch (Throwable uncaught) {
+                LOGGER.error("fatal error", uncaught);
+                uncaught.printStackTrace();
+                shutdown();
+            }
+        }
+
+    };
 
     @Override
     public void brokerFailed(Throwable error) {
-        LOGGER.log(Level.SEVERE, "brokerFailed!", error);
+        LOGGER.error("brokerFailed!", error);
         failed = true;
         if (brokerStatus != null) {
             brokerStatus.brokerFailed();

@@ -29,8 +29,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Runtime status manager for a Node
@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  */
 public class WorkerManager {
 
-    private static final Logger LOGGER = Logger.getLogger(WorkerManager.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(WorkerManager.class);
 
     private final String workerId;
     private final Broker broker;
@@ -67,16 +67,16 @@ public class WorkerManager {
     }
 
     public void applyConfiguration(int maxThreads,
-        Map<String, Integer> maxThreadsByTaskType,
-        List<Integer> groups,
-        Set<Integer> excludedGroups,
-        Map<String, Integer> resourceLimis,
-        int maxThreadPerUserPerTaskTypePercent) {
-        LOGGER.log(Level.FINEST, "{0} applyConfiguration maxThreads {1} maxThreadPerUserPerTaskTypePercent {2} ", new Object[]{workerId, maxThreads});
+                                   Map<String, Integer> maxThreadsByTaskType,
+                                   List<Integer> groups,
+                                   Set<Integer> excludedGroups,
+                                   Map<String, Integer> resourceLimis,
+                                   int maxThreadPerUserPerTaskTypePercent) {
+        LOGGER.trace("{} applyConfiguration maxThreads {} maxThreadPerUserPerTaskTypePercent {} ", workerId, maxThreads);
         this.maxThreads = maxThreads;
         this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
-        for (Iterator<Map.Entry<String, Integer>> it = maxThreadsByTaskTypeNoZero.entrySet().iterator(); it.hasNext();) {
+        for (Iterator<Map.Entry<String, Integer>> it = maxThreadsByTaskTypeNoZero.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<String, Integer> entry = it.next();
             if (entry.getValue() == null || entry.getValue() <= 0) {
                 it.remove();
@@ -94,13 +94,12 @@ public class WorkerManager {
         try {
             Map<String, Integer> availableSpace = new HashMap<>(this.maxThreadsByTaskType);
             int actuallyRunning = broker.getBrokerStatus().applyRunningTasksFilterToAssignTasksRequest(workerId, availableSpace);
-            LOGGER.log(Level.FINEST, "{0} requestNewTasks actuallyRunning {2} max {3} groups {4},excludedGroups {5} availableSpace {1}, maxThreadsByTaskType {6}, maxThreadPerUserPerTaskTypePercent {7} ",
-                new Object[]{workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType, maxThreadPerUserPerTaskTypePercent});
+            LOGGER.debug("{} requestNewTasks actuallyRunning {} max {} groups {},excludedGroups {} availableSpace {}, maxThreadsByTaskType {}, maxThreadPerUserPerTaskTypePercent {} ", workerId, availableSpace + "", actuallyRunning, max, groups, excludedGroups, maxThreadsByTaskType, maxThreadPerUserPerTaskTypePercent);
             max = max - actuallyRunning;
             List<AssignedTask> tasks;
             if (max > 0 && !availableSpace.isEmpty()) {
                 tasks = broker.assignTasksToWorker(max, availableSpace, groups, excludedGroups, workerId,
-                    resourceLimis, resourceUsageCounters, maxThreadPerUserPerTaskTypePercent);
+                        resourceLimis, resourceUsageCounters, maxThreadPerUserPerTaskTypePercent);
                 tasks.forEach(this::taskAssigned);
             } else {
                 tasks = Collections.emptyList();
@@ -108,10 +107,10 @@ public class WorkerManager {
             long _stop = System.currentTimeMillis();
 
             if (!tasks.isEmpty()) {
-                LOGGER.log(Level.FINER, "{0} assigned {1} tasks, time {2} ms", new Object[]{workerId, tasks.size(), _stop - _start});
+                LOGGER.trace("{} assigned {} tasks, time {} ms", workerId, tasks.size(), _stop - _start);
             }
         } catch (Exception error) {
-            LOGGER.log(Level.SEVERE, "error assigning tasks", error);
+            LOGGER.error("error assigning tasks", error);
         }
     }
 
@@ -151,7 +150,7 @@ public class WorkerManager {
         }
         WorkerStatus status = broker.getBrokerStatus().getWorkerStatus(workerId);
         if (status == null) {
-            LOGGER.log(Level.SEVERE, "wakeup {0} -> no status?", workerId);
+            LOGGER.error("wakeup {} -> no status?", workerId);
             return;
         }
         if (status.getStatus() == WorkerStatus.STATUS_DEAD) {
@@ -166,58 +165,58 @@ public class WorkerManager {
                 connection = null;
             }
             if (connection == null) {
-                LOGGER.log(Level.FINE, "wakeup {0} -> no connection", workerId);
+                LOGGER.debug("wakeup {} -> no connection", workerId);
                 try {
                     if (status.getStatus() == WorkerStatus.STATUS_CONNECTED) {
-                        LOGGER.log(Level.FINE, "wakeup {0} -> no connection -> setting STATUS_DISCONNECTED", workerId);
+                        LOGGER.debug("wakeup {} -> no connection -> setting STATUS_DISCONNECTED", workerId);
                         broker.declareWorkerDisconnected(workerId, now);
                     } else {
                         long delta = now - lastActivity;
                         if (delta > maxWorkerIdleTime) {
-                            LOGGER.log(Level.SEVERE, "wakeup {0} -> declaring dead (connection did not reestabilish in time)", workerId);
+                            LOGGER.error("wakeup {} -> declaring dead (connection did not reestabilish in time)", workerId);
                             broker.declareWorkerDead(workerId, now);
 
-                            LOGGER.log(Level.SEVERE, "wakeup {0} -> requesting recovery for tasks {1}", new Object[]{workerId, tasksRunningOnRemoteWorker});
+                            LOGGER.error("wakeup {} -> requesting recovery for tasks {}", workerId, tasksRunningOnRemoteWorker);
                             broker.tasksNeedsRecoveryDueToWorkerDeath(tasksRunningOnRemoteWorker, workerId);
                             tasksRunningOnRemoteWorker.clear();
                         }
                     }
                 } catch (LogNotAvailableException err) {
-                    LOGGER.log(Level.SEVERE, "wakeup " + workerId + " -> worker lifecycle error", err);
+                    LOGGER.error("wakeup " + workerId + " -> worker lifecycle error", err);
                 }
             } else {
                 if (lastActivity < connection.getLastReceivedMessageTs()) {
                     lastActivity = connection.getLastReceivedMessageTs();
                 }
-                LOGGER.log(Level.FINEST, "wakeup {0}, lastActivity {1}  taskToBeSubmittedToRemoteWorker {2} tasksRunningOnRemoteWorker {3}", new Object[]{workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker});
+                LOGGER.trace("wakeup {}, lastActivity {}  taskToBeSubmittedToRemoteWorker {} tasksRunningOnRemoteWorker {}", workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker);
                 requestNewTasks();
                 int max = 100;
                 while (max-- > 0) {
                     AssignedTask taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
                     if (taskToBeSubmitted != null) {
                         long taskId = taskToBeSubmitted.taskid;
-                        LOGGER.log(Level.FINEST, "wakeup {0} -> assign task {1}", new Object[]{workerId, taskId});
+                        LOGGER.trace("wakeup {} -> assign task {}", workerId, taskId);
                         Task task = broker.getBrokerStatus().getTask(taskId);
                         if (task == null) {
                             // task disappeared ?
-                            LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task disappeared?", new Object[]{workerId, taskToBeSubmitted});
+                            LOGGER.error("wakeup {} -> assign task {}, task disappeared?", workerId, taskToBeSubmitted);
                         } else {
                             if (tasksRunningOnRemoteWorker.contains(taskToBeSubmitted.taskid)) {
-                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} is already running on worker", new Object[]{workerId, taskToBeSubmitted, task});
+                                LOGGER.error("wakeup {} -> assign task {}, task {} is already running on worker", workerId, taskToBeSubmitted, task);
                                 return;
                             }
                             if (task.getStatus() == Task.STATUS_RUNNING && task.getWorkerId().equals(workerId)) {
                                 connection.sendTaskAssigned(task, (Void result, Throwable error) -> {
                                     if (error != null) {
                                         // the write failed
-                                        LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} network failure, rescheduling for retry:{3}", new Object[]{workerId, taskToBeSubmitted, task, error});
+                                        LOGGER.error("wakeup {} -> assign task {}, task {} network failure, rescheduling for retry:{}", workerId, taskToBeSubmitted, task, error);
                                         taskToBeSubmittedToRemoteWorker.add(taskToBeSubmitted);
                                     } else {
                                         tasksRunningOnRemoteWorker.add(taskToBeSubmitted.taskid);
                                     }
                                 });
                             } else {
-                                LOGGER.log(Level.SEVERE, "wakeup {0} -> assign task {1}, task {2} not in running status for this worker", new Object[]{workerId, taskToBeSubmitted, task});
+                                LOGGER.error("wakeup {} -> assign task {}, task {} not in running status for this worker", workerId, taskToBeSubmitted, task);
                             }
                         }
                     } else {
@@ -235,7 +234,7 @@ public class WorkerManager {
     private final BlockingQueue<AssignedTask> taskToBeSubmittedToRemoteWorker = new LinkedBlockingDeque<>();
 
     public void activateConnection(BrokerSideConnection connection) {
-        LOGGER.log(Level.INFO, "activateConnection {0}", connection);
+        LOGGER.info("activateConnection {}", connection);
         connectionLock.lock();
         try {
             lastActivity = System.currentTimeMillis();
@@ -247,7 +246,7 @@ public class WorkerManager {
 
     void taskRunningDuringBrokerBoot(AssignedTask takenTask) {
         long taskId = takenTask.taskid;
-        LOGGER.log(Level.FINE, "{0} taskShouldBeRunning {1}, resources {2}", new Object[]{workerId, taskId, takenTask.resources});
+        LOGGER.debug("{} taskShouldBeRunning {}, resources {}", workerId, taskId, takenTask.resources);
         tasksRunningOnRemoteWorker.add(taskId);
         resourceUsageCounters.useResources(takenTask.resourceIds);
         taskToBeSubmittedToRemoteWorker.remove(takenTask);
@@ -258,7 +257,7 @@ public class WorkerManager {
         taskToBeSubmittedToRemoteWorker.add(takenTask);
         resourceUsageCounters.useResources(takenTask.resourceIds);
         if (tasksRunningOnRemoteWorker.contains(taskId)) {
-            LOGGER.log(Level.SEVERE, "taskAssigned {0}, the task is already running on remote worker?", new Object[]{taskId});
+            LOGGER.error("taskAssigned {}, the task is already running on remote worker?", taskId);
         }
     }
 
@@ -267,7 +266,7 @@ public class WorkerManager {
     public void deactivateConnection(BrokerSideConnection aThis) {
         connectionLock.lock();
         try {
-            LOGGER.log(Level.INFO, "deactivateConnection {0}", connection);
+            LOGGER.info("deactivateConnection {}", connection);
             if (this.connection == aThis) {
                 this.connection = null;
             }

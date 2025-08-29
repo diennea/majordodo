@@ -20,8 +20,9 @@
 package majordodo.network.netty;
 
 import io.netty.handler.ssl.OpenSsl;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NetworkUtils {
 
@@ -36,7 +37,7 @@ public class NetworkUtils {
     }
 
     private static Boolean openSslAvailable;
-    private static final Logger LOG = Logger.getLogger(NetworkUtils.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(NetworkUtils.class);
 
     public static boolean isOpenSslAvailable() {
         if (openSslAvailable != null) {
@@ -47,7 +48,7 @@ public class NetworkUtils {
             openSslAvailable = true;
         } else {
             Throwable cause = OpenSsl.unavailabilityCause();
-            LOG.log(Level.INFO, "Native OpenSSL support is not available on this platform: " + cause);
+            LOG.info("Native OpenSSL support is not available on this platform: {}", cause);
             openSslAvailable = false;
         }
         return openSslAvailable;

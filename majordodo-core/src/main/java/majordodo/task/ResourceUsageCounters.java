@@ -28,9 +28,11 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.utils.IntCounter;
+import org.slf4j.event.Level;
 
 /**
  * Counters on resources usage
@@ -41,7 +43,7 @@ public class ResourceUsageCounters {
 
     public static final boolean CORRECT_NEGATIVE_COUNTERS = majordodo.utils.SystemProperties.getBooleanSystemProperty("broker.counters.correctnegative", false);
 
-    private static final Logger LOGGER = Logger.getLogger(ResourceUsageCounters.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ResourceUsageCounters.class);
 
     private final String name;
 
@@ -100,7 +102,7 @@ public class ResourceUsageCounters {
         if (CORRECT_NEGATIVE_COUNTERS) {
             for (Entry<String, IntCounter> e : counters.entrySet()) {
                 if (e.getValue().count < 0) {
-                    LOGGER.log(Level.SEVERE, "Counter \"{0}\" is negative! Value={1}", new Object[]{e.getKey(), e.getValue()});
+                    LOGGER.error("Counter \"" + Arrays.toString(new Object[]{e.getKey(), e.getValue()}) + "\" is negative! Value={1}");
                     e.getValue().count = 0;
                 }
             }
@@ -111,7 +113,7 @@ public class ResourceUsageCounters {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
             List<String> res = Arrays.asList(resourceIds);
-            LOGGER.log(Level.FINEST, "{0} useResources={1}", new Object[]{name, res});
+            LOGGER.trace("{} useResources={}", name, res);
             usedResources.addAll(res);
         }
     }
@@ -120,8 +122,8 @@ public class ResourceUsageCounters {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
             List<String> res = Arrays.asList(resourceIds);
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.log(Level.FINEST, "'{0}' releaseResources={1}", new Object[]{name, res});
+            if (LOGGER.isEnabledForLevel(Level.TRACE)) {
+                LOGGER.trace("'{}' releaseResources={}", name, res);
             }
             releasedResources.addAll(res);
         }

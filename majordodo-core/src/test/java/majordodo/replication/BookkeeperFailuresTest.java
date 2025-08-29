@@ -43,7 +43,6 @@ import org.junit.Test;
  * @author francesco.caliumi
  */
 @BrokerTestUtils.StartReplicatedBrokers
-@BrokerTestUtils.LogLevel(level = "SEVERE")
 public class BookkeeperFailuresTest extends BrokerTestUtils {
 
     private final LeaderShipChangeListener leaderShiplistener = new LeaderShipChangeListener() {

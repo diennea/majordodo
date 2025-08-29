@@ -19,7 +19,8 @@
  */
 package majordodo.security.sasl;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import majordodo.network.Channel;
 import majordodo.network.Message;
 import majordodo.network.netty.GenericNettyBrokerLocator;
@@ -30,7 +31,7 @@ import majordodo.network.netty.GenericNettyBrokerLocator;
  */
 public class ClientAuthenticationUtils {
 
-    private static final Logger LOGGER = Logger.getLogger(SaslNettyClient.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SaslNettyClient.class);
     
     public static void performAuthentication(Channel _channel, String serverHostname, String sharedSecret) throws Exception {
 
@@ -53,7 +54,7 @@ public class ClientAuthenticationUtils {
                     responseToSendToServer = saslNettyClient.evaluateChallenge(token);
                     saslResponse = _channel.sendMessageWithReply(Message.SASL_TOKEN_MESSAGE_TOKEN(responseToSendToServer), 10000);
                     if (saslNettyClient.isComplete()) {
-                        LOGGER.severe("SASL auth completed with success");
+                        LOGGER.error("SASL auth completed with success");
                         return;
                     }
                     break;

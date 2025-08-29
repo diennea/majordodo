@@ -39,8 +39,9 @@ import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Worker-side connector
@@ -113,7 +114,7 @@ public class NettyConnector implements AutoCloseable {
         } else {
             group = new NioEventLoopGroup();
         }
-        LOG.log(Level.INFO, "Trying to connect to broker at " + host + ":" + port
+        LOG.info("Trying to connect to broker at {}", host + ":" + port
             + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure + " openSsl:" + useOpenSSL);
 
         Bootstrap b = new Bootstrap();
@@ -143,7 +144,7 @@ public class NettyConnector implements AutoCloseable {
         return channel;
 
     }
-    private static final Logger LOG = Logger.getLogger(NettyConnector.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(NettyConnector.class);
 
     public NettyChannel getChannel() {
         return channel;

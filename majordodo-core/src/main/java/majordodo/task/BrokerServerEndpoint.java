@@ -23,8 +23,9 @@ import majordodo.network.Channel;
 import majordodo.network.ServerSideConnectionAcceptor;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Connections manager broker-side
@@ -33,7 +34,7 @@ import java.util.logging.Logger;
  */
 public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<BrokerSideConnection> {
 
-    private static final Logger LOGGER = Logger.getLogger(BrokerServerEndpoint.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(BrokerServerEndpoint.class);
     private final Map<String, BrokerSideConnection> workersConnections = new ConcurrentHashMap<>();
     private final Map<Long, BrokerSideConnection> connections = new ConcurrentHashMap<>();
 
@@ -67,12 +68,12 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
     }
 
     void connectionAccepted(BrokerSideConnection con) {
-        LOGGER.log(Level.INFO, "connectionAccepted {0}", con);
+        LOGGER.info("connectionAccepted {}", con);
         workersConnections.put(con.getClientId(), con);
     }
 
     void connectionClosed(BrokerSideConnection con) {
-        LOGGER.log(Level.INFO, "connectionClosed {0}", con);
+        LOGGER.info("connectionClosed {}", con);
         connections.remove(con.getConnectionId());
         if (con.getClientId() != null) {
             workersConnections.remove(con.getClientId()); // to be remove only if the connection is the current connection

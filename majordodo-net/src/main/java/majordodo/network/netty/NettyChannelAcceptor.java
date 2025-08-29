@@ -42,8 +42,9 @@ import java.security.KeyStore;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLException;
 import majordodo.network.ServerSideConnectionAcceptor;
@@ -55,7 +56,7 @@ import majordodo.network.ServerSideConnectionAcceptor;
  */
 public class NettyChannelAcceptor implements AutoCloseable {
 
-    private static final Logger LOGGER = Logger.getLogger(NettyChannelAcceptor.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyChannelAcceptor.class);
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -152,9 +153,9 @@ public class NettyChannelAcceptor implements AutoCloseable {
         if (ssl) {
 
             if (sslCertFile == null) {
-                LOGGER.log(Level.SEVERE, "start SSL with self-signed auto-generated certificate, useOpenSSL:" + useOpenSSL);
+                LOGGER.error("start SSL with self-signed auto-generated certificate, useOpenSSL:{}", useOpenSSL);
                 if (sslCiphers != null) {
-                    LOGGER.log(Level.SEVERE, "required sslCiphers " + sslCiphers);
+                    LOGGER.error("required sslCiphers {}", sslCiphers);
                 }
                 SelfSignedCertificate ssc = new SelfSignedCertificate();
                 try {
@@ -166,11 +167,10 @@ public class NettyChannelAcceptor implements AutoCloseable {
                     ssc.delete();
                 }
             } else {
-                LOGGER.log(Level.SEVERE, "start SSL with certificate " + sslCertFile.getAbsolutePath()
-                                         + " chain file " + (sslCertChainFile == null ? "null" : sslCertChainFile.getAbsolutePath())
-                                         + " , useOpenSSL:" + useOpenSSL);
+                LOGGER.error("start SSL with certificate {} chain file {} , useOpenSSL:{}", sslCertFile.getAbsolutePath(),
+                                         (sslCertChainFile == null ? "null" : sslCertChainFile.getAbsolutePath()), useOpenSSL);
                 if (sslCiphers != null) {
-                    LOGGER.log(Level.SEVERE, "required sslCiphers " + sslCiphers);
+                    LOGGER.error("required sslCiphers {}", sslCiphers);
                 }
                 SslContextBuilder builder;
                 if (sslCertFile.getName().endsWith(".p12") || sslCertFile.getName().endsWith(".pfx")) {
@@ -197,7 +197,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
         if (NetworkUtils.isEnableEpollNative()) {
             bossGroup = new EpollEventLoopGroup(workerThreads);
             workerGroup = new EpollEventLoopGroup(workerThreads);
-            LOGGER.log(Level.INFO, "Using netty-native-epoll network type");
+            LOGGER.info("Using netty-native-epoll network type");
         } else {
             bossGroup = new NioEventLoopGroup(workerThreads);
             workerGroup = new NioEventLoopGroup(workerThreads);

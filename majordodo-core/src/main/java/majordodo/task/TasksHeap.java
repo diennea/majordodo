@@ -28,8 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.utils.IntCounter;
@@ -49,7 +50,7 @@ import majordodo.utils.IntCounter;
  */
 public class TasksHeap {
 
-    private static final Logger LOGGER = Logger.getLogger(TasksHeap.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(TasksHeap.class);
 
     private static final int TASKTYPE_ANYTASK = 0;
 
@@ -137,7 +138,7 @@ public class TasksHeap {
             delta = 1;
         }
         int newSize = actuallist.length + delta;
-        LOGGER.log(Level.INFO, "doAutoGrow size {0}, newsize {1}", new Object[]{size, newSize});
+        LOGGER.info("doAutoGrow size {}, newsize {}", size, newSize);
         TaskEntry[] newList = new TaskEntry[newSize];
         System.arraycopy(actuallist, 0, newList, 0, actuallist.length);
         for (int i = actuallist.length; i < newList.length; i++) {
@@ -284,7 +285,7 @@ public class TasksHeap {
     }
 
     public void runCompaction() {
-        LOGGER.log(Level.FINEST, "running compaction,"
+        LOGGER.trace("running compaction,"
             + "fragmentation " + fragmentation + ", actualsize " + actualsize
             + ", size " + size + ", minValidPosition " + minValidPosition);
         lock.writeLock().lock();
@@ -323,7 +324,7 @@ public class TasksHeap {
             minValidPosition = 0;
             actualsize = writepos + 1;
             fragmentation = 0;
-            LOGGER.log(Level.FINEST, "after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
+            LOGGER.trace("after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
         } finally {
             lock.writeLock().unlock();
         }
