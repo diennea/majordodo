@@ -72,7 +72,7 @@ public class WorkerManager {
                                    Set<Integer> excludedGroups,
                                    Map<String, Integer> resourceLimis,
                                    int maxThreadPerUserPerTaskTypePercent) {
-        LOGGER.debug("{} applyConfiguration maxThreads {} maxThreadPerUserPerTaskTypePercent {} ", workerId, maxThreads);
+        LOGGER.trace("{} applyConfiguration maxThreads {} maxThreadPerUserPerTaskTypePercent {} ", workerId, maxThreads);
         this.maxThreads = maxThreads;
         this.maxThreadPerUserPerTaskTypePercent = maxThreadPerUserPerTaskTypePercent;
         Map<String, Integer> maxThreadsByTaskTypeNoZero = new HashMap<>(maxThreadsByTaskType);
@@ -107,7 +107,7 @@ public class WorkerManager {
             long _stop = System.currentTimeMillis();
 
             if (!tasks.isEmpty()) {
-                LOGGER.debug("{} assigned {} tasks, time {} ms", workerId, tasks.size(), _stop - _start);
+                LOGGER.trace("{} assigned {} tasks, time {} ms", workerId, tasks.size(), _stop - _start);
             }
         } catch (Exception error) {
             LOGGER.error("error assigning tasks", error);
@@ -188,14 +188,14 @@ public class WorkerManager {
                 if (lastActivity < connection.getLastReceivedMessageTs()) {
                     lastActivity = connection.getLastReceivedMessageTs();
                 }
-                LOGGER.debug("wakeup {}, lastActivity {}  taskToBeSubmittedToRemoteWorker {} tasksRunningOnRemoteWorker {}", workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker);
+                LOGGER.trace("wakeup {}, lastActivity {}  taskToBeSubmittedToRemoteWorker {} tasksRunningOnRemoteWorker {}", workerId, new java.util.Date(lastActivity), taskToBeSubmittedToRemoteWorker, tasksRunningOnRemoteWorker);
                 requestNewTasks();
                 int max = 100;
                 while (max-- > 0) {
                     AssignedTask taskToBeSubmitted = taskToBeSubmittedToRemoteWorker.poll();
                     if (taskToBeSubmitted != null) {
                         long taskId = taskToBeSubmitted.taskid;
-                        LOGGER.debug("wakeup {} -> assign task {}", workerId, taskId);
+                        LOGGER.trace("wakeup {} -> assign task {}", workerId, taskId);
                         Task task = broker.getBrokerStatus().getTask(taskId);
                         if (task == null) {
                             // task disappeared ?

@@ -285,7 +285,7 @@ public class TasksHeap {
     }
 
     public void runCompaction() {
-        LOGGER.debug("running compaction,"
+        LOGGER.trace("running compaction,"
             + "fragmentation " + fragmentation + ", actualsize " + actualsize
             + ", size " + size + ", minValidPosition " + minValidPosition);
         lock.writeLock().lock();
@@ -324,7 +324,7 @@ public class TasksHeap {
             minValidPosition = 0;
             actualsize = writepos + 1;
             fragmentation = 0;
-            LOGGER.debug("after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
+            LOGGER.trace("after compaction, fragmentation " + fragmentation + ", actualsize " + actualsize + ", size " + size + ", minValidPosition " + minValidPosition);
         } finally {
             lock.writeLock().unlock();
         }

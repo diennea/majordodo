@@ -380,7 +380,7 @@ public class HttpAPIImplementation {
 
         }
 
-        LOGGER.debug("GET  -> {}", resultMap);
+        LOGGER.trace("GET  -> {}", resultMap);
         String s = MAPPER.writeValueAsString(resultMap);
         byte[] res = s.getBytes(StandardCharsets.UTF_8);
 

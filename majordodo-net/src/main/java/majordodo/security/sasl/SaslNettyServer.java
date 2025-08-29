@@ -75,7 +75,7 @@ public class SaslNettyServer {
 
     private SaslServer createSaslServer(final String mech, final Subject subject) throws SaslException, IOException {
         if (subject == null) {
-            LOG.debug("Authentication will use SASL/DIGEST-MD5, no JAAS");
+            LOG.trace("Authentication will use SASL/DIGEST-MD5, no JAAS");
             SaslDigestCallbackHandler ch = new SaslNettyServer.SaslDigestCallbackHandler();
             return Sasl.createSaslServer(mech, null,
                 SaslUtils.DEFAULT_REALM, SaslUtils.getSaslProps(), ch);
@@ -83,7 +83,7 @@ public class SaslNettyServer {
             SaslServerCallbackHandler callbackHandler = new SaslServerCallbackHandler(Configuration.getConfiguration());
             // server is using a JAAS-authenticated subject: determine service principal name and hostname from zk server's subject.
             if (subject.getPrincipals().size() > 0) {
-                LOG.debug("Authentication will use SASL/JAAS/Kerberos");
+                LOG.trace("Authentication will use SASL/JAAS/Kerberos");
                 try {
                     final Object[] principals = subject.getPrincipals().toArray();
                     final Principal servicePrincipal = (Principal) principals[0];
@@ -246,7 +246,7 @@ public class SaslNettyServer {
             String authenticatingUser = null;
             if (nc != null) {
                 authenticatingUser = nc.getDefaultName();
-                LOG.debug("SASL server auth user {}", authenticatingUser);
+                LOG.trace("SASL server auth user {}", authenticatingUser);
                 nc.setName(nc.getDefaultName());
             }
             if (pc != null) {

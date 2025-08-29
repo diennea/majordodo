@@ -113,7 +113,7 @@ public class ResourceUsageCounters {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
             List<String> res = Arrays.asList(resourceIds);
-            LOGGER.debug("{} useResources={}", name, res);
+            LOGGER.trace("{} useResources={}", name, res);
             usedResources.addAll(res);
         }
     }
@@ -122,8 +122,8 @@ public class ResourceUsageCounters {
         // this method can be called by any thread, but real write access to "counters" is to be done only inside the writeLock of "TasksHeap"
         if (resourceIds != null) {
             List<String> res = Arrays.asList(resourceIds);
-            if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
-                LOGGER.debug("'{}' releaseResources={}", name, res);
+            if (LOGGER.isEnabledForLevel(Level.TRACE)) {
+                LOGGER.trace("'{}' releaseResources={}", name, res);
             }
             releasedResources.addAll(res);
         }

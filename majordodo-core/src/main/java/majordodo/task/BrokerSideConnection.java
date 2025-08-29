@@ -143,7 +143,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
             LOGGER.error("receivedMessageFromWorker {}, but channel is closed", message);
             return;
         }
-        LOGGER.debug("receivedMessageFromWorker {}", message);
+        LOGGER.trace("receivedMessageFromWorker {}", message);
         switch (message.type) {
             case Message.TYPE_SASL_TOKEN_MESSAGE_REQUEST: {
                 try {
@@ -296,7 +296,7 @@ public class BrokerSideConnection implements ChannelEventListener, ServerSideCon
                     break;
                 }
                 List<Map<String, Object>> tasksData = (List<Map<String, Object>>) message.parameters.get("tasksData");
-                LOGGER.debug("tasksFinished {} {}", tasksData, message.parameters);
+                LOGGER.trace("tasksFinished {} {}", tasksData, message.parameters);
                 List<TaskFinishedData> finishedTasksInfo = new ArrayList<>(tasksData.size());
                 for (Map<String, Object> task : tasksData) {
                     long taskid = (Long) task.get("taskid");

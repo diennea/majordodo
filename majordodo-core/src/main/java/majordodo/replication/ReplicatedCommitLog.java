@@ -1036,7 +1036,7 @@ public class ReplicatedCommitLog extends StatusChangesLog {
                 for (Map.Entry<Long, StatusEdit> entry : buffer) {
                     long entryId = entry.getKey();
                     StatusEdit statusEdit = entry.getValue();
-                    LOGGER.debug("entry {},{} -> {}", previous, entryId, statusEdit);
+                    LOGGER.trace("entry {},{} -> {}", previous, entryId, statusEdit);
                     LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
                     consumer.accept(number, statusEdit);
                     lastSequenceNumber = number.sequenceNumber;

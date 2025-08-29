@@ -40,7 +40,7 @@ public class ReflectionUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReflectionUtils.class);
 
     public static void apply(Map<String, Object> properties, Object object) {
-        LOGGER.debug("Applying " + properties + " to " + object);
+        LOGGER.trace("Applying " + properties + " to " + object);
         Map<String, Object> notCaseSensitive = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         notCaseSensitive.putAll(properties);
         try {

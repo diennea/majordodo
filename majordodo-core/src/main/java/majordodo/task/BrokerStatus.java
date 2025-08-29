@@ -358,7 +358,7 @@ public final class BrokerStatus {
                     case Task.STATUS_FINISHED:
                         if (t.getCreatedTimestamp() < finished_deadline) {
                             if (LOGGER.isEnabledForLevel(Level.TRACE)) {
-                                LOGGER.debug("purging finished task {} slot {}, created at {}", t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot());
+                                LOGGER.trace("purging finished task {} slot {}, created at {}", t.getTaskId(), new java.util.Date(t.getCreatedTimestamp()), t.getSlot());
                             }
                             it.remove();
                             stats.taskStatusChange(t.getStatus(), -1);

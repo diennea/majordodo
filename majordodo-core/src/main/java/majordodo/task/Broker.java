@@ -256,7 +256,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         for (BrokerStatus.ModificationResult mod : results) {
             Task task = tasksToResume.get(i++);
             if (mod.error == null) {
-                LOGGER.debug("task {} resumed", task.getTaskId());
+                LOGGER.trace("task {} resumed", task.getTaskId());
             } else {
                 //LOGGER.error(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
                 throw new IllegalStateException(String.format("fail to resume task %s (%s)", task.getTaskId(), mod.error));
@@ -368,7 +368,7 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
 
         long end = System.currentTimeMillis();
-        LOGGER.debug("assignTaskToWorker count {} take: {}, assign:{}, total:{}", now - start, end - now, end - start, (tasks.size()));
+        LOGGER.trace("assignTaskToWorker count {} take: {}, assign:{}, total:{}", now - start, end - now, end - start, (tasks.size()));
         return tasks;
     }
 
@@ -656,8 +656,8 @@ public final class Broker implements AutoCloseable, JVMBrokerSupportInterface, B
         }
         List<BrokerStatus.ModificationResult> batch = this.brokerStatus.applyModifications(edits);
         if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
-            LOGGER.debug("addTasks {}", requests);
-            LOGGER.debug("addTasks results {}", batch);
+            LOGGER.trace("addTasks {}", requests);
+            LOGGER.trace("addTasks results {}", batch);
         }
         for (int i = 0; i < size; i++) {
             StatusEdit addTask = edits.get(i);

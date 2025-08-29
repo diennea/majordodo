@@ -64,9 +64,9 @@ public class ExecutorRunnable implements Runnable {
             LOGGER.error("error while executing task " + parameters, t);
             callback.taskStatusChanged(taskId, parameters, TaskExecutorStatus.ERROR, null, t);
         } finally {
-            if (LOGGER.isEnabledForLevel(Level.DEBUG)) {
+            if (LOGGER.isEnabledForLevel(Level.TRACE)) {
                 long _end = System.nanoTime();
-                LOGGER.debug("task time " + parameters + " " + (_end - _start) + " ns");
+                LOGGER.trace("task time " + parameters + " " + (_end - _start) + " ns");
             }
         }
     }

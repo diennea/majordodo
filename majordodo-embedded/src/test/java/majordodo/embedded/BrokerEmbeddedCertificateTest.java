@@ -22,9 +22,12 @@ package majordodo.embedded;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.slf4j.LoggerFactory.getILoggerFactory;
+import static org.slf4j.LoggerFactory.getLogger;
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -34,8 +37,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import majordodo.broker.StandaloneHttpAPIServlet;
 import majordodo.client.BrokerAddress;
@@ -59,7 +60,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.LoggerFactory;
 
 public class BrokerEmbeddedCertificateTest {
 
@@ -69,17 +69,17 @@ public class BrokerEmbeddedCertificateTest {
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    private static final ch.qos.logback.classic.Logger NETTY_LOGGER = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(NettyChannelAcceptor.class);
-    private static List<String> logMessages = new ArrayList<>();
+    private static final ch.qos.logback.classic.Logger NETTY_LOGGER = (ch.qos.logback.classic.Logger) getLogger(NettyChannelAcceptor.class);
+    private static ListAppender<ILoggingEvent> listAppender;
 
     @BeforeClass
     public static void setUpClass() throws Exception {
-        logMessages = interceptNettyLogs();
+        listAppender = interceptNettyLogs();
     }
 
     @After
     public void tearDown() throws Exception {
-        logMessages.clear();
+        listAppender.list.clear();
         Files.walkFileTree(folder.getRoot().toPath(), new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -102,8 +102,8 @@ public class BrokerEmbeddedCertificateTest {
         config.getProperties().put(EmbeddedBrokerConfiguration.KEY_SSL, "true");
         doTest(config);
 
-        boolean found = logMessages.stream()
-                .anyMatch(line -> line.startsWith("start SSL with self-signed auto-generated certificate"));
+        boolean found = listAppender.list.stream()
+                .anyMatch(line -> line.getFormattedMessage().contains("start SSL with self-signed auto-generated certificate"));
         assertTrue(found);
     }
 
@@ -113,8 +113,8 @@ public class BrokerEmbeddedCertificateTest {
         config.getProperties().put(EmbeddedBrokerConfiguration.KEY_SSL, "false");
         doTest(config);
 
-        boolean found = logMessages.stream()
-                .anyMatch(line -> line.startsWith("start SSL"));
+        boolean found = listAppender.list.stream()
+                .anyMatch(line -> line.getFormattedMessage().contains("start SSL"));
         assertFalse(found);
     }
 
@@ -137,8 +137,8 @@ public class BrokerEmbeddedCertificateTest {
         config.getProperties().put(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, certChainFile.toFile());
         doTest(config);
 
-        boolean found = logMessages.stream()
-                .anyMatch(line -> line.startsWith("start SSL with certificate") && line.contains(certFile.toFile().getAbsolutePath()));
+        boolean found = listAppender.list.stream()
+                .anyMatch(line -> line.getFormattedMessage().contains("start SSL with certificate") && line.getFormattedMessage().contains(certFile.toFile().getAbsolutePath()));
         assertTrue(found);
     }
 
@@ -161,8 +161,8 @@ public class BrokerEmbeddedCertificateTest {
         config.getProperties().put(EmbeddedBrokerConfiguration.SSL_CERTIFICATE_CHAIN_FILE, certChainFile.toFile().getAbsolutePath());
         doTest(config);
 
-        boolean found = logMessages.stream()
-                .anyMatch(line -> line.startsWith("start SSL with certificate") && line.contains(certFile.toFile().getAbsolutePath()));
+        boolean found = listAppender.list.stream()
+                .anyMatch(line -> line.getFormattedMessage().contains("start SSL with certificate") && line.getFormattedMessage().contains(certFile.toFile().getAbsolutePath()));
         assertTrue(found);
     }
 
@@ -179,8 +179,8 @@ public class BrokerEmbeddedCertificateTest {
         config.getProperties().put("broker.ssl.certificatefilepassword", "majordodo1");
         doTest(config);
 
-        boolean found = logMessages.stream()
-                .anyMatch(line -> line.startsWith("start SSL with certificate") && line.contains(certFile.toFile().getAbsolutePath()));
+        boolean found = listAppender.list.stream()
+                .anyMatch(line -> line.getFormattedMessage().contains("start SSL with certificate") && line.getFormattedMessage().contains(certFile.toFile().getAbsolutePath()));
         assertTrue(found);
     }
 
@@ -235,19 +235,16 @@ public class BrokerEmbeddedCertificateTest {
         }
     }
 
-    private static List<String> interceptNettyLogs() {
+    private static ListAppender<ILoggingEvent> interceptNettyLogs() {
         NETTY_LOGGER.setLevel(Level.ALL);
-        List<String> logMessages = new ArrayList<>();
-        Appender handler = new ConsoleAppender() {
-            @Override
-            protected void append(Object eventObject) {
-                System.out.println("handler called");
-                logMessages.add(eventObject.toString());
-            }
-        };
-        NETTY_LOGGER.addAppender(handler);
+        LoggerContext ctx = (LoggerContext) getILoggerFactory();
 
-        return logMessages;
+        ListAppender<ILoggingEvent> list = new ListAppender<>();
+        list.setContext(ctx);
+        list.start();
+        NETTY_LOGGER.addAppender(list);
+
+        return list;
     }
 
     private static final class MyExecutor extends TaskExecutor implements Serializable {
