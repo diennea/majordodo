@@ -30,7 +30,9 @@ public class TestUtils {
 
     public static void waitForCondition(Callable<Boolean> condition, Callable<Void> callback, int seconds) throws Exception {
         try {
-            while (seconds-- > 0) {
+            long _start = System.currentTimeMillis();
+            long millis = seconds * 1000L;
+            while (System.currentTimeMillis() - _start <= millis) {
                 if (condition.call()) {
                     return;
                 }
@@ -46,8 +48,7 @@ public class TestUtils {
             throw ee;
         }
 
-        throw new Exception(
-                "condition not met in time!");
+        throw new Exception("condition not met in time!");
     }
 
     public static Callable<Void> NOOP = () -> null;
