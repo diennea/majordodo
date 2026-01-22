@@ -19,7 +19,6 @@
  */
 package majordodo.network.netty;
 
-import majordodo.network.ChannelEventListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -39,7 +38,10 @@ import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import majordodo.network.ChannelEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +62,12 @@ public class NettyConnector implements AutoCloseable {
     private boolean sslUnsecure = true;
     private final ChannelEventListener receiver;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
+    private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "dodo-netty-connector-reply-deadlines");
+        t.setDaemon(true);
+        return t;
+    });
+    private ScheduledFuture<?> timerTask;
 
     public boolean isSslUnsecure() {
         return sslUnsecure;
@@ -94,19 +102,25 @@ public class NettyConnector implements AutoCloseable {
     }
 
     public NettyChannel connect() throws Exception {
+        this.timerTask = timer.scheduleAtFixedRate(() -> {
+            NettyChannel _channel = channel;
+            if (_channel != null && _channel.isValid()) {
+                _channel.processPendingReplyMessagesDeadline();
+            }
+        }, 5000, 5000, TimeUnit.MILLISECONDS);
         boolean useOpenSSL = NetworkUtils.isOpenSslAvailable();
         if (ssl) {
             if (sslUnsecure) {
                 this.sslCtx = SslContextBuilder
-                    .forClient()
-                    .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
-                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                    .build();
+                        .forClient()
+                        .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                        .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                        .build();
             } else {
                 this.sslCtx = SslContextBuilder
-                    .forClient()
-                    .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
-                    .build();
+                        .forClient()
+                        .sslProvider(useOpenSSL ? SslProvider.OPENSSL : SslProvider.JDK)
+                        .build();
             }
         }
         if (NetworkUtils.isEnableEpollNative()) {
@@ -115,35 +129,36 @@ public class NettyConnector implements AutoCloseable {
             group = new NioEventLoopGroup();
         }
         LOG.info("Trying to connect to broker at {}", host + ":" + port
-            + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure + " openSsl:" + useOpenSSL);
+                + " ssl:" + ssl + ", sslUnsecure:" + sslUnsecure + " openSsl:" + useOpenSSL);
 
         Bootstrap b = new Bootstrap();
         b.group(group)
-            .channel(NetworkUtils.isEnableEpollNative() ? EpollSocketChannel.class : NioSocketChannel.class)
-            .option(ChannelOption.TCP_NODELAY, true)
-            .handler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                public void initChannel(SocketChannel ch) throws Exception {
-                    channel = new NettyChannel(host + ":" + port, ch, callbackExecutor, NettyConnector.this);
-                    channel.setMessagesReceiver(receiver);
-                    channel.setRemoteHost(host);
-                    if (ssl) {
-                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
+                .channel(NetworkUtils.isEnableEpollNative() ? EpollSocketChannel.class : NioSocketChannel.class)
+                .option(ChannelOption.TCP_NODELAY, true)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    public void initChannel(SocketChannel ch) throws Exception {
+                        channel = new NettyChannel(host + ":" + port, ch, callbackExecutor, NettyConnector.this);
+                        channel.setMessagesReceiver(receiver);
+                        channel.setRemoteHost(host);
+                        if (ssl) {
+                            ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), host, port));
+                        }
+                        ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
+                        ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
+                        //
+                        ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
+                        ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
+                        ch.pipeline().addLast(new InboundMessageHandler(channel));
                     }
-                    ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
-                    ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-//
-                    ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
-                    ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
-                    ch.pipeline().addLast(new InboundMessageHandler(channel));
-                }
-            });
+                });
 
         ChannelFuture f = b.connect(host, port).sync();
         socketchannel = f.channel();
         return channel;
 
     }
+
     private static final Logger LOG = LoggerFactory.getLogger(NettyConnector.class);
 
     public NettyChannel getChannel() {
@@ -152,6 +167,10 @@ public class NettyConnector implements AutoCloseable {
 
     @Override
     public void close() {
+        if (timerTask != null) {
+            timerTask.cancel(false);
+        }
+        timer.shutdown();
         if (channel != null) {
             channel.close();
         }

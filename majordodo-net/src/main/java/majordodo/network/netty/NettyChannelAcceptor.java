@@ -39,15 +39,20 @@ import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.io.File;
 import java.io.FileInputStream;
 import java.security.KeyStore;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLException;
 import majordodo.network.ServerSideConnectionAcceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Accepts connections from workers
@@ -71,6 +76,13 @@ public class NettyChannelAcceptor implements AutoCloseable {
     private String sslCertPassword;
     private int workerThreads = 16;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
+    private final Set<NettyChannel> activeChannels = Collections.synchronizedSet(new HashSet<>());
+    private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "dodo-netty-acceptor-reply-deadlines");
+        t.setDaemon(true);
+        return t;
+    });
+    private ScheduledFuture<?> timerTask;
 
     public int getWorkerThreads() {
         return workerThreads;
@@ -149,6 +161,17 @@ public class NettyChannelAcceptor implements AutoCloseable {
     }
 
     public void start() throws Exception {
+        this.timerTask = timer.scheduleAtFixedRate(() -> {
+            var channelsToRemove = new HashSet<NettyChannel>();
+            for (NettyChannel channel : activeChannels) {
+                if (channel.isValid()) {
+                    channel.processPendingReplyMessagesDeadline();
+                } else {
+                    channelsToRemove.add(channel);
+                }
+            }
+            activeChannels.removeAll(channelsToRemove);
+        }, 5000, 5000, TimeUnit.MILLISECONDS);
         boolean useOpenSSL = NetworkUtils.isOpenSslAvailable();
         if (ssl) {
 
@@ -168,7 +191,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
                 }
             } else {
                 LOGGER.error("start SSL with certificate {} chain file {} , useOpenSSL:{}", sslCertFile.getAbsolutePath(),
-                                         (sslCertChainFile == null ? "null" : sslCertChainFile.getAbsolutePath()), useOpenSSL);
+                        (sslCertChainFile == null ? "null" : sslCertChainFile.getAbsolutePath()), useOpenSSL);
                 if (sslCiphers != null) {
                     LOGGER.error("required sslCiphers {}", sslCiphers);
                 }
@@ -209,11 +232,12 @@ public class NettyChannelAcceptor implements AutoCloseable {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         NettyChannel session = new NettyChannel("client", ch, callbackExecutor, null);
+                        activeChannels.add(session);
                         if (acceptor != null) {
                             acceptor.createConnection(session);
                         }
 
-//                        ch.pipeline().addLast(new LoggingHandler());
+                        //                        ch.pipeline().addLast(new LoggingHandler());
                         // Add SSL handler first to encrypt and decrypt everything.
                         if (ssl) {
                             ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
@@ -221,7 +245,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
 
                         ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
                         ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-//
+                        //
                         ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
                         ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
                         ch.pipeline().addLast(new InboundMessageHandler(session));
@@ -237,6 +261,11 @@ public class NettyChannelAcceptor implements AutoCloseable {
 
     @Override
     public void close() {
+        activeChannels.clear();
+        if (timerTask != null) {
+            timerTask.cancel(false);
+        }
+        timer.shutdown();
         if (channel != null) {
             channel.close();
         }

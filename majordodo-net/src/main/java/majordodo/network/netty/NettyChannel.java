@@ -29,11 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import majordodo.network.Channel;
 import majordodo.network.Message;
@@ -59,8 +55,6 @@ public class NettyChannel extends Channel {
     private final Map<String, Long> pendingReplyMessagesDeadline = new ConcurrentHashMap<>();
     private final ExecutorService callbackexecutor;
     private final NettyConnector connector;
-    private final ScheduledExecutorService timer;
-    private ScheduledFuture<?> timerTask;
     private boolean ioErrors = false;
     private final long id = idGenerator.incrementAndGet();
     private final boolean disconnectOnReplyTimeout;
@@ -76,12 +70,6 @@ public class NettyChannel extends Channel {
         this.callbackexecutor = callbackexecutor;
         this.connector = connector;
         this.disconnectOnReplyTimeout = (connector == null); // only server-side
-        this.timer = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "dodo-netty-reply-deadlines-channel" + id);
-            t.setDaemon(true);
-            return t;
-        });
-        this.timerTask = this.timer.scheduleAtFixedRate(this::processPendingReplyMessagesDeadline, 1000, 1000, TimeUnit.MILLISECONDS);
     }
 
     public void messageReceived(Message message) {
@@ -158,7 +146,7 @@ public class NettyChannel extends Channel {
         });
     }
 
-    private void processPendingReplyMessagesDeadline() {
+    public void processPendingReplyMessagesDeadline() {
         List<String> messagesWithNoReply = new ArrayList<>();
         long now = System.currentTimeMillis();
         pendingReplyMessagesDeadline.forEach((messageId, deadline) -> {
@@ -232,12 +220,6 @@ public class NettyChannel extends Channel {
             return;
         }
         closed = true;
-        if (timerTask != null) {
-            timerTask.cancel(false);
-        }
-        if (timer != null) {
-            timer.shutdown();
-        }
         LOGGER.error(this + ": closing");
         String socketDescription = socket + "";
         if (socket != null) {
