@@ -39,10 +39,10 @@ import io.netty.handler.ssl.util.SelfSignedCertificate;
 import java.io.File;
 import java.io.FileInputStream;
 import java.security.KeyStore;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -76,7 +76,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
     private String sslCertPassword;
     private int workerThreads = 16;
     private final ExecutorService callbackExecutor = Executors.newCachedThreadPool();
-    private final Set<NettyChannel> activeChannels = Collections.synchronizedSet(new HashSet<>());
+    private final Set<NettyChannel> activeChannels = ConcurrentHashMap.newKeySet();
     private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "dodo-netty-acceptor-reply-deadlines");
         t.setDaemon(true);
@@ -236,8 +236,7 @@ public class NettyChannelAcceptor implements AutoCloseable {
                         if (acceptor != null) {
                             acceptor.createConnection(session);
                         }
-
-                        //                        ch.pipeline().addLast(new LoggingHandler());
+                        
                         // Add SSL handler first to encrypt and decrypt everything.
                         if (ssl) {
                             ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
@@ -245,7 +244,6 @@ public class NettyChannelAcceptor implements AutoCloseable {
 
                         ch.pipeline().addLast("lengthprepender", new LengthFieldPrepender(4));
                         ch.pipeline().addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4, 0, 4));
-                        //
                         ch.pipeline().addLast("messageencoder", new DodoMessageEncoder());
                         ch.pipeline().addLast("messagedecoder", new DodoMessageDecoder());
                         ch.pipeline().addLast(new InboundMessageHandler(session));
