@@ -19,11 +19,10 @@
  */
 package majordodo.task;
 
-import majordodo.network.Channel;
-import majordodo.network.ServerSideConnectionAcceptor;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
+import majordodo.network.Channel;
+import majordodo.network.ServerSideConnectionAcceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +38,25 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
     private final Map<Long, BrokerSideConnection> connections = new ConcurrentHashMap<>();
 
     private final Broker broker;
+    private ConnectionFactory connectionFactory = (channel, broker) -> {
+        BrokerSideConnection connection = new BrokerSideConnection();
+        connection.setBroker(broker);
+        connection.setRequireAuthentication(broker.getConfiguration().isRequireAuthentication());
+        connection.setChannel(channel);
+        return connection;
+    };
+
+    public interface ConnectionFactory {
+        BrokerSideConnection createConnection(Channel channel, Broker broker);
+    }
+
+    public ConnectionFactory getConnectionFactory() {
+        return connectionFactory;
+    }
+
+    public void setConnectionFactory(ConnectionFactory connectionFactory) {
+        this.connectionFactory = connectionFactory;
+    }
 
     public BrokerServerEndpoint(Broker broker) {
         this.broker = broker;
@@ -46,10 +64,7 @@ public class BrokerServerEndpoint implements ServerSideConnectionAcceptor<Broker
 
     @Override
     public BrokerSideConnection createConnection(Channel channel) {
-        BrokerSideConnection connection = new BrokerSideConnection();
-        connection.setBroker(broker);
-        connection.setRequireAuthentication(broker.getConfiguration().isRequireAuthentication());
-        connection.setChannel(channel);
+        BrokerSideConnection connection = connectionFactory.createConnection(channel, broker);
         channel.setMessagesReceiver(connection);
         connections.put(connection.getConnectionId(), connection);
         return connection;

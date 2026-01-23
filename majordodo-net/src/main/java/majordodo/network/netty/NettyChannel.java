@@ -19,10 +19,6 @@
  */
 package majordodo.network.netty;
 
-import majordodo.network.Channel;
-import majordodo.network.Message;
-import majordodo.network.ReplyCallback;
-import majordodo.network.SendResultCallback;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -35,7 +31,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
-
+import majordodo.network.Channel;
+import majordodo.network.Message;
+import majordodo.network.ReplyCallback;
+import majordodo.network.SendResultCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,7 +146,7 @@ public class NettyChannel extends Channel {
         });
     }
 
-    private void processPendingReplyMessagesDeadline() {
+    public void processPendingReplyMessagesDeadline() {
         List<String> messagesWithNoReply = new ArrayList<>();
         long now = System.currentTimeMillis();
         pendingReplyMessagesDeadline.forEach((messageId, deadline) -> {
