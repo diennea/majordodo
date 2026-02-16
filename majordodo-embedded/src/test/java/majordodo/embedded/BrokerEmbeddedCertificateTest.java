@@ -53,6 +53,7 @@ import majordodo.executors.TaskExecutor;
 import majordodo.network.netty.NettyChannelAcceptor;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.After;
@@ -203,7 +204,8 @@ public class BrokerEmbeddedCertificateTest {
             try {
                 ContextHandlerCollection contexts = new ContextHandlerCollection();
                 httpserver.setHandler(contexts);
-                ServletContextHandler context = new ServletContextHandler(ServletContextHandler.GZIP);
+                ServletContextHandler context = new ServletContextHandler();
+                context.setHandler(new GzipHandler());
                 context.setContextPath("/");
                 ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
                 jerseyServlet.setInitOrder(0);
