@@ -19,14 +19,6 @@
  */
 package majordodo.broker;
 
-import majordodo.task.FileCommitLog;
-import majordodo.task.TaskPropertiesMapperFunction;
-import majordodo.task.StatusChangesLog;
-import majordodo.task.TasksHeap;
-import majordodo.network.netty.NettyChannelAcceptor;
-import majordodo.task.Broker;
-import majordodo.task.BrokerConfiguration;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.InetSocketAddress;
@@ -36,19 +28,27 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import majordodo.daemons.PidFileLocker;
 import majordodo.network.BrokerHostData;
+import majordodo.network.netty.NettyChannelAcceptor;
 import majordodo.replication.ReplicatedCommitLog;
+import majordodo.task.Broker;
+import majordodo.task.BrokerConfiguration;
+import majordodo.task.FileCommitLog;
 import majordodo.task.SingleUserAuthenticationManager;
+import majordodo.task.StatusChangesLog;
+import majordodo.task.TaskPropertiesMapperFunction;
+import majordodo.task.TasksHeap;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by enrico.olivelli on 23/03/2015.
@@ -282,7 +282,8 @@ public class BrokerMain implements AutoCloseable {
         ContextHandlerCollection contexts = new ContextHandlerCollection();
         httpserver.setHandler(contexts);
 
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.GZIP);
+        ServletContextHandler context = new ServletContextHandler();
+        context.setHandler(new GzipHandler());
         context.setContextPath("/");
         ServletHolder jerseyServlet = new ServletHolder(new StandaloneHttpAPIServlet());
         jerseyServlet.setInitOrder(0);
