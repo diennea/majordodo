@@ -378,13 +378,15 @@ public final class BrokerStatus {
     public void followTheLeader() throws InterruptedException {
         try {
             log.requestLeadership();
-            while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
-                log.followTheLeader(this.lastLogSequenceNumber,
-                        (logSeqNumber, edit) -> {
-                            LOGGER.trace("following the leader {} {}", logSeqNumber, edit);
-                            applyEdit(logSeqNumber, edit);
-                        });
-                Thread.sleep(1000);
+            try (StatusChangesLog.FollowerContext context = log.startFollowing(this.lastLogSequenceNumber)) {
+                while (!log.isLeader() && !log.isClosed() && !brokerFailed) {
+                    log.followTheLeader(this.lastLogSequenceNumber,
+                            (logSeqNumber, edit) -> {
+                                LOGGER.trace("following the leader {} {}", logSeqNumber, edit);
+                                applyEdit(logSeqNumber, edit);
+                            }, context);
+                    Thread.sleep(1000);
+                }
             }
         } catch (LogNotAvailableException err) {
             throw new RuntimeException(err);
