@@ -33,7 +33,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,7 +49,6 @@ import java.util.function.BiConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import majordodo.network.BrokerHostData;
@@ -75,6 +73,9 @@ import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.api.LastConfirmedAndEntry;
+import org.apache.bookkeeper.client.api.LedgerEntries;
+import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.slf4j.event.Level;
 
@@ -89,6 +90,8 @@ public class ReplicatedCommitLog extends StatusChangesLog {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReplicatedCommitLog.class);
     private static final long DOWNLOAD_FROM_MASTER_TIMEOUT = Long.parseLong(System.getProperty("majordodo.downloadfrommaster.timeout", "240000"));
+    private static final int MAX_ENTRY_TO_TAIL = Integer.getInteger("majordodo.bookkeeper.follower.maxentriesperread", 5000);
+    private static final int LONG_POLL_TIMEOUT = Integer.getInteger("majordodo.bookkeeper.follower.longpoll.timeout.ms", 1000);
 
     private String sharedSecret = "dodo";
     private BookKeeper bookKeeper;
@@ -981,73 +984,81 @@ public class ReplicatedCommitLog extends StatusChangesLog {
     }
 
     @Override
+    public FollowerContext startFollowing(LogSequenceNumber lastPosition) throws LogNotAvailableException {
+        return new BKFollowerContext(lastPosition);
+    }
+
+    @Override
     public void followTheLeader(LogSequenceNumber skipPast, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
-
-        List<Long> actualList;
-        try {
-            actualList = zKClusterManager.getActualLedgersList().getActiveLedgers();
-        } catch (LogNotAvailableException temporaryError) {
-            LOGGER.error("temporary error {}", temporaryError, temporaryError);
-            return;
+        try (FollowerContext context = startFollowing(skipPast)) {
+            followTheLeader(skipPast, consumer, context);
         }
+    }
 
-        List<Long> toRead = actualList;
-        if (skipPast.ledgerId != -1) {
-            toRead = toRead.stream().filter(l -> l >= skipPast.ledgerId).collect(Collectors.toList());
-        }
+    @Override
+    public void followTheLeader(LogSequenceNumber skipPast, BiConsumer<LogSequenceNumber, StatusEdit> consumer, FollowerContext context) throws LogNotAvailableException {
+
+        BKFollowerContext followerContext = (BKFollowerContext) context;
 
         try {
-            long nextEntry = skipPast.sequenceNumber + 1;
-            LOGGER.debug("followTheLeader skipPast:{} toRead: {} actualList:{}, nextEntry:{}", skipPast, toRead, actualList, nextEntry);
-            for (Long previous : toRead) {
-                //LOGGER.log(SEVERE, "followTheLeader openLedger " + previous + " nextEntry:" + nextEntry);
+            followerContext.ensureOpenReader(skipPast);
+            ReadHandle rh = followerContext.currentLedger;
+            if (rh == null) {
+                return;
+            }
 
-                List<Map.Entry<Long, StatusEdit>> buffer = new ArrayList<>();
-
-                // first of all we read data from the leader
-                try (LedgerHandle lh = bookKeeper.openLedgerNoRecovery(previous,
-                    BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));) {
-                    long lastAddConfirmed = lh.getLastAddConfirmed();
-                    LOGGER.debug("followTheLeader openLedger {} -> lastAddConfirmed:{}, nextEntry:{}", previous, lastAddConfirmed, nextEntry);
-                    if (nextEntry > lastAddConfirmed) {
-                        nextEntry = 0;
-                        continue;
-                    }
-                    Enumeration<LedgerEntry> entries = lh.readEntries(nextEntry, lh.getLastAddConfirmed());
-                    if (entries != null) {
-                        while (entries.hasMoreElements()) {
-                            LedgerEntry e = entries.nextElement();
-                            long entryId = e.getEntryId();
-                            byte[] entryData = e.getEntry();
-                            StatusEdit statusEdit = StatusEdit.read(entryData);
-                            buffer.add(new AbstractMap.SimpleImmutableEntry<>(entryId, statusEdit));
-                        }
-                    }
-                } catch (BKException.BKLedgerRecoveryException | BKBookieHandleNotAvailableException temporaryError) {
-                    LOGGER.error("temporary error {}", temporaryError, temporaryError);
+            long nextEntry = followerContext.nextEntryToRead;
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("followTheLeader ledger:{} nextEntry:{} lastAddConfirmed:{}", rh.getId(), nextEntry, rh.getLastAddConfirmed());
+            }
+            try (LastConfirmedAndEntry entryAndLac = rh.readLastAddConfirmedAndEntry(nextEntry, LONG_POLL_TIMEOUT, false)) {
+                if (!entryAndLac.hasEntry()) {
                     return;
-                } catch (InterruptedException err) {
-                    LOGGER.error("error while reading ledger {}", err, err);
-                    Thread.currentThread().interrupt();
-                    throw err;
                 }
+                org.apache.bookkeeper.client.api.LedgerEntry entry = entryAndLac.getEntry();
+                acceptEntryForFollower(entry, consumer);
+                followerContext.nextEntryToRead = entry.getEntryId() + 1;
 
-                // use the entry
-                for (Map.Entry<Long, StatusEdit> entry : buffer) {
-                    long entryId = entry.getKey();
-                    StatusEdit statusEdit = entry.getValue();
-                    LOGGER.trace("entry {},{} -> {}", previous, entryId, statusEdit);
-                    LogSequenceNumber number = new LogSequenceNumber(previous, entryId);
-                    consumer.accept(number, statusEdit);
-                    lastSequenceNumber = number.sequenceNumber;
-                    currentLedgerId = number.ledgerId;
+                long startEntry = followerContext.nextEntryToRead;
+                long endEntry = entryAndLac.getLastAddConfirmed();
+                if (startEntry > endEntry) {
+                    return;
+                }
+                if (endEntry - startEntry + 1 > MAX_ENTRY_TO_TAIL) {
+                    endEntry = startEntry + MAX_ENTRY_TO_TAIL - 1;
+                }
+                try (LedgerEntries entries = rh.read(startEntry, endEntry)) {
+                    for (org.apache.bookkeeper.client.api.LedgerEntry ledgerEntry : entries) {
+                        acceptEntryForFollower(ledgerEntry, consumer);
+                        followerContext.nextEntryToRead = ledgerEntry.getEntryId() + 1;
+                    }
                 }
             }
-        } catch (InterruptedException | IOException | BKException err) {
-            err.printStackTrace();
+        } catch (LogNotAvailableException | BKException.BKLedgerRecoveryException | BKBookieHandleNotAvailableException temporaryError) {
+            LOGGER.error("temporary error {}", temporaryError, temporaryError);
+        } catch (InterruptedException err) {
+            LOGGER.error("error while reading ledger", err);
+            Thread.currentThread().interrupt();
+            throw new LogNotAvailableException(err);
+        } catch (IOException | org.apache.bookkeeper.client.api.BKException err) {
+            LOGGER.error("error while reading ledger", err);
             throw new LogNotAvailableException(err);
         }
 
+    }
+
+    private void acceptEntryForFollower(org.apache.bookkeeper.client.api.LedgerEntry entry, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws IOException {
+        long entryId = entry.getEntryId();
+        StatusEdit statusEdit = StatusEdit.read(entry.getEntryBytes());
+
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("entry {},{} -> {}", entry.getLedgerId(), entryId, statusEdit);
+        }
+
+        LogSequenceNumber number = new LogSequenceNumber(entry.getLedgerId(), entryId);
+        consumer.accept(number, statusEdit);
+        lastSequenceNumber = number.sequenceNumber;
+        currentLedgerId = number.ledgerId;
     }
 
     @Override
@@ -1060,4 +1071,106 @@ public class ReplicatedCommitLog extends StatusChangesLog {
         return new LogSequenceNumber(currentLedgerId, lastSequenceNumber);
     }
 
+    private final class BKFollowerContext implements FollowerContext {
+
+        private volatile ReadHandle currentLedger;
+        private volatile long nextEntryToRead;
+        private volatile long ledgerToTail;
+
+        private BKFollowerContext(LogSequenceNumber lastPosition) {
+            ledgerToTail = lastPosition.ledgerId;
+            nextEntryToRead = lastPosition.sequenceNumber + 1;
+            LOGGER.info("start following from position {}", lastPosition);
+        }
+
+        private void ensureOpenReader(LogSequenceNumber currentPosition) throws LogNotAvailableException, InterruptedException, org.apache.bookkeeper.client.api.BKException {
+            if (currentLedger != null && currentLedger.getId() == ledgerToTail) {
+                if (currentPosition.ledgerId == ledgerToTail) {
+                    nextEntryToRead = currentPosition.sequenceNumber + 1;
+                } else {
+                    nextEntryToRead = 0;
+                }
+                if (currentLedger.getLastAddConfirmed() < nextEntryToRead) {
+                    currentLedger.tryReadLastAddConfirmed();
+                }
+                if (!currentLedger.isClosed() || currentLedger.getLastAddConfirmed() >= nextEntryToRead) {
+                    return;
+                }
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("ledger {} is closed or fully read, looking for the next ledger", currentLedger.getId());
+                }
+            }
+
+            List<Long> actualList = new ArrayList<>(zKClusterManager.getActualLedgersList().getActiveLedgers());
+            Collections.sort(actualList);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("followTheLeader actual ledgers list: {}", actualList);
+            }
+
+            if (actualList.isEmpty()) {
+                return;
+            }
+            if (ledgerToTail == -1) {
+                ledgerToTail = actualList.get(0);
+            }
+            if (!actualList.contains(ledgerToTail)) {
+                throw new LogNotAvailableException(new Exception("Ledger " + ledgerToTail + " is not in the active ledgers list " + actualList));
+            }
+            if (currentLedger == null) {
+                currentLedger = bookKeeper.openLedgerNoRecovery(ledgerToTail,
+                        BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
+                nextEntryToRead = currentPosition.ledgerId == ledgerToTail ? currentPosition.sequenceNumber + 1 : 0;
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("opened ledger {} for tailing, nextEntryToRead={}", ledgerToTail, nextEntryToRead);
+                }
+
+                return;
+            }
+
+            long nextLedger = -1;
+            for (long ledgerId : actualList) {
+                if (ledgerId > ledgerToTail) {
+                    nextLedger = ledgerId;
+                    break;
+                }
+            }
+            if (nextLedger == -1) {
+                return;
+            }
+
+            closeCurrentReader();
+            ledgerToTail = nextLedger;
+            currentLedger = bookKeeper.openLedgerNoRecovery(ledgerToTail,
+                    BookKeeper.DigestType.MAC, sharedSecret.getBytes(StandardCharsets.UTF_8));
+            nextEntryToRead = 0;
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("opened next ledger {} for tailing", ledgerToTail);
+            }
+        }
+
+        private void closeCurrentReader() {
+            ReadHandle ledger = currentLedger;
+            if (ledger != null) {
+                try {
+                    ledger.close();
+                } catch (org.apache.bookkeeper.client.api.BKException error) {
+                    LOGGER.debug("error while closing follower ledger {}", ledger.getId(), error);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.debug("interrupted while closing follower ledger {}", ledger.getId(), error);
+                } finally {
+                    currentLedger = null;
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            closeCurrentReader();
+        }
+    }
 }

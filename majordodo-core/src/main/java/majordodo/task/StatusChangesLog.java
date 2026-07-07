@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * Log of mofications, this is the base of the replication system
+ * Log of modifications, this is the base of the replication system
  *
  * @author enrico.olivelli
  */
@@ -85,7 +85,23 @@ public abstract class StatusChangesLog implements AutoCloseable {
         return true;
     }
 
+    public interface FollowerContext extends AutoCloseable {
+
+        @Override
+        default void close() {
+        }
+    }
+
+    public FollowerContext startFollowing(LogSequenceNumber snapshotSequenceNumber) throws LogNotAvailableException {
+        return new FollowerContext() {
+        };
+    }
+
     public void followTheLeader(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer) throws LogNotAvailableException {
+    }
+
+    public void followTheLeader(LogSequenceNumber snapshotSequenceNumber, BiConsumer<LogSequenceNumber, StatusEdit> consumer, FollowerContext context) throws LogNotAvailableException {
+        followTheLeader(snapshotSequenceNumber, consumer);
     }
 
     public abstract boolean isClosed();
